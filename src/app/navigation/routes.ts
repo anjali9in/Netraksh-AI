@@ -1,0 +1,9 @@
+export const ROUTES = {
+  HOME: 'Home',
+} as const;
+
+export type RouteName = (typeof ROUTES)[keyof typeof ROUTES];
+
+export type RootStackParamList = {
+  [ROUTES.HOME]: undefined;
+};
