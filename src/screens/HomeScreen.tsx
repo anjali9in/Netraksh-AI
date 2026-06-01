@@ -1,20 +1,20 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-// import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-// import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {useNavigation} from '@react-navigation/native';
 
 import {PrimaryButton} from '../components/PrimaryButton';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
-// import {RootStackParamList, ROUTES} from '../app/navigation/routes';
+import {RootStackParamList, ROUTES} from '../app/navigation/routes';
 
-// type HomeNavigation = NativeStackNavigationProp<
-//   RootStackParamList,
-//   typeof ROUTES.HOME
-// >;
+type HomeNavigation = NativeStackNavigationProp<
+  RootStackParamList,
+  typeof ROUTES.HOME
+>;
 
 export function HomeScreen(): React.JSX.Element {
-  // const navigation = useNavigation<HomeNavigation>();
+  const navigation = useNavigation<HomeNavigation>();
 
   return (
     <ScreenContainer>
@@ -29,8 +29,20 @@ export function HomeScreen(): React.JSX.Element {
 
       <View style={styles.actions}>
         <PrimaryButton
-          title="Enter App"
-          onPress={() => {}}
+          title="Enroll User"
+          onPress={() => navigation.navigate(ROUTES.ENROLLMENT)}
+        />
+        <PrimaryButton
+          title="Authenticate User"
+          onPress={() => navigation.navigate(ROUTES.AUTHENTICATION)}
+        />
+        <PrimaryButton
+          title="View Offline Logs"
+          onPress={() => navigation.navigate(ROUTES.OFFLINE_LOGS)}
+        />
+        <PrimaryButton
+          title="View Benchmark"
+          onPress={() => navigation.navigate(ROUTES.BENCHMARK)}
         />
       </View>
     </ScreenContainer>
