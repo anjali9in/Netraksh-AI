@@ -35,7 +35,7 @@ This document tracks the performance of AI models used in Project Netraksh AI.
 
 | Metric | Value |
 |----------|----------|
-| Embedding Model | TBD |
+| Embedding Model | MobileFaceNet |
 | Model Size | TBD |
 | Accuracy | TBD |
 | Precision | TBD |
@@ -43,7 +43,7 @@ This document tracks the performance of AI models used in Project Netraksh AI.
 | F1 Score | TBD |
 | FAR (False Acceptance Rate) | TBD |
 | FRR (False Rejection Rate) | TBD |
-| Average Matching Time | TBD |
+| Average Matching Time | ~1.75 ms |
 
 ---
 

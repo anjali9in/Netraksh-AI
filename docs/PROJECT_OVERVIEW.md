@@ -1,18 +1,26 @@
-# Project Overview
+# Project Overview: Netraksh AI
 
-Project Netraksh AI is a mobile-based facial recognition and liveness verification system designed for secure identity authentication in remote and low-connectivity environments.
+Netraksh AI is an offline-first mobile app for facial recognition and liveness verification. We're building this to securely authenticate field personnel in remote areas where internet connectivity drops to zero. 
 
-## Status
+**Current Status:** Active Development 
 
-Project currently under development.
+## How We're Building It (The Tech Stack)
+We kept the stack 100% open-source and optimized it to run smoothly on standard, mid-range phones. 
 
-## Technology Stack
+* **Frontend:** React Native (TypeScript)
+* **AI & Offline Inference:** TensorFlow Lite / ONNX. We are using **MobileFaceNet** for the face embeddings because it is incredibly lightweight.
+* **Vision & Tracking:** React Native Vision Camera combined with MediaPipe Face Mesh.
+* **Offline Storage:** SQLite (for attendance logs) and Encrypted Storage (to lock down local biometric data).
+* **The Big Constraint:** The entire AI model fits under **20 MB** and processes the face match in under **1 second**.
 
-- React Native
-- TypeScript
-- Android
-- iOS
+## The "Liveness" Anti-Spoofing Flow
+We can't just let someone hold up a photo or an iPad to trick the system. To prevent attendance fraud, we built a randomized, completely offline anti-spoofing mechanism.
 
-## Documentation
+Here is the exact flow when a user tries to authenticate:
 
-This document will be updated as the project progresses.
+1. **Frame Check:** The camera opens and ensures the face is centered, at the right distance, and clearly visible.
+2. **The Challenge:** The system randomly asks the user to do one of three things: **Blink**, **Smile**, or **Turn their head**.
+3. **Validation:** We use MediaPipe to track facial landmarks (like calculating the Eye Aspect Ratio for a blink) to verify the user actually completed the challenge in real-time.
+4. **The Match:** Once we verify it's a real, living person, the app proceeds to authenticate their face against the encrypted local database.
+
+All of this happens directly on the device—no cloud required.
