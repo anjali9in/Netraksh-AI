@@ -29,18 +29,22 @@ export function HomeScreen(): React.JSX.Element {
 
       <View style={styles.actions}>
         <PrimaryButton
+          icon="userPlus"
           title="Enroll User"
           onPress={() => navigation.navigate(ROUTES.ENROLLMENT)}
         />
         <PrimaryButton
+          icon="shield"
           title="Authenticate User"
           onPress={() => navigation.navigate(ROUTES.AUTHENTICATION)}
         />
         <PrimaryButton
+          icon="logs"
           title="View Offline Logs"
           onPress={() => navigation.navigate(ROUTES.OFFLINE_LOGS)}
         />
         <PrimaryButton
+          icon="chart"
           title="View Benchmark"
           onPress={() => navigation.navigate(ROUTES.BENCHMARK)}
         />
