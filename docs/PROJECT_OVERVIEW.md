@@ -1,26 +1,161 @@
+# PROJECT_OVERVIEW.md
+
 # Project Overview: Netraksh AI
 
-Netraksh AI is an offline-first mobile app for facial recognition and liveness verification. We're building this to securely authenticate field personnel in remote areas where internet connectivity drops to zero. 
+Netraksh AI is an offline-first mobile application designed for secure face-based authentication and attendance tracking in remote environments.
 
-**Current Status:** Active Development 
+The project was created to address a common challenge in field operations: verifying personnel identity in areas where internet connectivity is unreliable or unavailable. Instead of relying on cloud-based services, Netraksh AI performs face recognition and liveness verification directly on the device.
 
-## How We're Building It (The Tech Stack)
-We kept the stack 100% open-source and optimized it to run smoothly on standard, mid-range phones. 
+This allows authentication to continue even when the device is completely offline. Attendance records are stored locally and automatically synchronized once internet connectivity becomes available.
 
-* **Frontend:** React Native (TypeScript)
-* **AI & Offline Inference:** TensorFlow Lite / ONNX. We are using **MobileFaceNet** for the face embeddings because it is incredibly lightweight.
-* **Vision & Tracking:** React Native Vision Camera combined with MediaPipe Face Mesh.
-* **Offline Storage:** SQLite (for attendance logs) and Encrypted Storage (to lock down local biometric data).
-* **The Big Constraint:** The entire AI model fits under **20 MB** and processes the face match in under **1 second**.
+**Project Status:** Active Development
 
-## The "Liveness" Anti-Spoofing Flow
-We can't just let someone hold up a photo or an iPad to trick the system. To prevent attendance fraud, we built a randomized, completely offline anti-spoofing mechanism.
+---
 
-Here is the exact flow when a user tries to authenticate:
+## Problem Statement
 
-1. **Frame Check:** The camera opens and ensures the face is centered, at the right distance, and clearly visible.
-2. **The Challenge:** The system randomly asks the user to do one of three things: **Blink**, **Smile**, or **Turn their head**.
-3. **Validation:** We use MediaPipe to track facial landmarks (like calculating the Eye Aspect Ratio for a blink) to verify the user actually completed the challenge in real-time.
-4. **The Match:** Once we verify it's a real, living person, the app proceeds to authenticate their face against the encrypted local database.
+Field personnel working on highways, construction sites, and remote infrastructure projects often operate in locations with poor network coverage.
 
-All of this happens directly on the device—no cloud required.
+Traditional attendance systems depend on continuous internet access, making them unreliable in these environments.
+
+Netraksh AI addresses this problem by providing:
+
+* Offline face-based authentication
+* Liveness verification to prevent spoofing
+* Secure local storage
+* Automatic cloud synchronization when connectivity is restored
+
+---
+
+## Technology Stack
+
+The project is built entirely using open-source technologies.
+
+| Component          | Technology                 |
+| ------------------ | -------------------------- |
+| Mobile Application | React Native (TypeScript)  |
+| Face Recognition   | ArcFace-MobileNetV2        |
+| Face Detection     | Google ML Kit              |
+| Camera Framework   | React Native Vision Camera |
+| Liveness Detection | MediaPipe Face Mesh        |
+| Local Database     | SQLite                     |
+| Encryption         | AES-256                    |
+| Cloud Sync         | AWS API Gateway + DynamoDB |
+
+---
+
+## Key Features
+
+### Offline-First Operation
+
+The application continues to function without internet connectivity. Records are stored locally and synchronized later when a connection becomes available.
+
+### On-Device Face Recognition
+
+Face recognition is performed entirely on the device without sending biometric data to external servers.
+
+### Liveness Detection
+
+The system verifies that a real person is present by asking the user to perform a random action such as:
+
+* Blink
+* Smile
+* Turn their head
+
+This helps prevent authentication using photographs, screenshots, or recorded videos.
+
+### Secure Storage
+
+Sensitive biometric information is encrypted before being stored locally.
+
+### Cross-Platform Support
+
+* Android 7.0+
+* iOS 11.0+
+* Minimum 3 GB RAM
+
+---
+
+## How Authentication Works
+
+```text
+Camera → Face Detection → Liveness Check → Face Recognition → Authentication Result
+```
+
+### Step 1: Face Detection
+
+The camera identifies and tracks the user's face.
+
+### Step 2: Liveness Verification
+
+A random challenge is generated.
+
+Examples:
+
+* Blink
+* Smile
+* Turn Left
+* Turn Right
+
+The system tracks facial landmarks in real time to verify the action.
+
+### Step 3: Face Recognition
+
+Once liveness verification succeeds, the application generates a facial embedding and compares it with previously enrolled records stored locally.
+
+### Step 4: Authentication
+
+If the similarity score exceeds the configured threshold, the user is successfully authenticated.
+
+---
+
+## Why Netraksh AI?
+
+Netraksh AI was designed with three goals in mind:
+
+### Reliability
+
+Works even in areas with little or no internet connectivity.
+
+### Privacy
+
+Biometric processing remains on the device.
+
+### Accessibility
+
+Runs on standard Android and iOS devices without requiring specialized hardware.
+
+---
+
+## Current Progress
+
+### Completed
+
+* Face Detection
+* Face Recognition Pipeline
+* Liveness Detection
+* Offline Storage
+* Cloud Synchronization Framework
+* Automated Unit Testing
+
+### Testing Status
+
+* 6 Test Suites Passed
+* 37 Tests Passed
+* 0 Failures
+
+---
+
+## Future Roadmap
+
+* Passive liveness detection
+* Multi-face support
+* Hardware acceleration using NNAPI and CoreML
+* Administrative analytics dashboard
+* Performance optimization for lower-end devices
+
+---
+
+## Summary
+
+Netraksh AI is a lightweight, offline-first authentication solution designed for real-world field operations. By combining on-device face recognition, liveness verification, secure storage, and cloud synchronization, the system provides a practical and reliable method for identity verification in environments where connectivity cannot be guaranteed.
