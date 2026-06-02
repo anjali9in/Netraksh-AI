@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Netraksh AI offline authentication sync backend.
+
+Parameters:
+  AuthLogsTableName:
+    Type: String
+    Default: netraksh-ai-auth-logs
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 256
+    Environment:
+      Variables:
+        AUTH_LOGS_TABLE_NAME: !Ref AuthLogsTable
+
+Resources:
+  NetrakshHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+        AllowMethods:
+          - OPTIONS
+          - POST
+
+  AuthLogsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref AuthLogsTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: logId
+          AttributeType: S
+        - AttributeName: employeeId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: logId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: employeeIdCreatedAtIndex
+          KeySchema:
+            - AttributeName: employeeId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  SyncAuthLogsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/handlers/syncAuthLogs.handler
+      CodeUri: .
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AuthLogsTable
+      Events:
+        SyncAuthLogs:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref NetrakshHttpApi
+            Path: /sync/auth-logs
+            Method: POST
+
+Outputs:
+  ApiEndpoint:
+    Description: HTTP API base URL for the mobile app API_BASE_URL.
+    Value: !Sub 'https://${NetrakshHttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+  AuthLogsTableName:
+    Description: DynamoDB auth logs table name.
+    Value: !Ref AuthLogsTable
