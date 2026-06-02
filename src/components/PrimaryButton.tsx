@@ -39,7 +39,13 @@ export function PrimaryButton({
         ) : icon ? (
           <ButtonIcon color={iconColor} name={icon} />
         ) : null}
-        <Text style={[styles.title, isDisabled && styles.disabledTitle]}>
+        <Text
+          style={[
+            styles.title,
+            (icon || loading) && styles.titleWithIcon,
+            isDisabled && styles.disabledTitle,
+          ]}
+        >
           {title}
         </Text>
       </View>
@@ -60,7 +66,6 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 8,
     justifyContent: 'center',
   },
   disabled: {
@@ -76,5 +81,8 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  titleWithIcon: {
+    marginLeft: 8,
   },
 });

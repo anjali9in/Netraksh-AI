@@ -26,6 +26,7 @@ export function FaceCapturePanel({
   const isScreenFocused = useIsFocused();
   const [appState, setAppState] = React.useState(AppState.currentState);
   const {
+    cameraRef,
     canRequestPermission,
     canUseMockCapture,
     capturedImage,
@@ -36,7 +37,6 @@ export function FaceCapturePanel({
     isCameraReady,
     isCapturing,
     openCameraSettings,
-    photoOutput,
     requestCameraPermission,
     retake,
     useMockCapture,
@@ -63,10 +63,12 @@ export function FaceCapturePanel({
       >
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.description}>{description}</Text>
+          <Text style={[styles.description, styles.headerDescription]}>
+            {description}
+          </Text>
         </View>
 
-        <View style={styles.previewFrame}>
+        <View style={[styles.previewFrame, styles.panelItem]}>
           {capturedImage?.source === 'mock' ? (
             <View style={styles.mockPreview}>
               <Text style={styles.emptyTitle}>Mock face image captured</Text>
@@ -82,10 +84,10 @@ export function FaceCapturePanel({
             />
           ) : isCameraReady && device ? (
             <Camera
+              ref={cameraRef}
               device={device}
               isActive={isCameraActive}
-              outputs={[photoOutput]}
-              resizeMode="cover"
+              photo={true}
               style={StyleSheet.absoluteFill}
             />
           ) : (
@@ -133,32 +135,38 @@ export function FaceCapturePanel({
         </View>
 
         {capturedImage ? (
-          <StatusBadge label="Temporary image path saved" status="success" />
+          <View style={styles.panelItem}>
+            <StatusBadge label="Temporary image path saved" status="success" />
+          </View>
         ) : null}
         {errorMessage ? (
-          <StatusBadge label={errorMessage} status="error" />
+          <View style={styles.panelItem}>
+            <StatusBadge label={errorMessage} status="error" />
+          </View>
         ) : null}
 
-        {capturedImage ? (
-          <PrimaryButton
-            icon="refresh"
-            title="Retake Photo"
-            onPress={retake}
-            disabled={controlsDisabled}
-          />
-        ) : hasPermission ? (
-          <PrimaryButton
-            icon="camera"
-            title={isCapturing ? 'Capturing...' : 'Capture'}
-            onPress={captureFaceImage}
-            disabled={
-              controlsDisabled ||
-              isCapturing ||
-              !isCameraReady ||
-              !isCameraActive
-            }
-          />
-        ) : null}
+        <View style={styles.panelItem}>
+          {capturedImage ? (
+            <PrimaryButton
+              icon="refresh"
+              title="Retake Photo"
+              onPress={retake}
+              disabled={controlsDisabled}
+            />
+          ) : hasPermission ? (
+            <PrimaryButton
+              icon="camera"
+              title={isCapturing ? 'Capturing...' : 'Capture'}
+              onPress={captureFaceImage}
+              disabled={
+                controlsDisabled ||
+                isCapturing ||
+                !isCameraReady ||
+                !isCameraActive
+              }
+            />
+          ) : null}
+        </View>
       </View>
       {controlsDisabled ? (
         <View pointerEvents="none" style={styles.disabledOverlay} />
@@ -183,7 +191,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#e2e8f0',
     flex: 1,
-    gap: 8,
     justifyContent: 'center',
     padding: 20,
   },
@@ -199,7 +206,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   header: {
-    gap: 6,
+  },
+  headerDescription: {
+    marginTop: 6,
   },
   inlineAction: {
     marginTop: 10,
@@ -209,18 +218,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#dbeafe',
     flex: 1,
-    gap: 8,
     justifyContent: 'center',
     padding: 20,
   },
   panel: {
     position: 'relative',
   },
-  panelContent: {
-    gap: 14,
-  },
+  panelContent: {},
   panelContentDisabled: {
     opacity: 0.55,
+  },
+  panelItem: {
+    marginTop: 14,
   },
   preview: {
     height: '100%',
