@@ -1,5 +1,5 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
 
 import {ButtonIcon, ButtonIconName} from './icons/ButtonIcon';
 
@@ -8,6 +8,7 @@ type PrimaryButtonProps = {
   onPress: () => void;
   disabled?: boolean;
   icon?: ButtonIconName;
+  loading?: boolean;
 };
 
 export function PrimaryButton({
@@ -15,23 +16,30 @@ export function PrimaryButton({
   onPress,
   disabled = false,
   icon,
+  loading = false,
 }: PrimaryButtonProps): React.JSX.Element {
-  const iconColor = disabled ? '#64748b' : '#ffffff';
+  const isDisabled = disabled || loading;
+  const iconColor = isDisabled ? '#64748b' : '#ffffff';
 
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={disabled}
+      accessibilityState={{busy: loading, disabled: isDisabled}}
+      disabled={isDisabled}
       onPress={onPress}
       style={({pressed}) => [
         styles.button,
-        disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
+        isDisabled && styles.disabled,
+        pressed && !isDisabled && styles.pressed,
       ]}
     >
       <View style={styles.content}>
-        {icon ? <ButtonIcon color={iconColor} name={icon} /> : null}
-        <Text style={[styles.title, disabled && styles.disabledTitle]}>
+        {loading ? (
+          <ActivityIndicator color={iconColor} size="small" />
+        ) : icon ? (
+          <ButtonIcon color={iconColor} name={icon} />
+        ) : null}
+        <Text style={[styles.title, isDisabled && styles.disabledTitle]}>
           {title}
         </Text>
       </View>
