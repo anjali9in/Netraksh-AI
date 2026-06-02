@@ -1,4 +1,4 @@
-import { offlineDatabaseService } from '../src/services/OfflineDatabaseService';
+import {offlineDatabaseService} from '../src/services/OfflineDatabaseService';
 
 describe('Offline Database Service Tests', () => {
   beforeEach(() => {
@@ -70,7 +70,9 @@ describe('Offline Database Service Tests', () => {
 
     // Sync them
     const idsToSync = pending.map(p => p.id!).filter(Boolean);
-    const syncSuccess = await offlineDatabaseService.markLogsAsSynced(idsToSync);
+    const syncSuccess = await offlineDatabaseService.markLogsAsSynced(
+      idsToSync,
+    );
     expect(syncSuccess).toBe(true);
 
     // Verify they are no longer pending
@@ -80,7 +82,9 @@ describe('Offline Database Service Tests', () => {
     // Check that hashes were updated to reflect the new syncStatus
     const allLogs = await offlineDatabaseService.getAllLogs();
     expect(allLogs.every(l => l.syncStatus === 'SYNCED')).toBe(true);
-    expect(allLogs.every(l => offlineDatabaseService.verifyLogIntegrity(l))).toBe(true);
+    expect(
+      allLogs.every(l => offlineDatabaseService.verifyLogIntegrity(l)),
+    ).toBe(true);
   });
 
   it('should purge old synchronized logs', async () => {
@@ -101,7 +105,7 @@ describe('Offline Database Service Tests', () => {
     // Force edit the date in the mock to make it older (e.g. 40 days ago)
     const fortyDaysAgo = new Date();
     fortyDaysAgo.setDate(fortyDaysAgo.getDate() - 40);
-    
+
     const dbLog = (global as any).mockDbState.logs[0];
     dbLog.created_at = fortyDaysAgo.toISOString();
 
@@ -109,13 +113,13 @@ describe('Offline Database Service Tests', () => {
     const logs = await offlineDatabaseService.getAllLogs();
     const mappedLog = logs[0];
     mappedLog.createdAt = fortyDaysAgo.toISOString();
-    const rest = { ...mappedLog };
+    const rest = {...mappedLog};
     delete (rest as any).id;
     delete (rest as any).logHash;
     dbLog.log_hash = offlineDatabaseService.generateLogHash(rest);
 
     // Update in mock stateful DB
-    const globalState = (global as any);
+    const globalState = global as any;
     if (globalState.resetMockDatabase) {
       // The stateful mock stores inside mockDbState, let's execute clearSyncedLogs
       const purgedCount = await offlineDatabaseService.clearSyncedLogs(30);

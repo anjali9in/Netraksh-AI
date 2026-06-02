@@ -23,11 +23,14 @@ export function useFaceCapture({
   const devices = useCameraDevices();
   const device = devices.front ?? devices.back;
 
-  const [status, setStatus] = useState<CameraPermissionStatus>('not-determined');
+  const [status, setStatus] =
+    useState<CameraPermissionStatus>('not-determined');
   const hasPermission = status === 'authorized';
   const canRequestPermission = status === 'not-determined';
 
-  const [capturedImage, setCapturedImage] = useState<CapturedFaceImage | null>(null);
+  const [capturedImage, setCapturedImage] = useState<CapturedFaceImage | null>(
+    null,
+  );
   const [isCapturing, setIsCapturing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 

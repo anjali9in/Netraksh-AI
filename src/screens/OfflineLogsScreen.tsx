@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,15 +10,20 @@ import {
   View,
 } from 'react-native';
 
-import { ScreenContainer } from '../components/ScreenContainer';
-import { StatusBadge } from '../components/StatusBadge';
-import { offlineDatabaseService, AuthLogEntry } from '../services/OfflineDatabaseService';
+import {ScreenContainer} from '../components/ScreenContainer';
+import {StatusBadge} from '../components/StatusBadge';
+import {
+  offlineDatabaseService,
+  AuthLogEntry,
+} from '../services/OfflineDatabaseService';
 
 export function OfflineLogsScreen(): React.JSX.Element {
   const [logs, setLogs] = useState<AuthLogEntry[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuthLogEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'SUCCESS' | 'FAILED' | 'PENDING'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<
+    'ALL' | 'SUCCESS' | 'FAILED' | 'PENDING'
+  >('ALL');
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -38,14 +43,14 @@ export function OfflineLogsScreen(): React.JSX.Element {
   const applyFilters = (
     allLogs: AuthLogEntry[],
     query: string,
-    filter: typeof statusFilter
+    filter: typeof statusFilter,
   ) => {
     let result = [...allLogs];
 
     // Apply Search Query
     if (query.trim()) {
       result = result.filter(log =>
-        log.employeeId.toLowerCase().includes(query.toLowerCase())
+        log.employeeId.toLowerCase().includes(query.toLowerCase()),
       );
     }
 
@@ -78,7 +83,10 @@ export function OfflineLogsScreen(): React.JSX.Element {
       .filter(Boolean);
 
     if (pendingIds.length === 0) {
-      Alert.alert('Sync Status', 'All logs are already synchronized with the server.');
+      Alert.alert(
+        'Sync Status',
+        'All logs are already synchronized with the server.',
+      );
       return;
     }
 
@@ -89,13 +97,19 @@ export function OfflineLogsScreen(): React.JSX.Element {
 
       const success = await offlineDatabaseService.markLogsAsSynced(pendingIds);
       if (success) {
-        Alert.alert('Sync Success', `Successfully synchronized ${pendingIds.length} logs to the central database.`);
+        Alert.alert(
+          'Sync Success',
+          `Successfully synchronized ${pendingIds.length} logs to the central database.`,
+        );
         await fetchLogs();
       } else {
         Alert.alert('Sync Error', 'An error occurred during synchronization.');
       }
     } catch (error) {
-      Alert.alert('Sync Error', error instanceof Error ? error.message : 'Unknown sync failure');
+      Alert.alert(
+        'Sync Error',
+        error instanceof Error ? error.message : 'Unknown sync failure',
+      );
     } finally {
       setIsSyncing(false);
     }
@@ -106,7 +120,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
       'Purge Sync Logs',
       'Are you sure you want to delete all synced logs to save space?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        {text: 'Cancel', style: 'cancel'},
         {
           text: 'Purge',
           style: 'destructive',
@@ -116,7 +130,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
             await fetchLogs();
           },
         },
-      ]
+      ],
     );
   };
 
@@ -135,20 +149,44 @@ export function OfflineLogsScreen(): React.JSX.Element {
     <ScreenContainer contentContainerStyle={styles.container}>
       {/* Metrics Cards */}
       <View style={styles.metricsRow}>
-        <View style={[styles.metricCard, { borderLeftColor: '#4f46e5' }]}>
+        <View style={[styles.metricCard, {borderLeftColor: '#4f46e5'}]}>
           <Text style={styles.metricVal}>{totalCount}</Text>
           <Text style={styles.metricLabel}>Total Logs</Text>
         </View>
-        <View style={[styles.metricCard, styles.metricCardWithMargin, { borderLeftColor: '#10b981' }]}>
-          <Text style={[styles.metricVal, { color: '#10b981' }]}>{successCount}</Text>
+        <View
+          style={[
+            styles.metricCard,
+            styles.metricCardWithMargin,
+            {borderLeftColor: '#10b981'},
+          ]}
+        >
+          <Text style={[styles.metricVal, {color: '#10b981'}]}>
+            {successCount}
+          </Text>
           <Text style={styles.metricLabel}>Passed</Text>
         </View>
-        <View style={[styles.metricCard, styles.metricCardWithMargin, { borderLeftColor: '#f43f5e' }]}>
-          <Text style={[styles.metricVal, { color: '#f43f5e' }]}>{failCount}</Text>
+        <View
+          style={[
+            styles.metricCard,
+            styles.metricCardWithMargin,
+            {borderLeftColor: '#f43f5e'},
+          ]}
+        >
+          <Text style={[styles.metricVal, {color: '#f43f5e'}]}>
+            {failCount}
+          </Text>
           <Text style={styles.metricLabel}>Failed</Text>
         </View>
-        <View style={[styles.metricCard, styles.metricCardWithMargin, { borderLeftColor: '#3b82f6' }]}>
-          <Text style={[styles.metricVal, { color: '#3b82f6' }]}>{pendingSyncCount}</Text>
+        <View
+          style={[
+            styles.metricCard,
+            styles.metricCardWithMargin,
+            {borderLeftColor: '#3b82f6'},
+          ]}
+        >
+          <Text style={[styles.metricVal, {color: '#3b82f6'}]}>
+            {pendingSyncCount}
+          </Text>
           <Text style={styles.metricLabel}>Pending</Text>
         </View>
       </View>
@@ -163,11 +201,16 @@ export function OfflineLogsScreen(): React.JSX.Element {
           {isSyncing ? (
             <ActivityIndicator color="#ffffff" size="small" />
           ) : (
-            <Text style={styles.btnText}>Sync Pending Logs ({pendingSyncCount})</Text>
+            <Text style={styles.btnText}>
+              Sync Pending Logs ({pendingSyncCount})
+            </Text>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handlePurge} style={[styles.actionBtn, styles.purgeBtn]}>
+        <TouchableOpacity
+          onPress={handlePurge}
+          style={[styles.actionBtn, styles.purgeBtn]}
+        >
           <Text style={styles.btnText}>Purge Synced</Text>
         </TouchableOpacity>
       </View>
@@ -181,7 +224,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
           style={styles.searchInput}
           value={searchQuery}
         />
-        
+
         <View style={styles.filterBar}>
           {(['ALL', 'SUCCESS', 'FAILED', 'PENDING'] as const).map(f => (
             <TouchableOpacity
@@ -214,16 +257,21 @@ export function OfflineLogsScreen(): React.JSX.Element {
       ) : filteredLogs.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>No matching logs found</Text>
-          <Text style={styles.emptySubtext}>Logs are saved locally whenever face recognition is run.</Text>
+          <Text style={styles.emptySubtext}>
+            Logs are saved locally whenever face recognition is run.
+          </Text>
         </View>
       ) : (
         <FlatList
           data={filteredLogs}
-          keyExtractor={(item, index) => item.id?.toString() || index.toString()}
+          keyExtractor={(item, index) =>
+            item.id?.toString() || index.toString()
+          }
           scrollEnabled={false} // Nesting FlatList inside ScreenContainer ScrollView
-          renderItem={({ item }) => {
-            const isIntegrityOk = offlineDatabaseService.verifyLogIntegrity(item);
-            
+          renderItem={({item}) => {
+            const isIntegrityOk =
+              offlineDatabaseService.verifyLogIntegrity(item);
+
             return (
               <View style={styles.logCard}>
                 <View style={styles.logHeader}>
@@ -234,28 +282,36 @@ export function OfflineLogsScreen(): React.JSX.Element {
                     </Text>
                   </View>
                   <View style={styles.badgesCol}>
-	                    <StatusBadge
-	                      label={item.authStatus}
-	                      status={item.authStatus === 'SUCCESS' ? 'success' : 'error'}
-	                    />
-	                    <View style={styles.badgeItem}>
-	                      <StatusBadge
-	                        label={item.syncStatus}
-	                        status={item.syncStatus === 'SYNCED' ? 'info' : 'warning'}
-	                      />
-	                    </View>
+                    <StatusBadge
+                      label={item.authStatus}
+                      status={
+                        item.authStatus === 'SUCCESS' ? 'success' : 'error'
+                      }
+                    />
+                    <View style={styles.badgeItem}>
+                      <StatusBadge
+                        label={item.syncStatus}
+                        status={
+                          item.syncStatus === 'SYNCED' ? 'info' : 'warning'
+                        }
+                      />
+                    </View>
                   </View>
                 </View>
 
                 <View style={styles.logDetails}>
                   <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>Challenge: </Text>
-                    <Text style={styles.detailVal}>{item.challengeType} (Passed)</Text>
+                    <Text style={styles.detailVal}>
+                      {item.challengeType} (Passed)
+                    </Text>
                   </View>
                   <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>Score: </Text>
                     <Text style={styles.detailVal}>
-                      {item.similarityScore !== null ? item.similarityScore.toFixed(4) : 'N/A'}
+                      {item.similarityScore !== null
+                        ? item.similarityScore.toFixed(4)
+                        : 'N/A'}
                     </Text>
                   </View>
                   <View style={styles.detailItem}>
@@ -265,16 +321,27 @@ export function OfflineLogsScreen(): React.JSX.Element {
                   {item.failureReason ? (
                     <View style={styles.detailItem}>
                       <Text style={styles.detailLabel}>Reason: </Text>
-                      <Text style={[styles.detailVal, { color: '#ef4444' }]}>{item.failureReason}</Text>
+                      <Text style={[styles.detailVal, {color: '#ef4444'}]}>
+                        {item.failureReason}
+                      </Text>
                     </View>
                   ) : null}
                 </View>
 
                 {/* Dynamic Integrity Check */}
                 <View style={styles.integrityBar}>
-                  <Text style={styles.integrityLabel}>Log Integrity Check:</Text>
-                  <Text style={[styles.integrityStatus, { color: isIntegrityOk ? '#10b981' : '#f43f5e' }]}>
-                    {isIntegrityOk ? '● Verified (SHA-256 Valid)' : '▲ TAMPERED / CORRUPT'}
+                  <Text style={styles.integrityLabel}>
+                    Log Integrity Check:
+                  </Text>
+                  <Text
+                    style={[
+                      styles.integrityStatus,
+                      {color: isIntegrityOk ? '#10b981' : '#f43f5e'},
+                    ]}
+                  >
+                    {isIntegrityOk
+                      ? '● Verified (SHA-256 Valid)'
+                      : '▲ TAMPERED / CORRUPT'}
                   </Text>
                 </View>
               </View>
@@ -377,7 +444,7 @@ const styles = StyleSheet.create({
   activeFilterTab: {
     backgroundColor: '#ffffff',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
