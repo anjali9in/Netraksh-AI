@@ -96,15 +96,23 @@ describe('FaceEmbeddingGenerator (DEMO_MODE)', () => {
 // TEST 4: Benchmark (Speed Test)
 // ─────────────────────────────────────────────────────────
 describe('AI Benchmark', () => {
-  it('should complete 20 embedding runs and pass the 1-second target', async () => {
-    const result = await benchmarkEmbeddingSpeed(20);
-    expect(result.totalRuns).toBe(20);
-    expect(result.passedTarget).toBe(true); // avg time < 1000ms
-    expect(result.passRate).toBeGreaterThan(90); // > 90% of runs under 1s
-  });
+  it(
+    'should complete 20 embedding runs and pass the 1-second target',
+    async () => {
+      const result = await benchmarkEmbeddingSpeed(20);
+      expect(result.totalRuns).toBe(20);
+      expect(result.passedTarget).toBe(true); // avg time < 1000ms
+      expect(result.passRate).toBeGreaterThan(90); // > 90% of runs under 1s
+    },
+    30000,
+  );
 
-  it('should complete full matching pipeline benchmark', async () => {
-    const result = await benchmarkMatchingPipeline(20);
-    expect(result.averageTimeMs).toBeLessThan(1000);
-  });
-}, 30000); // allow up to 30 seconds for this test
+  it(
+    'should complete full matching pipeline benchmark',
+    async () => {
+      const result = await benchmarkMatchingPipeline(20);
+      expect(result.averageTimeMs).toBeLessThan(1000);
+    },
+    30000,
+  );
+});

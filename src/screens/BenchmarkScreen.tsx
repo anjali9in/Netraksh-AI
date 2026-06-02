@@ -84,7 +84,6 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 8,
     borderWidth: 1,
-    gap: 8,
     padding: 16,
   },
   label: {
@@ -101,5 +100,6 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 14,
     lineHeight: 20,
+    marginTop: 8,
   },
 });

@@ -1,4 +1,4 @@
-import type {Scalar} from '@op-engineering/op-sqlite';
+export type Scalar = string | number | boolean | null | undefined;
 
 export type DatabaseValue = Scalar;
 export type DatabaseParams = DatabaseValue[];

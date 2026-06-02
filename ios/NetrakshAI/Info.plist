@@ -34,8 +34,6 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
 	<key>NSCameraUsageDescription</key>
 	<string>Netraksh AI needs camera access to capture face images for enrollment and authentication.</string>
 	<key>UILaunchStoryboardName</key>

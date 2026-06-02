@@ -1,7 +1,16 @@
 {
-  "extends": "@react-native/typescript-config",
   "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "jsx": "react-native",
+    "lib": ["es2017", "dom"],
+    "moduleResolution": "bundler",
+    "noEmit": true,
     "strict": true,
+    "skipLibCheck": true,
+    "target": "esnext",
     "baseUrl": ".",
     "paths": {
       "@app/*": ["src/app/*"],

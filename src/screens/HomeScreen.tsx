@@ -28,26 +28,34 @@ export function HomeScreen(): React.JSX.Element {
       <StatusBadge label="Offline mode placeholder" status="info" />
 
       <View style={styles.actions}>
-        <PrimaryButton
-          icon="userPlus"
-          title="Enroll User"
-          onPress={() => navigation.navigate(ROUTES.ENROLLMENT)}
-        />
-        <PrimaryButton
-          icon="shield"
-          title="Authenticate User"
-          onPress={() => navigation.navigate(ROUTES.AUTHENTICATION)}
-        />
-        <PrimaryButton
-          icon="logs"
-          title="View Offline Logs"
-          onPress={() => navigation.navigate(ROUTES.OFFLINE_LOGS)}
-        />
-        <PrimaryButton
-          icon="chart"
-          title="View Benchmark"
-          onPress={() => navigation.navigate(ROUTES.BENCHMARK)}
-        />
+        <View style={styles.actionItem}>
+          <PrimaryButton
+            icon="userPlus"
+            title="Enroll User"
+            onPress={() => navigation.navigate(ROUTES.ENROLLMENT)}
+          />
+        </View>
+        <View style={styles.actionItem}>
+          <PrimaryButton
+            icon="shield"
+            title="Authenticate User"
+            onPress={() => navigation.navigate(ROUTES.AUTHENTICATION)}
+          />
+        </View>
+        <View style={styles.actionItem}>
+          <PrimaryButton
+            icon="logs"
+            title="View Offline Logs"
+            onPress={() => navigation.navigate(ROUTES.OFFLINE_LOGS)}
+          />
+        </View>
+        <View style={styles.actionItem}>
+          <PrimaryButton
+            icon="chart"
+            title="View Benchmark"
+            onPress={() => navigation.navigate(ROUTES.BENCHMARK)}
+          />
+        </View>
       </View>
     </ScreenContainer>
   );
@@ -55,15 +63,17 @@ export function HomeScreen(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   actions: {
-    gap: 12,
+    marginTop: 12,
   },
-  header: {
-    gap: 8,
+  actionItem: {
+    marginTop: 12,
   },
+  header: {},
   subtitle: {
     color: '#475569',
     fontSize: 16,
     lineHeight: 23,
+    marginTop: 8,
   },
   title: {
     color: '#0f172a',

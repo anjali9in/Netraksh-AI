@@ -1,13 +1,15 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Linking} from 'react-native';
-import {
-  useCameraDevice,
-  useCameraPermission,
-  usePhotoOutput,
-} from 'react-native-vision-camera';
+import {Camera, useCameraDevices} from 'react-native-vision-camera';
 
 import type {CapturedFaceImage} from '../types/CameraTypes';
 import {toFileUri} from '../utils/fileUtils';
+
+type CameraPermissionStatus =
+  | 'not-determined'
+  | 'denied'
+  | 'never_ask_again'
+  | 'authorized';
 
 type UseFaceCaptureParams = {
   onPhotoCaptured?: (image: CapturedFaceImage) => void;
@@ -18,21 +20,25 @@ export function useFaceCapture({
   onPhotoCaptured,
   onPhotoCleared,
 }: UseFaceCaptureParams = {}) {
-  const frontDevice = useCameraDevice('front');
-  const backDevice = useCameraDevice('back');
-  const device = frontDevice ?? backDevice;
-  const photoOutput = usePhotoOutput({
-    quality: 0.9,
-    qualityPrioritization: 'balanced',
-  });
-  const {canRequestPermission, hasPermission, requestPermission, status} =
-    useCameraPermission();
-  const [capturedImage, setCapturedImage] = useState<CapturedFaceImage | null>(
-    null,
-  );
+  const devices = useCameraDevices();
+  const device = devices.front ?? devices.back;
+
+  const [status, setStatus] = useState<CameraPermissionStatus>('not-determined');
+  const hasPermission = status === 'authorized';
+  const canRequestPermission = status === 'not-determined';
+
+  const [capturedImage, setCapturedImage] = useState<CapturedFaceImage | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const cameraRef = useRef<Camera>(null);
   const hasRequestedPermission = useRef(false);
+
+  useEffect(() => {
+    Camera.getCameraPermissionStatus().then(s =>
+      setStatus(s as CameraPermissionStatus),
+    );
+  }, []);
 
   const requestCameraPermission = useCallback(async () => {
     setErrorMessage(null);
@@ -42,14 +48,16 @@ export function useFaceCapture({
       return false;
     }
 
-    const granted = await requestPermission();
+    const result = await Camera.requestCameraPermission();
+    const granted = result === 'authorized';
+    setStatus(result as CameraPermissionStatus);
 
     if (!granted) {
       setErrorMessage('Camera permission is required to capture a face image.');
     }
 
     return granted;
-  }, [canRequestPermission, requestPermission]);
+  }, [canRequestPermission]);
 
   const openCameraSettings = useCallback(async () => {
     await Linking.openSettings();
@@ -60,7 +68,6 @@ export function useFaceCapture({
 
     if (!hasPermission) {
       const granted = await requestCameraPermission();
-
       if (!granted) {
         return;
       }
@@ -71,20 +78,21 @@ export function useFaceCapture({
       return;
     }
 
+    if (!cameraRef.current) {
+      setErrorMessage('Camera is not ready.');
+      return;
+    }
+
     setIsCapturing(true);
 
     try {
-      const photoFile = await photoOutput.capturePhotoToFile(
-        {
-          enableShutterSound: false,
-          flashMode: 'off',
-        },
-        {},
-      );
+      const photo = await cameraRef.current.takePhoto({
+        flash: 'off',
+      });
 
       const image: CapturedFaceImage = {
-        path: photoFile.filePath,
-        uri: toFileUri(photoFile.filePath),
+        path: photo.path,
+        uri: toFileUri(photo.path),
         capturedAt: new Date().toISOString(),
         source: 'camera',
       };
@@ -100,13 +108,7 @@ export function useFaceCapture({
     } finally {
       setIsCapturing(false);
     }
-  }, [
-    device,
-    hasPermission,
-    onPhotoCaptured,
-    photoOutput,
-    requestCameraPermission,
-  ]);
+  }, [device, hasPermission, onPhotoCaptured, requestCameraPermission]);
 
   const useMockCapture = useCallback(() => {
     const capturedAt = new Date().toISOString();
@@ -142,6 +144,7 @@ export function useFaceCapture({
   }, [canRequestPermission, hasPermission, requestCameraPermission]);
 
   return {
+    cameraRef,
     canRequestPermission,
     capturedImage,
     captureFaceImage,
@@ -153,7 +156,6 @@ export function useFaceCapture({
     isCapturing,
     openCameraSettings,
     permissionStatus: status,
-    photoOutput,
     requestCameraPermission,
     retake,
     useMockCapture,
