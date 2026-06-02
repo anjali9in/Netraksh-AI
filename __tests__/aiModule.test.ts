@@ -101,10 +101,10 @@ describe('AI Benchmark', () => {
     expect(result.totalRuns).toBe(20);
     expect(result.passedTarget).toBe(true); // avg time < 1000ms
     expect(result.passRate).toBeGreaterThan(90); // > 90% of runs under 1s
-  });
+  }, 30000); // allow up to 30 seconds for this test
 
   it('should complete full matching pipeline benchmark', async () => {
     const result = await benchmarkMatchingPipeline(20);
     expect(result.averageTimeMs).toBeLessThan(1000);
-  });
-}, 30000); // allow up to 30 seconds for this test
+  }, 30000); // allow up to 30 seconds for this test
+});
