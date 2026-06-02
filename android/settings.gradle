@@ -1,4 +1,15 @@
 rootProject.name = 'com.netrakshai'
+def reactAndroidBuild = file("../node_modules/react-native/ReactAndroid/build.gradle")
+if (reactAndroidBuild.exists()) {
+    def contents = reactAndroidBuild.text
+    def patched = contents.replace(
+        'https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION.replace("_", ".")}/source/boost_${BOOST_VERSION}.tar.gz',
+        'https://archives.boost.io/release/${BOOST_VERSION.replace("_", ".")}/source/boost_${BOOST_VERSION}.tar.gz'
+    )
+    if (patched != contents) {
+        reactAndroidBuild.text = patched
+    }
+}
 apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
 include ':app'
 includeBuild('../node_modules/react-native-gradle-plugin')
