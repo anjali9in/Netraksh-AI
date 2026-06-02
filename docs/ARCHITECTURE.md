@@ -1,13 +1,4 @@
-# Architecture
-
-The project uses a layered React Native structure so future offline biometric features can be added without placing business logic inside UI components.
-
-## Project Structure
-
-Based on the repository, the root directories and configuration files are organized as follows:
-
-*   **`.bundle/`**:
-    *   `config`# ARCHITECTURE.md
+# ARCHITECTURE.md
 
 ## 1. Architectural Overview
 
@@ -15,30 +6,46 @@ Netraksh AI is architected using a decoupled, layered framework designed specifi
 
 ```mermaid
 flowchart TD
-    subgraph Presentation Layer
-        App[src/app (Routing/Providers)] --> Screens[src/screens]
-        Screens --> Components[src/components]
+    subgraph "Presentation Layer"
+        App["src/app"]
+        Screens["src/screens"]
+        Components["src/components"]
+
+        App --> Screens
+        Screens --> Components
     end
-    
-    subgraph Bridge Layer
-        Screens --> Hooks[src/hooks]
+
+    subgraph "Bridge Layer"
+        Hooks["src/hooks"]
+
+        Screens --> Hooks
         Components --> Hooks
     end
-    
-    subgraph Execution & State Layer
-        Hooks --> Services[src/services]
-        Hooks --> Config[src/config]
+
+    subgraph "Execution & State Layer"
+        Services["src/services"]
+        Config["src/config"]
+
+        Hooks --> Services
+        Hooks --> Config
     end
-    
-    subgraph Edge AI Core
-        Services --> AI_Module[src/ai]
-        AI_Module --> ArcFace[ArcFace MobileNetV2 Model]
+
+    subgraph "Edge AI Core"
+        AI_Module["src/ai"]
+        ArcFace["ArcFace MobileNetV2"]
+
+        Services --> AI_Module
+        AI_Module --> ArcFace
     end
-    
-    subgraph Persistence & Sync Layer
-        Services --> DB[(Encrypted SQLite DB)]
-        DB --> SyncQueue[Offline Sync Queue]
-        SyncQueue --> Cloud[AWS API Gateway + DynamoDB]
+
+    subgraph "Persistence & Sync Layer"
+        DB["Encrypted SQLite Database"]
+        SyncQueue["Offline Sync Queue"]
+        Cloud["AWS API Gateway + DynamoDB"]
+
+        Services --> DB
+        DB --> SyncQueue
+        SyncQueue --> Cloud
     end
 ```
 
@@ -52,14 +59,30 @@ The physical layout of the repository cleanly segregates environmental assets, p
 ├── .bundle/
 │   └── config
 ├── android/
-│   └── app, gradle, build.gradle, gradle.properties, gradlew, settings.gradle
+│   ├── app/
+│   ├── gradle/
+│   ├── build.gradle
+│   ├── gradle.properties
+│   ├── gradlew
+│   └── settings.gradle
+│
 ├── ios/
-│   └── NetrakshAI, NetrakshAI.xcodeproj, NetrakshAI.xcworkspace, Podfile, Podfile.lock
+│   ├── NetrakshAI/
+│   ├── NetrakshAI.xcodeproj/
+│   ├── NetrakshAI.xcworkspace/
+│   ├── Podfile
+│   └── Podfile.lock
+│
 ├── docs/
-│   └── ARCHITECTURE.md, BENCHMARKS.md, MODEL_EXPLANATION.md, NEXT_STEPS.md
+│   ├── ARCHITECTURE.md
+│   ├── BENCHMARKS.md
+│   ├── MODEL_EXPLANATION.md
+│   └── NEXT_STEPS.md
+│
 ├── resources/
 │   └── images/
 │       └── logo.png
+│
 └── src/
     ├── ai/
     ├── app/
@@ -79,85 +102,246 @@ The physical layout of the repository cleanly segregates environmental assets, p
 
 ### 📂 src/screens (View Architecture)
 
-* Responsibility: Dictates visual context boundaries, handles screen-level layout composition, and coordinates screen transition states.
-* Constraints: Prohibited from processing cryptographic calculations or decoding raw model matrices. Screens dynamically fetch operational data states exclusively via hooks.
+**Responsibility**
+
+- Dictates visual context boundaries.
+- Handles screen-level layout composition.
+- Coordinates navigation and transition states.
+
+**Constraints**
+
+- Must not perform cryptographic calculations.
+- Must not run machine learning inference directly.
+- Retrieves operational state exclusively through hooks.
+
+---
 
 ### 📂 src/components (Atomic Components)
 
-* Responsibility: Houses generic visual molecules such as custom bounding frames, action triggers, and modular status fields.
-* Constraints: Must remain purely domain-agnostic and fully stateless regarding core biometric rules. Configurations are ingested purely via React props.
+**Responsibility**
 
-### 📂 src/hooks (The Reactive Bridge)
+- Reusable UI building blocks.
+- Face bounding boxes.
+- Status indicators.
+- Action buttons.
 
-* Responsibility: Completely isolates screen rendering code from heavy algorithmic modules. Custom lifecycle hooks transform backend actions into reactive states (`matchScore`, `isProcessing`, `livenessStatus`) for the frontend layout.
+**Constraints**
 
-### 📂 src/ai (Biometric & Edge Inference Engine)
+- Domain agnostic.
+- Stateless whenever possible.
+- Receives configuration via React props.
 
-* Responsibility: Governs the entire edge computing framework. It manages multi-stage image pre-processing, isolates geometric face coordinates, runs vector projection graphs, and evaluates spatial similarity margins.
+---
 
-### 📂 src/services (Device Infrastructure)
+### 📂 src/hooks (Reactive Bridge Layer)
 
-* Responsibility: Controls structural persistence boundaries, local file tracking parameters, database lifecycles, and operational background transactional pipelines.
+**Responsibility**
 
-### 📂 Configuration & Types
+Acts as the bridge between frontend views and backend services.
 
-#### src/config
+Examples:
 
-Holds immutable application state declarations including target model keys, fallback system boundaries, and active verification thresholds.
+- `useFaceRecognition()`
+- `useLivenessDetection()`
+- `useSyncStatus()`
 
-#### src/types
+Exposes frontend states such as:
 
-Declares explicit compile-time safety contracts used uniformly across business models.
+- `matchScore`
+- `isProcessing`
+- `livenessStatus`
 
-#### src/utils
+---
 
-Provides pure functional execution tools such as timestamp engines, validation wrappers, and numeric standardizers.
+### 📂 src/ai (Edge Inference Engine)
+
+**Responsibility**
+
+Handles all biometric processing.
+
+Includes:
+
+- Face detection
+- Image preprocessing
+- Embedding generation
+- Similarity comparison
+- Liveness detection
+
+---
+
+### 📂 src/services (Infrastructure Layer)
+
+**Responsibility**
+
+Controls:
+
+- SQLite operations
+- Encryption services
+- Sync management
+- Local storage lifecycle
+- API communication
+
+---
+
+### 📂 src/config
+
+Stores:
+
+- Security thresholds
+- Model configuration
+- Environment constants
+- Feature flags
+
+---
+
+### 📂 src/types
+
+Defines:
+
+- Shared interfaces
+- Data contracts
+- Application-wide type safety
+
+---
+
+### 📂 src/utils
+
+Contains:
+
+- Validation helpers
+- Mathematical utilities
+- Timestamp handlers
+- Formatting functions
 
 ---
 
 ## 4. Edge AI Core & Machine Learning Integration
 
-Netraksh AI runs a self-contained metric learning biometric stack optimized explicitly to deliver line-rate speeds on resource-constrained hardware.
+Netraksh AI uses an entirely local biometric pipeline optimized for mobile hardware.
 
 ```mermaid
 flowchart LR
-    A[Raw VisionCamera Frame] --> B[ML Kit Bounding Box]
-    B --> C[112x112 Crop & Normalize]
-    C --> D[ArcFace MobileNetV2 Engine]
-    D --> E[512-D Local Template Array]
+    A["Raw VisionCamera Frame"]
+    B["ML Kit Bounding Box"]
+    C["112x112 Crop and Normalize"]
+    D["ArcFace MobileNetV2 Engine"]
+    E["512-D Face Embedding"]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
 ```
 
-### A. Core Feature Extraction Model: ArcFace MobileNetV2
+---
 
-* Profile: Additive Angular Margin Loss deep neural structural framework mapped over a light MobileNetV2 core.
-* Storage Footprint: Quantized and structured into production-ready `.tflite` or `.onnx` formats consuming only 5MB–15MB of device space.
-* Processing Speed: Completes execution graphs within a localized sub-300ms inference loop running entirely on client threads.
+### A. Core Feature Extraction Model
+
+#### ArcFace MobileNetV2
+
+**Architecture**
+
+- ArcFace metric learning
+- MobileNetV2 backbone
+
+**Advantages**
+
+- Lightweight
+- Mobile friendly
+- High recognition accuracy
+
+**Deployment Format**
+
+- `.tflite`
+- `.onnx`
+
+**Storage Size**
+
+- Approximately 5–15 MB
+
+**Target Inference Time**
+
+- Under 300 ms
+
+---
 
 ### B. Face Embedding Generation Pipeline
 
-1. Face Region Extraction using ML Kit.
-2. Geometric Normalization to 112×112 pixels.
-3. RGB scaling to [-1, 1].
-4. ArcFace inference producing a 512-dimensional embedding.
+#### Step 1: Face Detection
 
-### C. Similarity Utility Model
+ML Kit detects facial boundaries from the live camera feed.
 
-Cosine similarity is used for biometric matching.
+#### Step 2: Face Cropping
 
-\text{Cosine Similarity}=\frac{A\cdot B}{|A||B|}
+Detected face is extracted from the frame.
 
-### D. Dynamic Thresholding Engine
+#### Step 3: Normalization
 
-* Low-Light Scenarios: Increase threshold from 0.60 to 0.65.
-* Liveness Integrity Alerts: Tighten verification conditions.
-* Hardware Profile Mitigation: Normalize FRR across lower-quality sensors.
+Image resized to:
 
-### E. AI Benchmark Suite
+```text
+112 × 112 pixels
+```
 
-* Measures inference time.
-* Tracks peak memory usage.
-* Records similarity scores.
-* Generates diagnostic telemetry reports.
+Pixel values normalized to:
+
+```text
+[-1, 1]
+```
+
+#### Step 4: Embedding Creation
+
+ArcFace generates:
+
+```text
+512-Dimensional Feature Vector
+```
+
+---
+
+### C. Similarity Matching
+
+Face verification is performed using Cosine Similarity.
+
+```text
+Cosine Similarity = (A · B) / (||A|| × ||B||)
+```
+
+Higher values indicate greater facial similarity.
+
+---
+
+### D. Dynamic Thresholding
+
+Security thresholds adapt according to environmental conditions.
+
+#### Low-Light Conditions
+
+```text
+0.60 → 0.65
+```
+
+Reduces false acceptance under noisy camera input.
+
+#### Liveness Warnings
+
+Verification thresholds become stricter if spoof indicators are detected.
+
+#### Device Quality Adjustment
+
+Thresholds may be tuned for low-resolution cameras.
+
+---
+
+### E. Benchmarking & Telemetry
+
+The benchmark suite measures:
+
+- Inference latency
+- Peak memory usage
+- Similarity score distributions
+- Sync durations
+- Device performance metrics
 
 ---
 
@@ -165,52 +349,110 @@ Cosine similarity is used for biometric matching.
 
 ```mermaid
 flowchart TD
-    A[Generated 512-D Template Array] --> B[AES-256 Memory Encryption]
-    B --> C[(SQLite Offline DB Storage)]
-    C --> D{Network Status?}
-    D -- Offline --> E[Retain Log in Pending Queue]
-    D -- Online --> F[Forward HTTPS Payload]
-    F --> G[AWS API Gateway]
-    G --> H[(DynamoDB Global Log Cloud)]
-    H --> I[Execute Local Scraping Routine]
+    A["Generated 512-D Template"]
+    B["AES-256 Encryption"]
+    C["SQLite Offline Storage"]
+    D{"Network Available?"}
+    E["Pending Sync Queue"]
+    F["HTTPS Upload"]
+    G["AWS API Gateway"]
+    H["DynamoDB"]
+    I["Clear Local Cache"]
+
+    A --> B
+    B --> C
+    C --> D
+    D -- Offline --> E
+    D -- Online --> F
+    F --> G
+    G --> H
+    H --> I
 ```
 
-### Data Hardening Layer
+---
 
-* Face embeddings are encrypted using AES-256 before SQLite storage.
-* Only encrypted templates are persisted locally.
+### Data Protection Layer
+
+Before storage:
+
+1. Face embedding generated.
+2. Embedding encrypted using AES-256.
+3. Encrypted payload written to SQLite.
+
+No raw facial images are persisted.
+
+---
 
 ### Volatile Memory Sanitization
 
-* Temporary face crops.
-* Intermediate arrays.
-* Runtime buffers.
+The following are immediately destroyed after processing:
 
-All are destroyed after processing to minimize privacy risks.
+- Temporary image crops
+- Embedding buffers
+- Intermediate tensors
+- Processing arrays
 
-### Transactional Cloud Sync Engine
+This minimizes exposure of biometric data.
 
-* Offline events are stored locally.
-* Synchronization occurs automatically when connectivity is restored.
-* Data is securely transferred through AWS API Gateway into DynamoDB.
-* Successfully synced records are removed from local storage.
+---
 
-*   **`android/`**: 
-    *   `app`, `gradle`, `build.gradle`, `gradle.properties`, `gradlew`, `gradlew.bat`, `settings.gradle`
-*   **`docs/`**: 
-    *   `ARCHITECTURE.md`, `BENCHMARKS.md`, `MODEL_EXPLANATION.md`, `NEXT_STEPS.md`, `PRESENTATION_OUTLINE.md`, `PROJECT_OVERVIEW.md`, `README_SETUP.md`, `TESTING_REPORT.md`
-*   **`ios/`**: 
-    *   `NetrakshAI`, `NetrakshAI.xcodeproj`, `NetrakshAI.xcworkspace`, `.xcode.env`, `Podfile`, `Podfile.lock`
-*   **`resources/images/`**: 
-    *   `logo_with_name.png`, `logo.png`
-*   **Root Configuration Files**: 
-    *   `.eslintrc.js`, `.gitignore`, `.nvmrc`, `.prettierrc`, `.watchmanconfig`, `app.json`, `babel.config.js`, `Gemfile`, `index.js`, `jest.setup.ts`, `metro.config.js`, `package-lock.json`, `package.json`, `tsconfig.json`
+### Offline-First Synchronization
 
-## `src` Directory Breakdown
+#### Offline Mode
 
-*   **`src/screens`**: Own screen-level layout and navigation actions. They should call services or hooks when real behavior is added.
-*   **`src/components`**: Reusable UI building blocks. They should remain generic and avoid domain-specific side effects.
-*   **`src/services`**: Define the boundaries for facial detection, embedding generation, liveness verification, matching, secure storage, offline database access, and sync. Most service methods are placeholders in this step.
-*   **`src/config`**: Centralizes app constants, model version placeholders, demo flags, and authentication thresholds.
-*   **`src/types`**: Define the shared domain contracts used across services and future screens.
-*   **`src/utils`**: Provide small pure helpers such as validation and timestamp generation.
+Records are stored locally.
+
+```text
+SQLite → Pending Queue
+```
+
+#### Online Mode
+
+Queued records are uploaded through:
+
+```text
+HTTPS → AWS API Gateway → DynamoDB
+```
+
+After successful synchronization:
+
+```text
+Local Cache Cleared
+```
+
+---
+
+## 6. Key Architectural Advantages
+
+### Offline First
+
+Operates without internet connectivity.
+
+### Privacy Preserving
+
+Biometric processing remains on-device.
+
+### Scalable
+
+Supports cloud synchronization when required.
+
+### Lightweight
+
+Optimized for mobile deployment.
+
+### Secure
+
+AES-256 encryption and secure transport mechanisms protect sensitive biometric information.
+
+---
+
+## 7. Future Enhancements
+
+Planned improvements include:
+
+- Multi-face tracking support
+- Advanced anti-spoofing models
+- Device-specific model optimization
+- Federated learning integration
+- Enhanced analytics dashboard
+- Cross-platform benchmark automation
