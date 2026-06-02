@@ -1,5 +1,6 @@
+import {useIsFocused} from '@react-navigation/native';
 import React from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
+import {AppState, Image, StyleSheet, Text, View} from 'react-native';
 import {Camera} from 'react-native-vision-camera';
 
 import {useFaceCapture} from '../hooks/useFaceCapture';
@@ -10,6 +11,7 @@ import {StatusBadge} from './StatusBadge';
 type FaceCapturePanelProps = {
   title: string;
   description: string;
+  controlsDisabled?: boolean;
   onPhotoCaptured?: (image: CapturedFaceImage) => void;
   onPhotoCleared?: () => void;
 };
@@ -17,9 +19,12 @@ type FaceCapturePanelProps = {
 export function FaceCapturePanel({
   title,
   description,
+  controlsDisabled = false,
   onPhotoCaptured,
   onPhotoCleared,
 }: FaceCapturePanelProps): React.JSX.Element {
+  const isScreenFocused = useIsFocused();
+  const [appState, setAppState] = React.useState(AppState.currentState);
   const {
     canRequestPermission,
     canUseMockCapture,
@@ -36,93 +41,127 @@ export function FaceCapturePanel({
     retake,
     useMockCapture,
   } = useFaceCapture({onPhotoCaptured, onPhotoCleared});
+  const isCameraActive =
+    isScreenFocused && appState === 'active' && !controlsDisabled;
+
+  React.useEffect(() => {
+    const subscription = AppState.addEventListener('change', setAppState);
+
+    return () => subscription.remove();
+  }, []);
 
   return (
-    <View style={styles.panel}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.description}>{description}</Text>
-      </View>
+    <View
+      pointerEvents={controlsDisabled ? 'none' : 'auto'}
+      style={styles.panel}
+    >
+      <View
+        style={[
+          styles.panelContent,
+          controlsDisabled && styles.panelContentDisabled,
+        ]}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.description}>{description}</Text>
+        </View>
 
-      <View style={styles.previewFrame}>
-        {capturedImage?.source === 'mock' ? (
-          <View style={styles.mockPreview}>
-            <Text style={styles.emptyTitle}>Mock face image captured</Text>
-            <Text style={styles.emptyText}>
-              Simulator fallback saved a temporary mock image path.
-            </Text>
-          </View>
-        ) : capturedImage ? (
-          <Image
-            resizeMode="cover"
-            source={{uri: capturedImage.uri}}
-            style={styles.preview}
+        <View style={styles.previewFrame}>
+          {capturedImage?.source === 'mock' ? (
+            <View style={styles.mockPreview}>
+              <Text style={styles.emptyTitle}>Mock face image captured</Text>
+              <Text style={styles.emptyText}>
+                Simulator fallback saved a temporary mock image path.
+              </Text>
+            </View>
+          ) : capturedImage ? (
+            <Image
+              resizeMode="cover"
+              source={{uri: capturedImage.uri}}
+              style={styles.preview}
+            />
+          ) : isCameraReady && device ? (
+            <Camera
+              device={device}
+              isActive={isCameraActive}
+              outputs={[photoOutput]}
+              resizeMode="cover"
+              style={StyleSheet.absoluteFill}
+            />
+          ) : (
+            <View style={styles.emptyPreview}>
+              <Text style={styles.emptyTitle}>
+                {hasPermission ? 'Camera unavailable' : 'Camera access needed'}
+              </Text>
+              <Text style={styles.emptyText}>
+                {hasPermission
+                  ? 'No camera was found on this device.'
+                  : 'Allow camera access to capture a face image.'}
+              </Text>
+              {!hasPermission && canRequestPermission ? (
+                <View style={styles.inlineAction}>
+                  <PrimaryButton
+                    icon="camera"
+                    title="Allow Camera"
+                    onPress={requestCameraPermission}
+                    disabled={controlsDisabled}
+                  />
+                </View>
+              ) : null}
+              {!hasPermission && !canRequestPermission ? (
+                <View style={styles.inlineAction}>
+                  <PrimaryButton
+                    icon="settings"
+                    title="Open Settings"
+                    onPress={openCameraSettings}
+                    disabled={controlsDisabled}
+                  />
+                </View>
+              ) : null}
+              {canUseMockCapture ? (
+                <View style={styles.inlineAction}>
+                  <PrimaryButton
+                    icon="camera"
+                    title="Use Mock Capture"
+                    onPress={useMockCapture}
+                    disabled={controlsDisabled}
+                  />
+                </View>
+              ) : null}
+            </View>
+          )}
+        </View>
+
+        {capturedImage ? (
+          <StatusBadge label="Temporary image path saved" status="success" />
+        ) : null}
+        {errorMessage ? (
+          <StatusBadge label={errorMessage} status="error" />
+        ) : null}
+
+        {capturedImage ? (
+          <PrimaryButton
+            icon="refresh"
+            title="Retake Photo"
+            onPress={retake}
+            disabled={controlsDisabled}
           />
-        ) : isCameraReady && device ? (
-          <Camera
-            device={device}
-            isActive
-            outputs={[photoOutput]}
-            resizeMode="cover"
-            style={StyleSheet.absoluteFill}
+        ) : hasPermission ? (
+          <PrimaryButton
+            icon="camera"
+            title={isCapturing ? 'Capturing...' : 'Capture'}
+            onPress={captureFaceImage}
+            disabled={
+              controlsDisabled ||
+              isCapturing ||
+              !isCameraReady ||
+              !isCameraActive
+            }
           />
-        ) : (
-          <View style={styles.emptyPreview}>
-            <Text style={styles.emptyTitle}>
-              {hasPermission ? 'Camera unavailable' : 'Camera access needed'}
-            </Text>
-            <Text style={styles.emptyText}>
-              {hasPermission
-                ? 'No camera was found on this device.'
-                : 'Allow camera access to capture a face image.'}
-            </Text>
-            {!hasPermission && canRequestPermission ? (
-              <View style={styles.inlineAction}>
-                <PrimaryButton
-                  icon="camera"
-                  title="Allow Camera"
-                  onPress={requestCameraPermission}
-                />
-              </View>
-            ) : null}
-            {!hasPermission && !canRequestPermission ? (
-              <View style={styles.inlineAction}>
-                <PrimaryButton
-                  icon="settings"
-                  title="Open Settings"
-                  onPress={openCameraSettings}
-                />
-              </View>
-            ) : null}
-            {canUseMockCapture ? (
-              <View style={styles.inlineAction}>
-                <PrimaryButton
-                  icon="camera"
-                  title="Use Mock Capture"
-                  onPress={useMockCapture}
-                />
-              </View>
-            ) : null}
-          </View>
-        )}
+        ) : null}
       </View>
-
-      {capturedImage ? (
-        <StatusBadge label="Temporary image path saved" status="success" />
-      ) : null}
-      {errorMessage ? (
-        <StatusBadge label={errorMessage} status="error" />
-      ) : null}
-
-      {capturedImage ? (
-        <PrimaryButton icon="refresh" title="Retake Photo" onPress={retake} />
-      ) : hasPermission ? (
-        <PrimaryButton
-          icon="camera"
-          title={isCapturing ? 'Capturing...' : 'Capture'}
-          onPress={captureFaceImage}
-          disabled={isCapturing || !isCameraReady}
-        />
+      {controlsDisabled ? (
+        <View pointerEvents="none" style={styles.disabledOverlay} />
       ) : null}
     </View>
   );
@@ -133,6 +172,12 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 14,
     lineHeight: 20,
+  },
+  disabledOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(148, 163, 184, 0.28)',
+    elevation: 10,
+    zIndex: 10,
   },
   emptyPreview: {
     alignItems: 'center',
@@ -169,7 +214,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   panel: {
+    position: 'relative',
+  },
+  panelContent: {
     gap: 14,
+  },
+  panelContentDisabled: {
+    opacity: 0.55,
   },
   preview: {
     height: '100%',
@@ -182,6 +233,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 360,
     overflow: 'hidden',
+    position: 'relative',
     width: '100%',
   },
   title: {
