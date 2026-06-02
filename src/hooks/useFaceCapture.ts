@@ -11,9 +11,13 @@ import {toFileUri} from '../utils/fileUtils';
 
 type UseFaceCaptureParams = {
   onPhotoCaptured?: (image: CapturedFaceImage) => void;
+  onPhotoCleared?: () => void;
 };
 
-export function useFaceCapture({onPhotoCaptured}: UseFaceCaptureParams = {}) {
+export function useFaceCapture({
+  onPhotoCaptured,
+  onPhotoCleared,
+}: UseFaceCaptureParams = {}) {
   const frontDevice = useCameraDevice('front');
   const backDevice = useCameraDevice('back');
   const device = frontDevice ?? backDevice;
@@ -121,7 +125,8 @@ export function useFaceCapture({onPhotoCaptured}: UseFaceCaptureParams = {}) {
   const retake = useCallback(() => {
     setCapturedImage(null);
     setErrorMessage(null);
-  }, []);
+    onPhotoCleared?.();
+  }, [onPhotoCleared]);
 
   useEffect(() => {
     if (

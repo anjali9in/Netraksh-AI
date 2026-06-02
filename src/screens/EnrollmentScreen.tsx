@@ -12,6 +12,11 @@ export function EnrollmentScreen(): React.JSX.Element {
     null,
   );
 
+  const handleContinueEnrollment = (empId: string, imagePath: string) => {
+    console.log('Continue enrollment with Employee ID:', empId);
+    console.log('Captured image path:', imagePath);
+  };
+
   return (
     <ScreenContainer>
       <Text style={styles.placeholder}>
@@ -28,6 +33,7 @@ export function EnrollmentScreen(): React.JSX.Element {
         title="Enrollment Capture"
         description="Center the employee face in the frame before capturing."
         onPhotoCaptured={image => setCapturedImagePath(image.path)}
+        onPhotoCleared={() => setCapturedImagePath(null)}
       />
       {capturedImagePath ? (
         <StatusBadge label="Face image captured for enrollment" status="info" />
@@ -35,7 +41,11 @@ export function EnrollmentScreen(): React.JSX.Element {
       <PrimaryButton
         icon="check"
         title="Continue Enrollment"
-        onPress={() => {}}
+        onPress={() =>
+          capturedImagePath
+            ? handleContinueEnrollment(employeeId, capturedImagePath)
+            : undefined
+        }
         disabled={!capturedImagePath}
       />
     </ScreenContainer>
