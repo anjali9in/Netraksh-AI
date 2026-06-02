@@ -1,5 +1,5 @@
-import {openAsync} from '@op-engineering/op-sqlite';
-import type {DB, QueryResult, Scalar} from '@op-engineering/op-sqlite';
+import {open} from '@op-engineering/op-sqlite';
+import type {OPSQLiteConnection, QueryResult} from '@op-engineering/op-sqlite';
 
 import type {DatabaseConfig} from '../../config/databaseConfig';
 import type {
@@ -11,7 +11,7 @@ import type {
 } from './databaseTypes';
 
 export class SqliteDatabase implements LocalDatabase {
-  private connection: DB | null = null;
+  private connection: OPSQLiteConnection | null = null;
 
   constructor(private readonly config: DatabaseConfig) {}
 
@@ -49,22 +49,22 @@ export class SqliteDatabase implements LocalDatabase {
       return;
     }
 
-    await this.connection.closeAsync();
+    this.connection.close();
     this.connection = null;
   }
 
-  private async getConnection(): Promise<DB> {
+  private async getConnection(): Promise<OPSQLiteConnection> {
     if (this.connection) {
       return this.connection;
     }
 
-    this.connection = await openAsync({
+    this.connection = open({
       name: this.config.name,
       location: this.config.location,
     });
 
-    await this.connection.execute('PRAGMA foreign_keys = ON');
-    await this.connection.execute('PRAGMA journal_mode = WAL');
+    await this.connection.executeAsync('PRAGMA foreign_keys = ON');
+    await this.connection.executeAsync('PRAGMA journal_mode = WAL');
 
     return this.connection;
   }
