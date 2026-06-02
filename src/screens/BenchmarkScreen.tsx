@@ -126,19 +126,19 @@ export function BenchmarkScreen(): React.JSX.Element {
           </Text>
 
           <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxWithMargin]}>
               <Text style={styles.statLabel}>Avg Latency</Text>
               <Text style={[styles.statVal, { color: '#4f46e5' }]}>
                 {embeddingResult.averageTimeMs.toFixed(2)} ms
               </Text>
             </View>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxWithMargin]}>
               <Text style={styles.statLabel}>Min / Max</Text>
               <Text style={styles.statVal}>
                 {embeddingResult.minTimeMs}ms / {embeddingResult.maxTimeMs}ms
               </Text>
             </View>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxWithMargin]}>
               <Text style={styles.statLabel}>Pass Rate (&lt;1s)</Text>
               <Text style={[styles.statVal, { color: '#10b981' }]}>
                 {embeddingResult.passRate.toFixed(1)}%
@@ -164,7 +164,7 @@ export function BenchmarkScreen(): React.JSX.Element {
           </Text>
 
           <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxWithMargin]}>
               <Text style={styles.statLabel}>Avg Latency</Text>
               <Text style={[styles.statVal, { color: '#4f46e5' }]}>
                 {pipelineResult.averageTimeMs.toFixed(2)} ms
@@ -198,7 +198,6 @@ export function BenchmarkScreen(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
     paddingBottom: 32,
   },
   headerCard: {
@@ -206,8 +205,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 12,
     borderWidth: 1,
+    marginTop: 16,
     padding: 16,
-    gap: 12,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -223,6 +222,7 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 14,
     lineHeight: 20,
+    marginTop: 8,
   },
   runBtn: {
     backgroundColor: '#4f46e5',
@@ -238,29 +238,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   runningBox: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
     backgroundColor: '#f8fafc',
     borderColor: '#e2e8f0',
-    borderWidth: 1,
     borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
     height: 48,
+    justifyContent: 'center',
     marginTop: 4,
   },
   runningText: {
     color: '#475569',
     fontSize: 13,
     fontWeight: '600',
+    marginLeft: 10,
   },
   card: {
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
     borderRadius: 12,
     borderWidth: 1,
+    marginTop: 16,
     padding: 16,
-    gap: 12,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -279,10 +279,10 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 12,
     lineHeight: 16,
+    marginTop: 12,
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: 8,
     marginTop: 4,
   },
   statBox: {
@@ -293,6 +293,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
+  },
+  statBoxWithMargin: {
+    marginLeft: 8,
   },
   statLabel: {
     color: '#64748b',
@@ -313,9 +316,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
+    marginTop: 16,
     minHeight: 180,
     padding: 24,
-    gap: 4,
   },
   emptyText: {
     color: '#475569',
@@ -325,6 +328,7 @@ const styles = StyleSheet.create({
   emptySubtext: {
     color: '#94a3b8',
     fontSize: 12,
+    marginTop: 4,
     textAlign: 'center',
   },
   meta: {

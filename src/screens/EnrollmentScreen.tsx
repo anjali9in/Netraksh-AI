@@ -149,32 +149,35 @@ export function EnrollmentScreen(): React.JSX.Element {
             <Text style={[styles.qualityValue, { color: '#10b981' }]}>VALID</Text>
           </View>
           
-          <StatusBadge
-            label={qualityCheck.passed ? 'Image passed quality checks.' : 'Image quality is too low.'}
-            status={qualityCheck.passed ? 'success' : 'error'}
-          />
+          <View style={styles.qualityStatus}>
+            <StatusBadge
+              label={qualityCheck.passed ? 'Image passed quality checks.' : 'Image quality is too low.'}
+              status={qualityCheck.passed ? 'success' : 'error'}
+            />
+          </View>
         </View>
       ) : null}
 
-      {isProcessing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#6366f1" size="large" />
-          <Text style={styles.loadingText}>Generating 512-dim ArcFace embedding...</Text>
-        </View>
-      ) : (
-        <PrimaryButton
-          title="Complete Enrollment"
-          onPress={handleEnroll}
-          disabled={!capturedImagePath || isProcessing || !employeeId.trim()}
-        />
-      )}
+      <View style={styles.actionBlock}>
+        {isProcessing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color="#6366f1" size="large" />
+            <Text style={styles.loadingText}>Generating 512-dim ArcFace embedding...</Text>
+          </View>
+        ) : (
+          <PrimaryButton
+            title="Complete Enrollment"
+            onPress={handleEnroll}
+            disabled={!capturedImagePath || isProcessing || !employeeId.trim()}
+          />
+        )}
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
     paddingBottom: 32,
   },
   card: {
@@ -182,8 +185,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 12,
     borderWidth: 1,
+    marginBottom: 16,
     padding: 16,
-    gap: 12,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -199,6 +202,7 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 14,
     lineHeight: 20,
+    marginTop: 8,
   },
   input: {
     backgroundColor: '#f8fafc',
@@ -214,6 +218,7 @@ const styles = StyleSheet.create({
   },
   qualityCard: {
     borderColor: '#cbd5e1',
+    marginTop: 16,
   },
   qualityTitle: {
     fontSize: 15,
@@ -221,12 +226,20 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     borderBottomColor: '#f1f5f9',
     borderBottomWidth: 1,
+    marginBottom: 4,
     paddingBottom: 6,
   },
   qualityMetricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 8,
     paddingVertical: 2,
+  },
+  qualityStatus: {
+    marginTop: 12,
+  },
+  actionBlock: {
+    marginTop: 16,
   },
   qualityLabel: {
     color: '#64748b',
@@ -240,13 +253,13 @@ const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     paddingVertical: 12,
   },
   loadingText: {
     color: '#475569',
     fontSize: 14,
     fontWeight: '600',
+    marginTop: 8,
   },
   inputDisabled: {
     backgroundColor: '#e2e8f0',

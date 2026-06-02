@@ -302,7 +302,6 @@ export function AuthenticationScreen(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
     paddingBottom: 32,
   },
   card: {
@@ -311,7 +310,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     padding: 20,
-    gap: 14,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -328,8 +326,9 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 14,
     lineHeight: 20,
-    textAlign: 'center',
     marginBottom: 8,
+    marginTop: 8,
+    textAlign: 'center',
   },
   input: {
     backgroundColor: '#f8fafc',
@@ -340,6 +339,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     minHeight: 48,
+    marginBottom: 14,
     paddingHorizontal: 14,
     textAlign: 'center',
   },
@@ -354,7 +354,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
     borderRadius: 12,
     padding: 20,
-    gap: 16,
   },
   hudTitle: {
     color: '#34d399',
@@ -366,17 +365,19 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 11,
     fontWeight: '700',
-    textAlign: 'center',
     letterSpacing: 2,
+    marginTop: 4,
+    textAlign: 'center',
   },
   challengeBox: {
+    alignItems: 'center',
     backgroundColor: '#1e293b',
     borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderColor: '#334155',
     borderWidth: 1,
+    justifyContent: 'center',
+    marginTop: 16,
+    padding: 16,
   },
   challengeInstruction: {
     color: '#ffffff',
@@ -391,7 +392,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   metricContainer: {
-    gap: 6,
+    marginTop: 16,
   },
   metricLabel: {
     color: '#94a3b8',
@@ -399,9 +400,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   barBackground: {
-    height: 8,
     backgroundColor: '#1e293b',
     borderRadius: 4,
+    height: 8,
+    marginTop: 6,
     overflow: 'hidden',
   },
   barFill: {
@@ -411,27 +413,29 @@ const styles = StyleSheet.create({
   metricValue: {
     color: '#64748b',
     fontSize: 11,
+    marginTop: 6,
     textAlign: 'right',
   },
   matchingCard: {
+    alignItems: 'center',
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
     borderRadius: 12,
     borderWidth: 1,
     padding: 32,
-    alignItems: 'center',
-    gap: 12,
   },
   matchingText: {
     color: '#0f172a',
     fontSize: 16,
     fontWeight: '700',
+    marginTop: 12,
   },
   matchingSubtext: {
     color: '#64748b',
     fontSize: 13,
-    textAlign: 'center',
     lineHeight: 18,
+    marginTop: 8,
+    textAlign: 'center',
   },
   resultTitle: {
     fontSize: 20,
@@ -443,12 +447,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderColor: '#cbd5e1',
     borderWidth: 1,
+    marginBottom: 14,
+    marginTop: 14,
     padding: 14,
-    gap: 10,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 10,
   },
   detailLabel: {
     color: '#64748b',
@@ -465,7 +471,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: 8,
     marginTop: 4,
-    gap: 4,
   },
   hashLabel: {
     color: '#64748b',
@@ -477,5 +482,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Courier',
     fontSize: 11,
     lineHeight: 14,
+    marginTop: 4,
   },
 });
