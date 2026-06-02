@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,24 +8,35 @@ import {
   View,
 } from 'react-native';
 
-import { FaceCapturePanel } from '../components/FaceCapturePanel';
-import { PrimaryButton } from '../components/PrimaryButton';
-import { ScreenContainer } from '../components/ScreenContainer';
-import { StatusBadge } from '../components/StatusBadge';
-import { secureStorageService } from '../services/SecureStorageService';
-import { offlineDatabaseService } from '../services/OfflineDatabaseService';
-import { livenessService, LivenessSessionState } from '../services/liveness/livenessService';
-import { getDynamicThreshold } from '../ai/dynamicThreshold';
-import { FACE_RECOGNITION_MODEL } from '../ai/modelConfig';
+import {FaceCapturePanel} from '../components/FaceCapturePanel';
+import {PrimaryButton} from '../components/PrimaryButton';
+import {ScreenContainer} from '../components/ScreenContainer';
+import {StatusBadge} from '../components/StatusBadge';
+import {secureStorageService} from '../services/SecureStorageService';
+import {offlineDatabaseService} from '../services/OfflineDatabaseService';
+import {
+  livenessService,
+  LivenessSessionState,
+} from '../services/liveness/livenessService';
+import {getDynamicThreshold} from '../ai/dynamicThreshold';
+import {FACE_RECOGNITION_MODEL} from '../ai/modelConfig';
 
-type AuthStep = 'ID_INPUT' | 'CAMERA_CAPTURE' | 'LIVENESS_CHALLENGE' | 'MATCHING' | 'RESULT';
+type AuthStep =
+  | 'ID_INPUT'
+  | 'CAMERA_CAPTURE'
+  | 'LIVENESS_CHALLENGE'
+  | 'MATCHING'
+  | 'RESULT';
 
 export function AuthenticationScreen(): React.JSX.Element {
   const [employeeId, setEmployeeId] = useState('');
-  const [capturedImagePath, setCapturedImagePath] = useState<string | null>(null);
+  const [capturedImagePath, setCapturedImagePath] = useState<string | null>(
+    null,
+  );
   const [step, setStep] = useState<AuthStep>('ID_INPUT');
-  const [livenessState, setLivenessState] = useState<LivenessSessionState | null>(null);
-  const [metrics, setMetrics] = useState({ ear: 0.32, mar: 0.18, yawRatio: 1.0 });
+  const [livenessState, setLivenessState] =
+    useState<LivenessSessionState | null>(null);
+  const [metrics, setMetrics] = useState({ear: 0.32, mar: 0.18, yawRatio: 1.0});
   const [authResult, setAuthResult] = useState<{
     success: boolean;
     score?: number;
@@ -46,7 +57,7 @@ export function AuthenticationScreen(): React.JSX.Element {
     setStep('CAMERA_CAPTURE');
   };
 
-  const handlePhotoCaptured = (image: { path: string }) => {
+  const handlePhotoCaptured = (image: {path: string}) => {
     setCapturedImagePath(image.path);
     // Proceed to liveness challenge after camera capture
     startLivenessChallenges();
@@ -59,13 +70,16 @@ export function AuthenticationScreen(): React.JSX.Element {
     startTimeRef.current = Date.now();
 
     // Start simulation loop
-    if (timerRef.current) clearInterval(timerRef.current);
-    
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
     timerRef.current = setInterval(() => {
       const elapsed = Date.now() - startTimeRef.current;
-      const currentChallenge = livenessService.getSessionState().challenges[
-        livenessService.getSessionState().currentChallengeIndex
-      ];
+      const currentChallenge =
+        livenessService.getSessionState().challenges[
+          livenessService.getSessionState().currentChallengeIndex
+        ];
 
       if (!currentChallenge) {
         // Liveness completed
@@ -76,11 +90,18 @@ export function AuthenticationScreen(): React.JSX.Element {
       }
 
       // Simulate live visual fluctuations in eye blinking, smiles, or turns
-      const sim = livenessService.getSimulatedMetrics(currentChallenge.type, elapsed);
+      const sim = livenessService.getSimulatedMetrics(
+        currentChallenge.type,
+        elapsed,
+      );
       setMetrics(sim);
 
       // Process in state machine
-      const updatedState = livenessService.processFrame(sim.ear, sim.mar, sim.yawRatio);
+      const updatedState = livenessService.processFrame(
+        sim.ear,
+        sim.mar,
+        sim.yawRatio,
+      );
       setLivenessState(updatedState);
 
       if (updatedState.isComplete && updatedState.isPassed) {
@@ -93,20 +114,23 @@ export function AuthenticationScreen(): React.JSX.Element {
 
   const runFaceMatching = async () => {
     setStep('MATCHING');
-    
+
     // Simulate lighting and quality metrics
     const simulatedBrightness = 90 + Math.floor(Math.random() * 60); // Optimal: 90 - 150
     const simulatedQuality = 0.85 + Math.random() * 0.12; // Good quality: 85% - 97%
-    
+
     // Determine dynamic match threshold
-    const dynamicResult = getDynamicThreshold(simulatedBrightness, simulatedQuality);
+    const dynamicResult = getDynamicThreshold(
+      simulatedBrightness,
+      simulatedQuality,
+    );
 
     try {
       const startTime = Date.now();
       const matchResult = await secureStorageService.verifyFace(
         employeeId.trim().toUpperCase(),
         capturedImagePath || 'mock://captured-face.jpg',
-        dynamicResult.threshold
+        dynamicResult.threshold,
       );
       const elapsedMs = Date.now() - startTime;
 
@@ -114,10 +138,14 @@ export function AuthenticationScreen(): React.JSX.Element {
       const logId = await offlineDatabaseService.logAuthAttempt({
         employeeId: employeeId.trim().toUpperCase(),
         authStatus: matchResult.success ? 'SUCCESS' : 'FAILED',
-        failureReason: matchResult.success ? null : (matchResult.error || 'Face template mismatch'),
-        similarityScore: matchResult.score !== undefined ? matchResult.score : null,
+        failureReason: matchResult.success
+          ? null
+          : matchResult.error || 'Face template mismatch',
+        similarityScore:
+          matchResult.score !== undefined ? matchResult.score : null,
         livenessStatus: 'PASSED', // successfully passed in previous step
-        challengeType: livenessService.getSessionState().challenges[0]?.type || 'BLINK',
+        challengeType:
+          livenessService.getSessionState().challenges[0]?.type || 'BLINK',
         deviceId: 'device-tablet-01',
         modelVersion: FACE_RECOGNITION_MODEL.modelName,
       });
@@ -127,14 +155,18 @@ export function AuthenticationScreen(): React.JSX.Element {
       if (logId) {
         const logs = await offlineDatabaseService.getAllLogs();
         const found = logs.find(l => l.id === logId);
-        if (found) logHash = found.logHash || '';
+        if (found) {
+          logHash = found.logHash || '';
+        }
       }
 
       setAuthResult({
         success: matchResult.success,
         score: matchResult.score,
         matchTimeMs: elapsedMs,
-        reason: matchResult.success ? undefined : (matchResult.error || 'Face template mismatch'),
+        reason: matchResult.success
+          ? undefined
+          : matchResult.error || 'Face template mismatch',
         logHash,
       });
 
@@ -172,7 +204,8 @@ export function AuthenticationScreen(): React.JSX.Element {
         <View style={styles.card}>
           <Text style={styles.title}>Secure Face Login</Text>
           <Text style={styles.subtitle}>
-            Authenticate securely using on-device face recognition and liveness detection.
+            Authenticate securely using on-device face recognition and liveness
+            detection.
           </Text>
           <TextInput
             autoCapitalize="characters"
@@ -182,7 +215,10 @@ export function AuthenticationScreen(): React.JSX.Element {
             style={styles.input}
             value={employeeId}
           />
-          <PrimaryButton title="Start Verification" onPress={startVerification} />
+          <PrimaryButton
+            title="Start Verification"
+            onPress={startVerification}
+          />
         </View>
       )}
 
@@ -201,14 +237,18 @@ export function AuthenticationScreen(): React.JSX.Element {
         <View style={styles.hudCard}>
           <Text style={styles.hudTitle}>🤖 NETRAKSH-AI HUD</Text>
           <Text style={styles.hudStatus}>LIVENESS VERIFICATION ACTIVE</Text>
-          
+
           <View style={styles.challengeBox}>
-            <ActivityIndicator color="#10b981" style={{ marginBottom: 8 }} />
+            <ActivityIndicator color="#10b981" style={{marginBottom: 8}} />
             <Text style={styles.challengeInstruction}>
-              {livenessState.challenges[livenessState.currentChallengeIndex]?.instruction}
+              {
+                livenessState.challenges[livenessState.currentChallengeIndex]
+                  ?.instruction
+              }
             </Text>
             <Text style={styles.challengeProgress}>
-              Challenge {livenessState.currentChallengeIndex + 1} of {livenessState.challenges.length}
+              Challenge {livenessState.currentChallengeIndex + 1} of{' '}
+              {livenessState.challenges.length}
             </Text>
           </View>
 
@@ -216,25 +256,60 @@ export function AuthenticationScreen(): React.JSX.Element {
           <View style={styles.metricContainer}>
             <Text style={styles.metricLabel}>Eye Aspect Ratio (EAR):</Text>
             <View style={styles.barBackground}>
-              <View style={[styles.barFill, { width: `${Math.min(100, metrics.ear * 250)}%`, backgroundColor: metrics.ear < 0.22 ? '#34d399' : '#60a5fa' }]} />
+              <View
+                style={[
+                  styles.barFill,
+                  {
+                    width: `${Math.min(100, metrics.ear * 250)}%`,
+                    backgroundColor: metrics.ear < 0.22 ? '#34d399' : '#60a5fa',
+                  },
+                ]}
+              />
             </View>
-            <Text style={styles.metricValue}>{metrics.ear.toFixed(3)} (Threshold &lt; 0.22)</Text>
+            <Text style={styles.metricValue}>
+              {metrics.ear.toFixed(3)} (Threshold &lt; 0.22)
+            </Text>
           </View>
 
           <View style={styles.metricContainer}>
             <Text style={styles.metricLabel}>Mouth Aspect Ratio (MAR):</Text>
             <View style={styles.barBackground}>
-              <View style={[styles.barFill, { width: `${Math.min(100, metrics.mar * 150)}%`, backgroundColor: metrics.mar > 0.50 ? '#34d399' : '#fbcfe8' }]} />
+              <View
+                style={[
+                  styles.barFill,
+                  {
+                    width: `${Math.min(100, metrics.mar * 150)}%`,
+                    backgroundColor: metrics.mar > 0.5 ? '#34d399' : '#fbcfe8',
+                  },
+                ]}
+              />
             </View>
-            <Text style={styles.metricValue}>{metrics.mar.toFixed(3)} (Threshold &gt; 0.50)</Text>
+            <Text style={styles.metricValue}>
+              {metrics.mar.toFixed(3)} (Threshold &gt; 0.50)
+            </Text>
           </View>
 
           <View style={styles.metricContainer}>
-            <Text style={styles.metricLabel}>Yaw Ratio (Head Orientation):</Text>
+            <Text style={styles.metricLabel}>
+              Yaw Ratio (Head Orientation):
+            </Text>
             <View style={styles.barBackground}>
-              <View style={[styles.barFill, { width: `${Math.min(100, metrics.yawRatio * 50)}%`, backgroundColor: (metrics.yawRatio < 0.6 || metrics.yawRatio > 1.6) ? '#34d399' : '#c084fc' }]} />
+              <View
+                style={[
+                  styles.barFill,
+                  {
+                    width: `${Math.min(100, metrics.yawRatio * 50)}%`,
+                    backgroundColor:
+                      metrics.yawRatio < 0.6 || metrics.yawRatio > 1.6
+                        ? '#34d399'
+                        : '#c084fc',
+                  },
+                ]}
+              />
             </View>
-            <Text style={styles.metricValue}>{metrics.yawRatio.toFixed(3)} (Centered ≈ 1.0)</Text>
+            <Text style={styles.metricValue}>
+              {metrics.yawRatio.toFixed(3)} (Centered ≈ 1.0)
+            </Text>
           </View>
         </View>
       )}
@@ -251,8 +326,15 @@ export function AuthenticationScreen(): React.JSX.Element {
 
       {step === 'RESULT' && authResult && (
         <View style={styles.card}>
-          <Text style={[styles.resultTitle, { color: authResult.success ? '#10b981' : '#ef4444' }]}>
-            {authResult.success ? 'Authentication Success ✅' : 'Authentication Failed ❌'}
+          <Text
+            style={[
+              styles.resultTitle,
+              {color: authResult.success ? '#10b981' : '#ef4444'},
+            ]}
+          >
+            {authResult.success
+              ? 'Authentication Success ✅'
+              : 'Authentication Failed ❌'}
           </Text>
 
           <View style={styles.detailsBox}>
@@ -263,13 +345,17 @@ export function AuthenticationScreen(): React.JSX.Element {
             {authResult.score !== undefined && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Similarity Score:</Text>
-                <Text style={styles.detailValue}>{authResult.score.toFixed(4)}</Text>
+                <Text style={styles.detailValue}>
+                  {authResult.score.toFixed(4)}
+                </Text>
               </View>
             )}
             {authResult.matchTimeMs !== undefined && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Pipeline Time:</Text>
-                <Text style={styles.detailValue}>{authResult.matchTimeMs} ms</Text>
+                <Text style={styles.detailValue}>
+                  {authResult.matchTimeMs} ms
+                </Text>
               </View>
             )}
             {authResult.reason && (
@@ -289,7 +375,11 @@ export function AuthenticationScreen(): React.JSX.Element {
           </View>
 
           <StatusBadge
-            label={authResult.success ? 'Access Granted. Attendance logged offline.' : 'Access Denied. Log created.'}
+            label={
+              authResult.success
+                ? 'Access Granted. Attendance logged offline.'
+                : 'Access Denied. Log created.'
+            }
             status={authResult.success ? 'success' : 'error'}
           />
 
@@ -302,7 +392,6 @@ export function AuthenticationScreen(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
     paddingBottom: 32,
   },
   card: {
@@ -311,9 +400,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     padding: 20,
-    gap: 14,
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
@@ -328,8 +416,9 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 14,
     lineHeight: 20,
-    textAlign: 'center',
     marginBottom: 8,
+    marginTop: 8,
+    textAlign: 'center',
   },
   input: {
     backgroundColor: '#f8fafc',
@@ -340,6 +429,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     minHeight: 48,
+    marginBottom: 14,
     paddingHorizontal: 14,
     textAlign: 'center',
   },
@@ -354,7 +444,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
     borderRadius: 12,
     padding: 20,
-    gap: 16,
   },
   hudTitle: {
     color: '#34d399',
@@ -366,17 +455,19 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 11,
     fontWeight: '700',
-    textAlign: 'center',
     letterSpacing: 2,
+    marginTop: 4,
+    textAlign: 'center',
   },
   challengeBox: {
+    alignItems: 'center',
     backgroundColor: '#1e293b',
     borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderColor: '#334155',
     borderWidth: 1,
+    justifyContent: 'center',
+    marginTop: 16,
+    padding: 16,
   },
   challengeInstruction: {
     color: '#ffffff',
@@ -391,7 +482,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   metricContainer: {
-    gap: 6,
+    marginTop: 16,
   },
   metricLabel: {
     color: '#94a3b8',
@@ -399,9 +490,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   barBackground: {
-    height: 8,
     backgroundColor: '#1e293b',
     borderRadius: 4,
+    height: 8,
+    marginTop: 6,
     overflow: 'hidden',
   },
   barFill: {
@@ -411,27 +503,29 @@ const styles = StyleSheet.create({
   metricValue: {
     color: '#64748b',
     fontSize: 11,
+    marginTop: 6,
     textAlign: 'right',
   },
   matchingCard: {
+    alignItems: 'center',
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
     borderRadius: 12,
     borderWidth: 1,
     padding: 32,
-    alignItems: 'center',
-    gap: 12,
   },
   matchingText: {
     color: '#0f172a',
     fontSize: 16,
     fontWeight: '700',
+    marginTop: 12,
   },
   matchingSubtext: {
     color: '#64748b',
     fontSize: 13,
-    textAlign: 'center',
     lineHeight: 18,
+    marginTop: 8,
+    textAlign: 'center',
   },
   resultTitle: {
     fontSize: 20,
@@ -443,12 +537,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderColor: '#cbd5e1',
     borderWidth: 1,
+    marginBottom: 14,
+    marginTop: 14,
     padding: 14,
-    gap: 10,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 10,
   },
   detailLabel: {
     color: '#64748b',
@@ -465,7 +561,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: 8,
     marginTop: 4,
-    gap: 4,
   },
   hashLabel: {
     color: '#64748b',
@@ -477,5 +572,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Courier',
     fontSize: 11,
     lineHeight: 14,
+    marginTop: 4,
   },
 });

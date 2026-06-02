@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,19 +7,21 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 
-import { FaceCapturePanel } from '../components/FaceCapturePanel';
-import { PrimaryButton } from '../components/PrimaryButton';
-import { ScreenContainer } from '../components/ScreenContainer';
-import { StatusBadge } from '../components/StatusBadge';
-import { secureStorageService } from '../services/SecureStorageService';
-import { getDynamicThreshold } from '../ai/dynamicThreshold';
+import {FaceCapturePanel} from '../components/FaceCapturePanel';
+import {PrimaryButton} from '../components/PrimaryButton';
+import {ScreenContainer} from '../components/ScreenContainer';
+import {StatusBadge} from '../components/StatusBadge';
+import {secureStorageService} from '../services/SecureStorageService';
+import {getDynamicThreshold} from '../ai/dynamicThreshold';
 
 export function EnrollmentScreen(): React.JSX.Element {
   const navigation = useNavigation();
   const [employeeId, setEmployeeId] = useState('');
-  const [capturedImagePath, setCapturedImagePath] = useState<string | null>(null);
+  const [capturedImagePath, setCapturedImagePath] = useState<string | null>(
+    null,
+  );
   const [isProcessing, setIsProcessing] = useState(false);
   const [qualityCheck, setQualityCheck] = useState<{
     passed: boolean;
@@ -28,17 +30,23 @@ export function EnrollmentScreen(): React.JSX.Element {
     reason: string;
   } | null>(null);
 
-  const handlePhotoCaptured = (image: { path: string }) => {
+  const handlePhotoCaptured = (image: {path: string}) => {
     setCapturedImagePath(image.path);
-    
+
     // Simulate frame/image quality inspection (typical for edge AI)
     const simulatedBrightness = 80 + Math.floor(Math.random() * 80); // 80 - 160 (optimal)
     const simulatedQuality = 0.7 + Math.random() * 0.28; // 0.70 - 0.98 (sharp)
-    
-    const checkResult = getDynamicThreshold(simulatedBrightness, simulatedQuality);
-    
+
+    const checkResult = getDynamicThreshold(
+      simulatedBrightness,
+      simulatedQuality,
+    );
+
     setQualityCheck({
-      passed: simulatedQuality >= 0.5 && simulatedBrightness >= 40 && simulatedBrightness <= 210,
+      passed:
+        simulatedQuality >= 0.5 &&
+        simulatedBrightness >= 40 &&
+        simulatedBrightness <= 210,
       brightness: simulatedBrightness,
       quality: simulatedQuality,
       reason: checkResult.reason,
@@ -59,7 +67,7 @@ export function EnrollmentScreen(): React.JSX.Element {
     if (qualityCheck && !qualityCheck.passed) {
       Alert.alert(
         'Quality Check Failed',
-        'The captured image does not meet quality standards. Please retake the photo in better lighting.'
+        'The captured image does not meet quality standards. Please retake the photo in better lighting.',
       );
       return;
     }
@@ -72,25 +80,35 @@ export function EnrollmentScreen(): React.JSX.Element {
       const success = await secureStorageService.registerFace(
         employeeId.trim().toUpperCase(),
         capturedImagePath,
-        'device-tablet-01'
+        'device-tablet-01',
       );
 
       if (success) {
         Alert.alert(
           'Enrollment Successful',
-          `Employee ${employeeId.trim().toUpperCase()} has been registered locally.`,
+          `Employee ${employeeId
+            .trim()
+            .toUpperCase()} has been registered locally.`,
           [
             {
               text: 'OK',
               onPress: () => navigation.goBack(),
             },
-          ]
+          ],
         );
       } else {
-        Alert.alert('Enrollment Failed', 'Unable to register face template. Try again.');
+        Alert.alert(
+          'Enrollment Failed',
+          'Unable to register face template. Try again.',
+        );
       }
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'An error occurred during enrollment.');
+      Alert.alert(
+        'Error',
+        error instanceof Error
+          ? error.message
+          : 'An error occurred during enrollment.',
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -101,18 +119,16 @@ export function EnrollmentScreen(): React.JSX.Element {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Employee Enrollment</Text>
         <Text style={styles.placeholder}>
-          Register a new face template by entering the Employee ID and capturing a high-quality face photo.
+          Register a new face template by entering the Employee ID and capturing
+          a high-quality face photo.
         </Text>
-        
+
         <TextInput
           autoCapitalize="characters"
           onChangeText={setEmployeeId}
           placeholder="ENTER EMPLOYEE ID (e.g. EMP042)"
           placeholderTextColor="#94a3b8"
-          style={[
-            styles.input,
-            isProcessing && styles.inputDisabled,
-          ]}
+          style={[styles.input, isProcessing && styles.inputDisabled]}
           value={employeeId}
           editable={!isProcessing}
         />
@@ -134,47 +150,66 @@ export function EnrollmentScreen(): React.JSX.Element {
           <Text style={styles.qualityTitle}>Quality Inspection Results</Text>
           <View style={styles.qualityMetricRow}>
             <Text style={styles.qualityLabel}>Brightness Score:</Text>
-            <Text style={[styles.qualityValue, { color: qualityCheck.brightness >= 80 ? '#10b981' : '#f59e0b' }]}>
+            <Text
+              style={[
+                styles.qualityValue,
+                {color: qualityCheck.brightness >= 80 ? '#10b981' : '#f59e0b'},
+              ]}
+            >
               {qualityCheck.brightness} (Optimal: 80-210)
             </Text>
           </View>
           <View style={styles.qualityMetricRow}>
             <Text style={styles.qualityLabel}>Image Sharpness:</Text>
-            <Text style={[styles.qualityValue, { color: qualityCheck.quality >= 0.7 ? '#10b981' : '#f43f5e' }]}>
+            <Text
+              style={[
+                styles.qualityValue,
+                {color: qualityCheck.quality >= 0.7 ? '#10b981' : '#f43f5e'},
+              ]}
+            >
               {(qualityCheck.quality * 100).toFixed(0)}% (Required: &gt;50%)
             </Text>
           </View>
           <View style={styles.qualityMetricRow}>
             <Text style={styles.qualityLabel}>Frame Centering:</Text>
-            <Text style={[styles.qualityValue, { color: '#10b981' }]}>VALID</Text>
+            <Text style={[styles.qualityValue, {color: '#10b981'}]}>VALID</Text>
           </View>
-          
-          <StatusBadge
-            label={qualityCheck.passed ? 'Image passed quality checks.' : 'Image quality is too low.'}
-            status={qualityCheck.passed ? 'success' : 'error'}
-          />
+
+          <View style={styles.qualityStatus}>
+            <StatusBadge
+              label={
+                qualityCheck.passed
+                  ? 'Image passed quality checks.'
+                  : 'Image quality is too low.'
+              }
+              status={qualityCheck.passed ? 'success' : 'error'}
+            />
+          </View>
         </View>
       ) : null}
 
-      {isProcessing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#6366f1" size="large" />
-          <Text style={styles.loadingText}>Generating 512-dim ArcFace embedding...</Text>
-        </View>
-      ) : (
-        <PrimaryButton
-          title="Complete Enrollment"
-          onPress={handleEnroll}
-          disabled={!capturedImagePath || isProcessing || !employeeId.trim()}
-        />
-      )}
+      <View style={styles.actionBlock}>
+        {isProcessing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color="#6366f1" size="large" />
+            <Text style={styles.loadingText}>
+              Generating 512-dim ArcFace embedding...
+            </Text>
+          </View>
+        ) : (
+          <PrimaryButton
+            title="Complete Enrollment"
+            onPress={handleEnroll}
+            disabled={!capturedImagePath || isProcessing || !employeeId.trim()}
+          />
+        )}
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
     paddingBottom: 32,
   },
   card: {
@@ -182,10 +217,10 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 12,
     borderWidth: 1,
+    marginBottom: 16,
     padding: 16,
-    gap: 12,
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
@@ -199,6 +234,7 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 14,
     lineHeight: 20,
+    marginTop: 8,
   },
   input: {
     backgroundColor: '#f8fafc',
@@ -214,6 +250,7 @@ const styles = StyleSheet.create({
   },
   qualityCard: {
     borderColor: '#cbd5e1',
+    marginTop: 16,
   },
   qualityTitle: {
     fontSize: 15,
@@ -221,12 +258,20 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     borderBottomColor: '#f1f5f9',
     borderBottomWidth: 1,
+    marginBottom: 4,
     paddingBottom: 6,
   },
   qualityMetricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 8,
     paddingVertical: 2,
+  },
+  qualityStatus: {
+    marginTop: 12,
+  },
+  actionBlock: {
+    marginTop: 16,
   },
   qualityLabel: {
     color: '#64748b',
@@ -240,13 +285,13 @@ const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     paddingVertical: 12,
   },
   loadingText: {
     color: '#475569',
     fontSize: 14,
     fontWeight: '600',
+    marginTop: 8,
   },
   inputDisabled: {
     backgroundColor: '#e2e8f0',

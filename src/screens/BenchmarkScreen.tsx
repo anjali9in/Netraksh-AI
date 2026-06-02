@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -7,18 +7,27 @@ import {
   View,
 } from 'react-native';
 
-import { ScreenContainer } from '../components/ScreenContainer';
-import { StatusBadge } from '../components/StatusBadge';
-import { benchmarkEmbeddingSpeed, benchmarkMatchingPipeline, BenchmarkResult } from '../ai/benchmark';
-import { deviceInfoService } from '../services/device/deviceInfo';
-import type { DeviceProfile } from '../services/device/deviceInfo';
+import {ScreenContainer} from '../components/ScreenContainer';
+import {StatusBadge} from '../components/StatusBadge';
+import {
+  benchmarkEmbeddingSpeed,
+  benchmarkMatchingPipeline,
+  BenchmarkResult,
+} from '../ai/benchmark';
+import {deviceInfoService} from '../services/device/deviceInfo';
+import type {DeviceProfile} from '../services/device/deviceInfo';
 
 export function BenchmarkScreen(): React.JSX.Element {
-  const [deviceProfile, setDeviceProfile] = useState<DeviceProfile | null>(null);
+  const [deviceProfile, setDeviceProfile] = useState<DeviceProfile | null>(
+    null,
+  );
   const [deviceError, setDeviceError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [embeddingResult, setEmbeddingResult] = useState<BenchmarkResult | null>(null);
-  const [pipelineResult, setPipelineResult] = useState<BenchmarkResult | null>(null);
+  const [embeddingResult, setEmbeddingResult] =
+    useState<BenchmarkResult | null>(null);
+  const [pipelineResult, setPipelineResult] = useState<BenchmarkResult | null>(
+    null,
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -48,13 +57,13 @@ export function BenchmarkScreen(): React.JSX.Element {
     setIsRunning(true);
     setEmbeddingResult(null);
     setPipelineResult(null);
-    
+
     try {
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       const embRes = await benchmarkEmbeddingSpeed(20);
       setEmbeddingResult(embRes);
-      
+
       const pipeRes = await benchmarkMatchingPipeline(20);
       setPipelineResult(pipeRes);
     } catch (error) {
@@ -72,7 +81,7 @@ export function BenchmarkScreen(): React.JSX.Element {
           <Text style={styles.cardTitle}>Device Profile</Text>
         </View>
         {deviceProfile ? (
-          <View style={{ marginTop: 4 }}>
+          <View style={{marginTop: 4}}>
             <Text style={styles.deviceValue}>
               {deviceInfoService.formatDeviceLabel(deviceProfile)}
             </Text>
@@ -95,13 +104,16 @@ export function BenchmarkScreen(): React.JSX.Element {
       <View style={styles.headerCard}>
         <Text style={styles.title}>Model Speed Performance</Text>
         <Text style={styles.subtitle}>
-          Benchmark the on-device AI models. Complies with the Hackathon target of less than 1.0 second total auth latency.
+          Benchmark the on-device AI models. Complies with the Hackathon target
+          of less than 1.0 second total auth latency.
         </Text>
-        
+
         {isRunning ? (
           <View style={styles.runningBox}>
             <ActivityIndicator color="#6366f1" size="small" />
-            <Text style={styles.runningText}>Executing AI stress tests (40 inference passes)...</Text>
+            <Text style={styles.runningText}>
+              Executing AI stress tests (40 inference passes)...
+            </Text>
           </View>
         ) : (
           <TouchableOpacity onPress={startBenchmark} style={styles.runBtn}>
@@ -114,33 +126,38 @@ export function BenchmarkScreen(): React.JSX.Element {
       {embeddingResult ? (
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>1. ArcFace Embedding Generation</Text>
+            <Text style={styles.cardTitle}>
+              1. ArcFace Embedding Generation
+            </Text>
             <StatusBadge
-              label={embeddingResult.passedTarget ? 'COMPLIANT' : 'NON-COMPLIANT'}
+              label={
+                embeddingResult.passedTarget ? 'COMPLIANT' : 'NON-COMPLIANT'
+              }
               status={embeddingResult.passedTarget ? 'success' : 'error'}
             />
           </View>
-          
+
           <Text style={styles.cardExplanation}>
-            Measures the time to load the photo, normalize the pixel array, run TFLite INT8 inference, and output a normalized 512-dim unit vector.
+            Measures the time to load the photo, normalize the pixel array, run
+            TFLite INT8 inference, and output a normalized 512-dim unit vector.
           </Text>
 
           <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxWithMargin]}>
               <Text style={styles.statLabel}>Avg Latency</Text>
-              <Text style={[styles.statVal, { color: '#4f46e5' }]}>
+              <Text style={[styles.statVal, {color: '#4f46e5'}]}>
                 {embeddingResult.averageTimeMs.toFixed(2)} ms
               </Text>
             </View>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxWithMargin]}>
               <Text style={styles.statLabel}>Min / Max</Text>
               <Text style={styles.statVal}>
                 {embeddingResult.minTimeMs}ms / {embeddingResult.maxTimeMs}ms
               </Text>
             </View>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxWithMargin]}>
               <Text style={styles.statLabel}>Pass Rate (&lt;1s)</Text>
-              <Text style={[styles.statVal, { color: '#10b981' }]}>
+              <Text style={[styles.statVal, {color: '#10b981'}]}>
                 {embeddingResult.passRate.toFixed(1)}%
               </Text>
             </View>
@@ -152,21 +169,27 @@ export function BenchmarkScreen(): React.JSX.Element {
       {pipelineResult ? (
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>2. Full Authentication Pipeline</Text>
+            <Text style={styles.cardTitle}>
+              2. Full Authentication Pipeline
+            </Text>
             <StatusBadge
-              label={pipelineResult.passedTarget ? 'COMPLIANT' : 'NON-COMPLIANT'}
+              label={
+                pipelineResult.passedTarget ? 'COMPLIANT' : 'NON-COMPLIANT'
+              }
               status={pipelineResult.passedTarget ? 'success' : 'error'}
             />
           </View>
 
           <Text style={styles.cardExplanation}>
-            Measures the total latency: Generating the current face embedding, loading the enrolled template from SQLite, and calculating the cosine similarity.
+            Measures the total latency: Generating the current face embedding,
+            loading the enrolled template from SQLite, and calculating the
+            cosine similarity.
           </Text>
 
           <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
+            <View style={[styles.statBox, styles.statBoxWithMargin]}>
               <Text style={styles.statLabel}>Avg Latency</Text>
-              <Text style={[styles.statVal, { color: '#4f46e5' }]}>
+              <Text style={[styles.statVal, {color: '#4f46e5'}]}>
                 {pipelineResult.averageTimeMs.toFixed(2)} ms
               </Text>
             </View>
@@ -178,7 +201,7 @@ export function BenchmarkScreen(): React.JSX.Element {
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Pass Rate (&lt;1s)</Text>
-              <Text style={[styles.statVal, { color: '#10b981' }]}>
+              <Text style={[styles.statVal, {color: '#10b981'}]}>
                 {pipelineResult.passRate.toFixed(1)}%
               </Text>
             </View>
@@ -189,7 +212,9 @@ export function BenchmarkScreen(): React.JSX.Element {
       {!embeddingResult && !isRunning && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>Benchmarks not run yet</Text>
-          <Text style={styles.emptySubtext}>Tap the button above to begin speed tests.</Text>
+          <Text style={styles.emptySubtext}>
+            Tap the button above to begin speed tests.
+          </Text>
         </View>
       )}
     </ScreenContainer>
@@ -198,7 +223,6 @@ export function BenchmarkScreen(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 16,
     paddingBottom: 32,
   },
   headerCard: {
@@ -206,10 +230,10 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 12,
     borderWidth: 1,
+    marginTop: 16,
     padding: 16,
-    gap: 12,
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
@@ -223,6 +247,7 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 14,
     lineHeight: 20,
+    marginTop: 8,
   },
   runBtn: {
     backgroundColor: '#4f46e5',
@@ -238,29 +263,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   runningBox: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
     backgroundColor: '#f8fafc',
     borderColor: '#e2e8f0',
-    borderWidth: 1,
     borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
     height: 48,
+    justifyContent: 'center',
     marginTop: 4,
   },
   runningText: {
     color: '#475569',
     fontSize: 13,
     fontWeight: '600',
+    marginLeft: 10,
   },
   card: {
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
     borderRadius: 12,
     borderWidth: 1,
+    marginTop: 16,
     padding: 16,
-    gap: 12,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -279,10 +304,10 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 12,
     lineHeight: 16,
+    marginTop: 12,
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: 8,
     marginTop: 4,
   },
   statBox: {
@@ -293,6 +318,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
+  },
+  statBoxWithMargin: {
+    marginLeft: 8,
   },
   statLabel: {
     color: '#64748b',
@@ -313,9 +341,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
+    marginTop: 16,
     minHeight: 180,
     padding: 24,
-    gap: 4,
   },
   emptyText: {
     color: '#475569',
@@ -325,6 +353,7 @@ const styles = StyleSheet.create({
   emptySubtext: {
     color: '#94a3b8',
     fontSize: 12,
+    marginTop: 4,
     textAlign: 'center',
   },
   meta: {

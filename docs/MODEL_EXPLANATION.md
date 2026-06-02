@@ -1,239 +1,235 @@
 # MODEL_EXPLANATION.md
 
-## 1. Overview
+## Overview
 
 Netraksh AI uses on-device machine learning to perform face recognition and liveness verification without requiring an active internet connection.
 
-The AI pipeline is designed to be lightweight, privacy-focused, and suitable for mobile devices commonly used in field operations. All biometric processing takes place locally on the device, ensuring faster response times and reducing the need to transmit sensitive data over a network.
+The system is designed for field environments where connectivity may be unreliable. All biometric processing takes place locally on the device, helping improve response times, reduce network dependency, and protect user privacy.
+
+The AI pipeline consists of four major components:
+
+* Face Detection
+* Face Recognition
+* Liveness Verification
+* Adaptive Thresholding
+
+Together, these components verify both a user's identity and physical presence before granting authentication.
 
 ---
 
-## 2. Face Recognition Model
+## Face Recognition Model
 
-### Model Used
+### ArcFace-MobileNetV2
 
-**ArcFace-MobileNetV2**
+The face recognition engine is built using **ArcFace-MobileNetV2**.
 
-ArcFace-MobileNetV2 was selected because it provides a good balance between accuracy, speed, and model size, making it suitable for mobile deployment.
+This model was selected because it offers a strong balance between recognition accuracy, inference speed, and mobile-device compatibility.
 
-### Key Characteristics
+### Model Specifications
 
-| Feature             | Value               |
-| ------------------- | ------------------- |
-| Model Architecture  | ArcFace-MobileNetV2 |
-| Model Format        | TFLite / ONNX       |
-| Model Size          | ~8 MB               |
-| Embedding Size      | 512 Dimensions      |
-| Processing Location | On-Device           |
+| Feature                | Value               |
+| ---------------------- | ------------------- |
+| Model Architecture     | ArcFace-MobileNetV2 |
+| Model Size             | ~8 MB               |
+| Embedding Length       | 512 Dimensions      |
+| Deployment Format      | TFLite / ONNX       |
+| Processing Location    | On-Device           |
+| Average Inference Time | < 300 ms            |
 
-### Why ArcFace?
+### Why ArcFace-MobileNetV2?
 
-ArcFace is widely used in face recognition systems because it creates highly distinctive facial representations while remaining computationally efficient.
+ArcFace is a widely used face recognition framework that learns highly distinctive facial representations. Combined with MobileNetV2, it becomes lightweight enough for mobile deployment while maintaining strong recognition performance.
 
-Benefits include:
+Key advantages include:
 
-* Fast inference on mobile devices
-* Lightweight model size
-* Strong recognition performance
-* Suitable for offline applications
+* Fast execution on smartphones
+* Small storage footprint
+* Offline operation
+* Efficient memory usage
+* Suitable for real-time authentication
 
 ---
 
-## 3. Face Recognition Workflow
+## Face Recognition Workflow
 
-The face recognition process consists of four main stages.
+The face recognition process follows a simple pipeline:
 
-```mermaid
-flowchart LR
-    A["Camera Frame"]
-    B["Face Detection"]
-    C["Face Crop & Resize"]
-    D["ArcFace Model"]
-    E["Face Embedding"]
-    F["Similarity Matching"]
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
+```text
+Camera Frame
+      ↓
+Face Detection
+      ↓
+Face Crop & Resize
+      ↓
+Embedding Generation
+      ↓
+Similarity Matching
+      ↓
+Authentication Result
 ```
 
 ### Step 1: Face Detection
 
-The camera captures a frame and ML Kit identifies the face within the image.
+The camera captures a frame and detects the user's face using Google ML Kit.
+
+The detected face region is isolated from the background and prepared for further processing.
 
 ### Step 2: Face Preprocessing
 
-The detected face is:
+To ensure consistency across different devices and lighting conditions, the detected face is:
 
-* Cropped from the frame
+* Cropped from the image
 * Resized to 112 × 112 pixels
-* Normalized for model input
+* Normalized before model inference
 
 ### Step 3: Embedding Generation
 
 The processed image is passed through the ArcFace model.
 
-The output is a:
+The model generates a **512-dimensional face embedding**, which is a numerical representation of the user's facial features.
 
-```text
-512-Dimensional Face Embedding
-```
+Rather than storing a photograph, the system stores this embedding for future comparisons.
 
-This embedding acts as a unique numerical representation of a person's facial features.
+### Step 4: Similarity Matching
 
-### Step 4: Face Matching
+During authentication, the newly generated embedding is compared with previously enrolled embeddings stored securely on the device.
 
-The generated embedding is compared with previously enrolled embeddings stored in the database.
-
-Matching is performed using cosine similarity.
+A similarity score is calculated to determine whether the two embeddings belong to the same person.
 
 ---
 
-## 4. Face Matching Method
+## Similarity Calculation
 
-Netraksh AI uses cosine similarity to determine how closely two face embeddings match.
+Netraksh AI uses **Cosine Similarity** to compare facial embeddings.
 
 \text{Cosine Similarity}=\frac{A\cdot B}{|A||B|}
 
 Where:
 
 * **A** = Current face embedding
-* **B** = Stored reference embedding
+* **B** = Stored face embedding
 
 ### Interpretation
 
-| Similarity Score | Result       |
-| ---------------- | ------------ |
-| High Score       | Likely Match |
-| Low Score        | No Match     |
+| Similarity Score | Result                  |
+| ---------------- | ----------------------- |
+| High Score       | Likely Match            |
+| Low Score        | Likely Different Person |
 
-The application uses a configurable threshold to determine whether authentication should be accepted or rejected.
+The application uses configurable thresholds to determine whether authentication should be accepted or rejected.
 
 ---
 
-## 5. Liveness Detection
+## Liveness Verification
 
-Face recognition alone cannot prevent spoofing attempts such as printed photographs or video replays.
+Face recognition alone cannot prevent spoofing attempts using photographs, screenshots, or recorded videos.
 
-To improve security, Netraksh AI includes an active liveness verification system.
+To address this, Netraksh AI performs liveness verification before authentication.
 
-### Supported Challenges
+### Supported Liveness Challenges
 
 * Blink Detection
 * Smile Detection
-* Head Movement Verification
+* Head Turn Verification
 
-### Workflow
+### Authentication Flow
 
-```mermaid
-flowchart TD
-    A["Start Verification"]
-    B["Generate Random Challenge"]
-    C["User Performs Action"]
-    D["Validate Response"]
-    E["Face Recognition"]
-    F["Authentication Result"]
-
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
+```text
+Face Detected
+      ↓
+Random Challenge Generated
+      ↓
+User Performs Action
+      ↓
+Challenge Validated
+      ↓
+Face Recognition
+      ↓
+Authentication Result
 ```
 
-Only after a valid liveness response is detected does the system proceed to face recognition.
+### How It Works
+
+The system tracks facial landmarks in real time and verifies whether the requested action was completed naturally.
+
+Only after successful liveness verification does the application proceed to face matching.
+
+This additional layer helps reduce the risk of presentation attacks using static images or recorded media.
 
 ---
 
-## 6. Facial Landmark Analysis
-
-The liveness system tracks facial landmarks provided by the detection engine.
-
-### Blink Detection
-
-The system monitors eye movement and verifies that the user performs a natural blink.
-
-### Smile Detection
-
-The system measures mouth movement and confirms that a smile action has been completed.
-
-### Head Movement Detection
-
-The system checks for left or right head movement to verify that the user is physically present.
-
-These actions help reduce the risk of spoofing using static images or recorded videos.
-
----
-
-## 7. Adaptive Thresholding
+## Adaptive Thresholding
 
 Environmental conditions can affect recognition quality.
 
-To improve reliability, Netraksh AI adjusts matching thresholds based on image quality.
+Examples include:
 
-| Condition     | Adjustment                        |
+* Poor lighting
+* Motion blur
+* Camera noise
+* Partial shadows
+
+To improve reliability, Netraksh AI dynamically adjusts verification thresholds based on image quality.
+
+| Condition     | System Response                   |
 | ------------- | --------------------------------- |
 | Good Lighting | Standard Threshold                |
-| Low Light     | Slightly Higher Threshold         |
-| Motion Blur   | Stricter Verification             |
-| Overexposure  | Increased Validation Requirements |
+| Low Light     | Increased Verification Strictness |
+| Motion Blur   | Higher Confidence Required        |
+| Overexposure  | Additional Validation Applied     |
 
-This helps maintain a balance between security and usability.
+This helps maintain a balance between usability and security.
 
 ---
 
-## 8. Privacy & Security
+## Privacy & Security
 
-Netraksh AI is designed with privacy in mind.
+Protecting biometric data is a core design principle of Netraksh AI.
 
-### Local Processing
+### On-Device Processing
 
-All face recognition operations are performed on the device.
+Face recognition and liveness verification are performed locally whenever possible.
 
 ### Encrypted Storage
 
-Face embeddings are encrypted before being stored locally.
+Face embeddings are encrypted before being stored in the local SQLite database.
 
-### No Raw Image Retention
+### No Raw Image Storage
 
-Temporary face images used during processing are removed after verification whenever possible.
+Temporary images used during processing are discarded after authentication.
 
 ### Offline Operation
 
-The application can continue functioning without internet connectivity.
+The system remains fully functional even when internet connectivity is unavailable.
 
 ---
 
-## 9. Testing
+## Testing & Validation
 
-The AI module is covered by automated tests to ensure consistent behavior.
+The AI pipeline is supported by automated testing to ensure reliability and consistent behavior.
 
-### Run AI Tests
+### Current Testing Status
 
-```bash
-npx jest __tests__/aiModule.test.ts
-```
+| Metric           | Result    |
+| ---------------- | --------- |
+| Test Suites      | 6 Passed  |
+| Individual Tests | 37 Passed |
+| Failed Tests     | 0         |
 
-### Run All Tests
+### Tested Components
 
-```bash
-npm test
-```
+* Face Recognition Logic
+* Liveness Detection
+* Database Operations
+* Input Validation
+* Device Services
+* Routing Logic
 
-### Current Status
-
-* AI Module Tested
-* Liveness Logic Tested
-* Database Operations Tested
-* Validation Utilities Tested
-
-All current test suites pass successfully.
+Automated testing helps ensure that new changes do not affect core authentication functionality.
 
 ---
 
-## 10. Future Improvements
+## Future Improvements
 
 Planned enhancements include:
 
@@ -241,11 +237,13 @@ Planned enhancements include:
 * Multi-face recognition support
 * Hardware acceleration using NNAPI and CoreML
 * Faster inference on low-end devices
-* Improved anti-spoofing techniques
-* Performance analytics dashboard
+* Enhanced anti-spoofing techniques
+* Expanded test coverage
 
 ---
 
-## Summary
+## Conclusion
 
-Netraksh AI combines lightweight face recognition and liveness detection into a mobile-first solution designed for offline operation. By performing all biometric processing on-device and using encrypted local storage, the system provides a secure and practical solution for attendance and identity verification in field environments.
+Netraksh AI combines face recognition, liveness verification, encrypted local storage, and offline-first operation into a single mobile authentication platform.
+
+By processing biometric information directly on the device, the system provides a practical solution for identity verification in environments where reliability, privacy, and connectivity are critical considerations.
