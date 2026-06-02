@@ -109,7 +109,10 @@ export function EnrollmentScreen(): React.JSX.Element {
           onChangeText={setEmployeeId}
           placeholder="ENTER EMPLOYEE ID (e.g. EMP042)"
           placeholderTextColor="#94a3b8"
-          style={styles.input}
+          style={[
+            styles.input,
+            isProcessing && styles.inputDisabled,
+          ]}
           value={employeeId}
           editable={!isProcessing}
         />
@@ -118,7 +121,12 @@ export function EnrollmentScreen(): React.JSX.Element {
       <FaceCapturePanel
         title="Enrollment Photo Capture"
         description="Align face within the frame. Ensure eyes are open and face is well-lit."
+        controlsDisabled={isProcessing}
         onPhotoCaptured={handlePhotoCaptured}
+        onPhotoCleared={() => {
+          setCapturedImagePath(null);
+          setQualityCheck(null);
+        }}
       />
 
       {capturedImagePath && qualityCheck ? (
@@ -239,5 +247,9 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontSize: 14,
     fontWeight: '600',
+  },
+  inputDisabled: {
+    backgroundColor: '#e2e8f0',
+    color: '#64748b',
   },
 });

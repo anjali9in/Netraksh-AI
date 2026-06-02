@@ -33,6 +33,29 @@ export const MIGRATIONS: Migration[] = [
         ON auth_logs (employee_id, created_at)`,
     ],
   },
+  {
+    id: 2,
+    name: 'create_users_table',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS users (
+        employee_id TEXT PRIMARY KEY NOT NULL,
+        full_name TEXT NOT NULL,
+        department TEXT,
+        designation TEXT,
+        site_id TEXT,
+        phone TEXT,
+        email TEXT,
+        status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'INACTIVE')),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('PENDING', 'SYNCED', 'FAILED'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_users_sync_status_updated_at
+        ON users (sync_status, updated_at)`,
+      `CREATE INDEX IF NOT EXISTS idx_users_status
+        ON users (status)`,
+    ],
+  },
 ];
 
 export async function runMigrations(database: LocalDatabase): Promise<void> {

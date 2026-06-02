@@ -23,7 +23,6 @@ type AuthStep = 'ID_INPUT' | 'CAMERA_CAPTURE' | 'LIVENESS_CHALLENGE' | 'MATCHING
 export function AuthenticationScreen(): React.JSX.Element {
   const [employeeId, setEmployeeId] = useState('');
   const [capturedImagePath, setCapturedImagePath] = useState<string | null>(null);
-  
   const [step, setStep] = useState<AuthStep>('ID_INPUT');
   const [livenessState, setLivenessState] = useState<LivenessSessionState | null>(null);
   const [metrics, setMetrics] = useState({ ear: 0.32, mar: 0.18, yawRatio: 1.0 });
@@ -193,6 +192,7 @@ export function AuthenticationScreen(): React.JSX.Element {
             title="Facial Login"
             description="Center your face inside the frame to begin authentication logs."
             onPhotoCaptured={handlePhotoCaptured}
+            onPhotoCleared={() => setCapturedImagePath(null)}
           />
         </View>
       )}
@@ -342,6 +342,10 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 14,
     textAlign: 'center',
+  },
+  inputDisabled: {
+    backgroundColor: '#e2e8f0',
+    color: '#64748b',
   },
   cameraWrapper: {
     flex: 1,

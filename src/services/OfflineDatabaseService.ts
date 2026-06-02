@@ -1,6 +1,10 @@
 import { getLocalDatabase } from './database/localDatabase';
 import { sha256 } from '../utils/hash';
 import type { DatabaseRow } from './database/databaseTypes';
+import type {AuthLog} from '../types/LogTypes';
+import type {User} from '../types/UserTypes';
+import {authLogRepository} from './database/repositories/authLogRepository';
+import {userRepository} from './database/repositories/userRepository';
 
 export type AuthLogEntry = {
   id?: number;
@@ -66,7 +70,7 @@ export class OfflineDatabaseService {
     delete (rest as any).id;
     delete (rest as any).logHash;
     const expectedHash = this.generateLogHash(rest);
-    return expectedHash === logHash;
+    return expectedHash === log.logHash;
   }
 
   /**
@@ -208,10 +212,54 @@ export class OfflineDatabaseService {
       return 0;
     }
   }
+
+  // --- Repository wrapper methods from origin/master ---
+
+  async saveAuthLog(authLog: AuthLog): Promise<void> {
+    await authLogRepository.save(authLog);
+  }
+
+  async saveUser(user: User): Promise<void> {
+    await userRepository.save(user);
+  }
+
+  async getUsers(): Promise<User[]> {
+    return userRepository.getAll();
+  }
+
+  async getUserByEmployeeId(employeeId: string): Promise<User | null> {
+    return userRepository.findByEmployeeId(employeeId);
+  }
+
+  async getPendingSyncUsers(): Promise<User[]> {
+    return userRepository.getPendingSync();
+  }
+
+  async getOfflineLogs(): Promise<AuthLog[]> {
+    return authLogRepository.getAll();
+  }
+
+  async getPendingSyncLogs(): Promise<AuthLog[]> {
+    return authLogRepository.getPendingSync();
+  }
+
+  async markLogSyncStatus(
+    id: number,
+    syncStatus: AuthLog['syncStatus'],
+  ): Promise<void> {
+    await authLogRepository.updateSyncStatus(id, syncStatus);
+  }
+
+  async markUserSyncStatus(
+    employeeId: string,
+    syncStatus: User['syncStatus'],
+  ): Promise<void> {
+    await userRepository.updateSyncStatus(employeeId, syncStatus);
+  }
 }
 
 /**
- * Maps a generic database row to an typed AuthLogEntry object.
+ * Maps a generic database row to a typed AuthLogEntry object.
  */
 function mapRowToLogEntry(row: DatabaseRow): AuthLogEntry {
   return {

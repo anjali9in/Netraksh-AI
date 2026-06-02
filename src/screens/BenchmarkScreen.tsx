@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -10,27 +10,51 @@ import {
 import { ScreenContainer } from '../components/ScreenContainer';
 import { StatusBadge } from '../components/StatusBadge';
 import { benchmarkEmbeddingSpeed, benchmarkMatchingPipeline, BenchmarkResult } from '../ai/benchmark';
+import { deviceInfoService } from '../services/device/deviceInfo';
+import type { DeviceProfile } from '../services/device/deviceInfo';
 
 export function BenchmarkScreen(): React.JSX.Element {
+  const [deviceProfile, setDeviceProfile] = useState<DeviceProfile | null>(null);
+  const [deviceError, setDeviceError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [embeddingResult, setEmbeddingResult] = useState<BenchmarkResult | null>(null);
   const [pipelineResult, setPipelineResult] = useState<BenchmarkResult | null>(null);
 
+  useEffect(() => {
+    let isMounted = true;
+    deviceInfoService
+      .getDeviceProfile()
+      .then(profile => {
+        if (isMounted) {
+          setDeviceProfile(profile);
+        }
+      })
+      .catch(error => {
+        if (isMounted) {
+          setDeviceError(
+            error instanceof Error
+              ? error.message
+              : 'Unable to load device profile',
+          );
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const startBenchmark = async () => {
     setIsRunning(true);
-    // Clear previous results
     setEmbeddingResult(null);
     setPipelineResult(null);
     
     try {
-      // Small visual pause before triggering benchmark stress test
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Run embedding generation benchmark (20 runs)
       const embRes = await benchmarkEmbeddingSpeed(20);
       setEmbeddingResult(embRes);
       
-      // Run full match pipeline benchmark (20 runs)
       const pipeRes = await benchmarkMatchingPipeline(20);
       setPipelineResult(pipeRes);
     } catch (error) {
@@ -42,6 +66,32 @@ export function BenchmarkScreen(): React.JSX.Element {
 
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
+      {/* Device Info Card */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Device Profile</Text>
+        </View>
+        {deviceProfile ? (
+          <View style={{ marginTop: 4 }}>
+            <Text style={styles.deviceValue}>
+              {deviceInfoService.formatDeviceLabel(deviceProfile)}
+            </Text>
+            <Text style={styles.meta}>
+              {deviceProfile.isAndroid
+                ? `Android ${deviceProfile.osVersion} | SDK ${
+                    deviceProfile.androidSdkVersion ?? 'unknown'
+                  }`
+                : `${deviceProfile.platform} ${deviceProfile.osVersion}`}
+            </Text>
+            <Text style={styles.meta}>ID: {deviceProfile.deviceId}</Text>
+          </View>
+        ) : (
+          <Text style={styles.meta}>
+            {deviceError ?? 'Loading device profile...'}
+          </Text>
+        )}
+      </View>
+
       <View style={styles.headerCard}>
         <Text style={styles.title}>Model Speed Performance</Text>
         <Text style={styles.subtitle}>
@@ -276,5 +326,17 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 12,
     textAlign: 'center',
+  },
+  meta: {
+    color: '#64748b',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  deviceValue: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginBottom: 4,
   },
 });

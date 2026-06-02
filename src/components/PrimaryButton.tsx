@@ -1,31 +1,48 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text} from 'react-native';
+import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
+
+import {ButtonIcon, ButtonIconName} from './icons/ButtonIcon';
 
 type PrimaryButtonProps = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
+  icon?: ButtonIconName;
+  loading?: boolean;
 };
 
 export function PrimaryButton({
   title,
   onPress,
   disabled = false,
+  icon,
+  loading = false,
 }: PrimaryButtonProps): React.JSX.Element {
+  const isDisabled = disabled || loading;
+  const iconColor = isDisabled ? '#64748b' : '#ffffff';
+
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={disabled}
+      accessibilityState={{busy: loading, disabled: isDisabled}}
+      disabled={isDisabled}
       onPress={onPress}
       style={({pressed}) => [
         styles.button,
-        disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
+        isDisabled && styles.disabled,
+        pressed && !isDisabled && styles.pressed,
       ]}
     >
-      <Text style={[styles.title, disabled && styles.disabledTitle]}>
-        {title}
-      </Text>
+      <View style={styles.content}>
+        {loading ? (
+          <ActivityIndicator color={iconColor} size="small" />
+        ) : icon ? (
+          <ButtonIcon color={iconColor} name={icon} />
+        ) : null}
+        <Text style={[styles.title, isDisabled && styles.disabledTitle]}>
+          {title}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -35,10 +52,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#1d4ed8',
     borderRadius: 8,
-    minHeight: 48,
     justifyContent: 'center',
+    minHeight: 48,
     paddingHorizontal: 18,
     paddingVertical: 12,
+  },
+  content: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
   },
   disabled: {
     backgroundColor: '#cbd5e1',

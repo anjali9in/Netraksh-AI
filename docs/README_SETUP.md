@@ -56,10 +56,61 @@ emulator -list-avds
 emulator -avd <AVD_NAME>
 ```
 
+### Environment Configuration
+
+To ensure the project works across different machines and environments without changing shared files, use the following:
+
+#### 1. Android SDK & Build Paths
+Create/edit `android/local.properties`. This file is ignored by Git and should contain machine-specific paths:
+```properties
+# Windows example
+sdk.dir=C:/Users/YourUser/AppData/Local/Android/Sdk
+
+# Optional: Force a specific JDK if not in your PATH
+# org.gradle.java.home=C:/Program Files/Java/jdk-21
+```
+
+#### 2. Java / JDK
+The project requires **Java 21**. It is best to set this globally via environment variables:
+- **Windows**: `setx JAVA_HOME "C:\Program Files\Java\jdk-21"`
+- **macOS/Linux**: `export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home"`
+
+#### 3. App Environment
+App-level constants are in `src/config/env.ts`. For different backend environments, you can modify these values or (in future steps) use a `.env` file.
+
 Then run:
 
 ```sh
 npm run android
+```
+
+### Run on a Physical Android Device
+
+Enable Developer options and USB debugging on the phone, connect it over USB,
+and confirm ADB can see it:
+
+```sh
+adb devices
+```
+
+If Metro is running on the default port, forward that port to the device:
+
+```sh
+adb reverse tcp:8081 tcp:8081
+```
+
+Then install and run on the connected device:
+
+```sh
+npm run android -- --deviceId <DEVICE_ID>
+```
+
+When using a custom Metro port, keep the port consistent:
+
+```sh
+npm start -- --port 8082
+adb reverse tcp:8082 tcp:8082
+npm run android -- --port 8082 --deviceId <DEVICE_ID>
 ```
 
 ## Run iOS
@@ -151,6 +202,11 @@ cd ..
 The reusable capture UI lives in `src/components/FaceCapturePanel.tsx`, with
 capture logic in `src/hooks/useFaceCapture.ts`. Screens receive the temporary
 image path through `onPhotoCaptured`.
+
+Android device metadata is centralized in `src/services/device/deviceInfo.ts`.
+It creates a stable app device ID in Keychain, exposes Android model/SDK
+details, stores the ID with local face templates, and attaches device headers to
+API requests.
 
 ## Local Database Setup
 
