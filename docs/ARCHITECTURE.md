@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 # Architecture
 
 The project uses a layered React Native structure so future offline biometric features can be added without placing business logic inside UI components.
