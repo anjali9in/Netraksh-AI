@@ -215,5 +215,3 @@ All are destroyed after processing to minimize privacy risks.
 *   **`src/config`**: Centralizes app constants, model version placeholders, demo flags, and authentication thresholds.
 *   **`src/types`**: Define the shared domain contracts used across services and future screens.
 *   **`src/utils`**: Provide small pure helpers such as validation and timestamp generation.
-=======
->>>>>>> Stashed changes
