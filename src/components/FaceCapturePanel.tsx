@@ -1,5 +1,6 @@
+import {useIsFocused} from '@react-navigation/native';
 import React from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
+import {AppState, Image, StyleSheet, Text, View} from 'react-native';
 import {Camera} from 'react-native-vision-camera';
 
 import {useFaceCapture} from '../hooks/useFaceCapture';
@@ -22,6 +23,8 @@ export function FaceCapturePanel({
   onPhotoCaptured,
   onPhotoCleared,
 }: FaceCapturePanelProps): React.JSX.Element {
+  const isScreenFocused = useIsFocused();
+  const [appState, setAppState] = React.useState(AppState.currentState);
   const {
     canRequestPermission,
     canUseMockCapture,
@@ -38,6 +41,14 @@ export function FaceCapturePanel({
     retake,
     useMockCapture,
   } = useFaceCapture({onPhotoCaptured, onPhotoCleared});
+  const isCameraActive =
+    isScreenFocused && appState === 'active' && !controlsDisabled;
+
+  React.useEffect(() => {
+    const subscription = AppState.addEventListener('change', setAppState);
+
+    return () => subscription.remove();
+  }, []);
 
   return (
     <View
@@ -72,7 +83,7 @@ export function FaceCapturePanel({
           ) : isCameraReady && device ? (
             <Camera
               device={device}
-              isActive
+              isActive={isCameraActive}
               outputs={[photoOutput]}
               resizeMode="cover"
               style={StyleSheet.absoluteFill}
@@ -140,7 +151,12 @@ export function FaceCapturePanel({
             icon="camera"
             title={isCapturing ? 'Capturing...' : 'Capture'}
             onPress={captureFaceImage}
-            disabled={controlsDisabled || isCapturing || !isCameraReady}
+            disabled={
+              controlsDisabled ||
+              isCapturing ||
+              !isCameraReady ||
+              !isCameraActive
+            }
           />
         ) : null}
       </View>
