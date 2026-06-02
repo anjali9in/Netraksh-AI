@@ -1,5 +1,5 @@
-import SQLite from 'react-native-sqlite-storage';
-import type {SQLiteDatabase, Transaction, ResultSet} from 'react-native-sqlite-storage';
+import {openAsync} from '@op-engineering/op-sqlite';
+import type {DB, QueryResult, Scalar} from '@op-engineering/op-sqlite';
 
 import type {DatabaseConfig} from '../../config/databaseConfig';
 import type {
@@ -10,10 +10,8 @@ import type {
   LocalDatabase,
 } from './databaseTypes';
 
-SQLite.enablePromise(true);
-
 export class SqliteDatabase implements LocalDatabase {
-  private connection: SQLiteDatabase | null = null;
+  private connection: DB | null = null;
 
   constructor(private readonly config: DatabaseConfig) {}
 
@@ -22,8 +20,9 @@ export class SqliteDatabase implements LocalDatabase {
     params: DatabaseParams = [],
   ): Promise<DatabaseResult> {
     const db = await this.getConnection();
-    const [result] = await db.executeSql(sql, params as unknown[]);
-    return mapResultSet(result);
+    const mappedParams = params.map(p => (p === undefined ? null : p)) as any[];
+    const result = await db.execute(sql, mappedParams);
+    return mapQueryResult(result);
   }
 
   async transaction<T>(
@@ -32,11 +31,12 @@ export class SqliteDatabase implements LocalDatabase {
     const db = await this.getConnection();
     let transactionResult: T | undefined;
 
-    await db.transaction(async (tx: Transaction) => {
+    await db.transaction(async nativeTransaction => {
       transactionResult = await callback({
         execute: async (sql: string, params: DatabaseParams = []) => {
-          const [, result] = await tx.executeSql(sql, params as unknown[]);
-          return mapResultSet(result);
+          const mappedParams = params.map(p => (p === undefined ? null : p)) as any[];
+          const result = await nativeTransaction.execute(sql, mappedParams);
+          return mapQueryResult(result);
         },
       });
     });
@@ -49,35 +49,31 @@ export class SqliteDatabase implements LocalDatabase {
       return;
     }
 
-    await this.connection.close();
+    await this.connection.closeAsync();
     this.connection = null;
   }
 
-  private async getConnection(): Promise<SQLiteDatabase> {
+  private async getConnection(): Promise<DB> {
     if (this.connection) {
       return this.connection;
     }
 
-    this.connection = await SQLite.openDatabase({
+    this.connection = await openAsync({
       name: this.config.name,
-      location: (this.config.location as 'default' | 'Library' | 'Documents') ?? 'default',
+      location: this.config.location,
     });
 
-    await this.connection.executeSql('PRAGMA foreign_keys = ON');
-    await this.connection.executeSql('PRAGMA journal_mode = WAL');
+    await this.connection.execute('PRAGMA foreign_keys = ON');
+    await this.connection.execute('PRAGMA journal_mode = WAL');
 
     return this.connection;
   }
 }
 
-function mapResultSet(result: ResultSet): DatabaseResult {
-  const rows: DatabaseRow[] = [];
-  for (let i = 0; i < result.rows.length; i++) {
-    rows.push(result.rows.item(i) as DatabaseRow);
-  }
+function mapQueryResult(result: QueryResult): DatabaseResult {
   return {
     insertId: result.insertId,
     rowsAffected: result.rowsAffected,
-    rows,
+    rows: result.rows as unknown as DatabaseRow[],
   };
 }

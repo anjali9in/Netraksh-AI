@@ -97,3 +97,5 @@ Anti-spoofing uses an active challenge-response mechanism tracking physical faci
 | **Local Database Storage** | ✅ Supported (Secure SQLite database logs) |
 | **Cloud Synchronization** | ✅ Supported (Automatic queue and delta-sync) |
 | **Encrypted Storage** | ✅ Supported (SecureStorage database keychain integration) |
+
+**Last Updated:** 3 June 2026

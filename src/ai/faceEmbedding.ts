@@ -3,6 +3,7 @@ import { DEMO_MODE } from '../config/appConfig';
 
 export class FaceEmbeddingGenerator {
   private isLoaded: boolean = false;
+  private model: any = null;
 
   constructor() {
     // Initialization logic
@@ -21,9 +22,9 @@ export class FaceEmbeddingGenerator {
         return true;
       }
 
-      // TODO: Integrate native TFLite/ONNX module here
-      // Example:
-      // await NativeTFLiteModule.loadModel(FACE_RECOGNITION_MODEL.modelPath);
+      // Load model using react-native-fast-tflite
+      const { loadTensorflowModel } = require('react-native-fast-tflite');
+      this.model = await loadTensorflowModel(FACE_RECOGNITION_MODEL.modelPath);
       
       this.isLoaded = true;
       return true;
@@ -56,25 +57,134 @@ export class FaceEmbeddingGenerator {
         return this.generateMockEmbedding(imagePath);
       }
 
-      // TODO: Perform image preprocessing (resize to 112×112, normalize with mean/std 127.5)
-      // and invoke the native TFLite module inference for ArcFace-MobileNetV2
-      //
-      // Step 1: Resize image to 112×112×3
-      // Step 2: Normalize: pixel = (pixel - 127.5) / 127.5  → range [-1, 1]
-      // Step 3: Run TFLite inference → raw 512-dim output
-      // Step 4: L2-normalize the output vector
-      //
-      // Example (once native module is integrated):
-      // const rawOutput = await NativeTFLiteModule.runInference(
-      //   FACE_RECOGNITION_MODEL.modelPath, imagePath
-      // );
-      // return l2Normalize(rawOutput);
+      // 1. Load image using react-native-nitro-image
+      const { loadImage } = require('react-native-nitro-image');
+      const img = await loadImage({ filePath: imagePath });
 
-      throw new Error("ArcFace-MobileNetV2 native TFLite integration is pending. Running in DEMO_MODE.");
+      // 2. Resize to model expectations (112x112)
+      const resized = await img.resizeAsync(
+        FACE_RECOGNITION_MODEL.inputWidth,
+        FACE_RECOGNITION_MODEL.inputHeight
+      );
+
+      // 3. Extract raw pixel data
+      const pixelData = await resized.toRawPixelDataAsync();
+
+      // 4. Preprocess pixels (convert format to RGB and scale to [-1.0, 1.0])
+      const floatData = this.preprocessPixels(pixelData);
+
+      // 5. Run inference
+      if (!this.model) {
+        throw new Error("Tensorflow model is not initialized");
+      }
+      
+      const output = await this.model.run([floatData.buffer]);
+      if (!output || output.length === 0) {
+        throw new Error("Model inference returned no outputs");
+      }
+
+      // output[0] is a Float32Array (or Uint8Array if quantized output) containing the 512-dim embedding.
+      const rawVector = new Float32Array(output[0]);
+      const embedding = Array.from(rawVector) as number[];
+
+      // 6. L2-Normalize the output vector to ensure accurate cosine similarity matching
+      return this.l2Normalize(embedding);
     } catch (error) {
       console.error("[FaceEmbeddingGenerator] Embedding generation error:", error);
       throw error;
     }
+  }
+
+  /**
+   * Preprocesses raw pixel data into a normalized Float32Array scaled to [-1.0, 1.0] in RGB format.
+   */
+  private preprocessPixels(pixelData: any): Float32Array {
+    const { buffer, pixelFormat, width, height } = pixelData;
+    const data = new Uint8Array(buffer);
+    const totalPixels = width * height;
+    const floatData = new Float32Array(totalPixels * 3);
+
+    let stride = 4;
+    let rOffset = 0;
+    let gOffset = 1;
+    let bOffset = 2;
+
+    switch (pixelFormat) {
+      case 'RGBA':
+      case 'RGBX':
+        stride = 4;
+        rOffset = 0;
+        gOffset = 1;
+        bOffset = 2;
+        break;
+      case 'BGRA':
+      case 'BGRX':
+        stride = 4;
+        rOffset = 2;
+        gOffset = 1;
+        bOffset = 0;
+        break;
+      case 'ARGB':
+      case 'XRGB':
+        stride = 4;
+        rOffset = 1;
+        gOffset = 2;
+        bOffset = 3;
+        break;
+      case 'ABGR':
+      case 'XBGR':
+        stride = 4;
+        rOffset = 3;
+        gOffset = 2;
+        bOffset = 1;
+        break;
+      case 'RGB':
+        stride = 3;
+        rOffset = 0;
+        gOffset = 1;
+        bOffset = 2;
+        break;
+      case 'BGR':
+        stride = 3;
+        rOffset = 2;
+        gOffset = 1;
+        bOffset = 0;
+        break;
+      default:
+        stride = 4;
+        rOffset = 0;
+        gOffset = 1;
+        bOffset = 2;
+        break;
+    }
+
+    for (let i = 0; i < totalPixels; i++) {
+      const srcIndex = i * stride;
+      const dstIndex = i * 3;
+
+      const r = data[srcIndex + rOffset];
+      const g = data[srcIndex + gOffset];
+      const b = data[srcIndex + bOffset];
+
+      floatData[dstIndex] = (r - 127.5) / 127.5;
+      floatData[dstIndex + 1] = (g - 127.5) / 127.5;
+      floatData[dstIndex + 2] = (b - 127.5) / 127.5;
+    }
+
+    return floatData;
+  }
+
+  /**
+   * L2 Normalization helper to map any vector to a unit-length vector.
+   */
+  private l2Normalize(vector: number[]): number[] {
+    let sumSq = 0;
+    for (let i = 0; i < vector.length; i++) {
+      sumSq += vector[i] * vector[i];
+    }
+    const norm = Math.sqrt(sumSq);
+    if (norm === 0) return vector;
+    return vector.map(v => v / norm);
   }
 
   /**
