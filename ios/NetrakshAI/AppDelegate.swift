@@ -9,6 +9,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
   var reactNativeDelegate: ReactNativeDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
+  private let moduleName = "NetrakshAI"
 
   func application(
     _ application: UIApplication,
@@ -21,15 +22,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeDelegate = delegate
     reactNativeFactory = factory
 
-    window = UIWindow(frame: UIScreen.main.bounds)
+    if #unavailable(iOS 13.0) {
+      window = UIWindow(frame: UIScreen.main.bounds)
 
-    factory.startReactNative(
-      withModuleName: "NetrakshAI",
+      if let window {
+        startReactNative(in: window, launchOptions: launchOptions)
+      }
+    }
+
+    return true
+  }
+
+  func startReactNative(
+    in window: UIWindow,
+    launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+  ) {
+    reactNativeFactory?.startReactNative(
+      withModuleName: moduleName,
       in: window,
       launchOptions: launchOptions
     )
-
-    return true
   }
 }
 
