@@ -20,7 +20,8 @@ export class SqliteDatabase implements LocalDatabase {
     params: DatabaseParams = [],
   ): Promise<DatabaseResult> {
     const db = await this.getConnection();
-    const result = await db.execute(sql, params);
+    const mappedParams = params.map(p => (p === undefined ? null : p)) as any[];
+    const result = await db.execute(sql, mappedParams);
     return mapQueryResult(result);
   }
 
@@ -33,7 +34,8 @@ export class SqliteDatabase implements LocalDatabase {
     await db.transaction(async nativeTransaction => {
       transactionResult = await callback({
         execute: async (sql: string, params: DatabaseParams = []) => {
-          const result = await nativeTransaction.execute(sql, params);
+          const mappedParams = params.map(p => (p === undefined ? null : p)) as any[];
+          const result = await nativeTransaction.execute(sql, mappedParams);
           return mapQueryResult(result);
         },
       });
@@ -72,6 +74,6 @@ function mapQueryResult(result: QueryResult): DatabaseResult {
   return {
     insertId: result.insertId,
     rowsAffected: result.rowsAffected,
-    rows: result.rows as Record<string, Scalar>[],
+    rows: result.rows as unknown as DatabaseRow[],
   };
 }
