@@ -11,12 +11,14 @@ type FaceCapturePanelProps = {
   title: string;
   description: string;
   onPhotoCaptured?: (image: CapturedFaceImage) => void;
+  onPhotoCleared?: () => void;
 };
 
 export function FaceCapturePanel({
   title,
   description,
   onPhotoCaptured,
+  onPhotoCleared,
 }: FaceCapturePanelProps): React.JSX.Element {
   const {
     canRequestPermission,
@@ -33,7 +35,7 @@ export function FaceCapturePanel({
     requestCameraPermission,
     retake,
     useMockCapture,
-  } = useFaceCapture({onPhotoCaptured});
+  } = useFaceCapture({onPhotoCaptured, onPhotoCleared});
 
   return (
     <View style={styles.panel}>

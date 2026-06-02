@@ -5,6 +5,8 @@ import {API_BASE_URL, API_TIMEOUT_MS} from '../../config/env';
 import {networkService} from '../network/networkService';
 import {secureStorage} from '../storage/secureStorage';
 import {logger} from '../../utils/logger';
+import {deviceInfoService} from '../device/deviceInfo';
+import type {DeviceProfile} from '../device/deviceInfo';
 import {createOfflineApiError, normalizeApiError} from './apiError';
 
 export const axiosClient = axios.create({
@@ -27,6 +29,12 @@ axiosClient.interceptors.request.use(async config => {
 
   if (accessToken) {
     attachAuthorizationHeader(config, accessToken);
+  }
+
+  try {
+    attachDeviceHeaders(config, await deviceInfoService.getDeviceProfile());
+  } catch (error) {
+    logger.warn('[Device Info] Unable to attach device headers', error);
   }
 
   logger.debug('[API Request]', {
@@ -59,6 +67,29 @@ function attachAuthorizationHeader(
 ) {
   const headers = AxiosHeaders.from(config.headers);
   headers.set('Authorization', `Bearer ${accessToken}`);
+  config.headers = headers;
+}
+
+function attachDeviceHeaders(
+  config: InternalAxiosRequestConfig,
+  profile: DeviceProfile,
+) {
+  const headers = AxiosHeaders.from(config.headers);
+  headers.set('X-Device-Id', profile.deviceId);
+  headers.set('X-Device-Platform', profile.platform);
+
+  if (profile.manufacturer) {
+    headers.set('X-Device-Manufacturer', profile.manufacturer);
+  }
+
+  if (profile.model) {
+    headers.set('X-Device-Model', profile.model);
+  }
+
+  if (profile.androidSdkVersion !== undefined) {
+    headers.set('X-Android-Sdk', String(profile.androidSdkVersion));
+  }
+
   config.headers = headers;
 }
 
