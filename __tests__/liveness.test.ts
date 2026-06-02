@@ -1,4 +1,7 @@
-import { LivenessService, Landmark } from '../src/services/liveness/livenessService';
+import {
+  LivenessService,
+  Landmark,
+} from '../src/services/liveness/livenessService';
 
 describe('Liveness Service Unit Tests', () => {
   let service: LivenessService;
@@ -12,12 +15,12 @@ describe('Liveness Service Unit Tests', () => {
       // Coordinates of a standard eye shape: (p1, p2, p3, p4, p5, p6)
       // p1 & p4 are corners. p2, p3, p5, p6 are top/bottom vertical boundaries.
       const eyeLandmarks: Landmark[] = [
-        { x: 0.0, y: 0.0 }, // p1 (left corner)
-        { x: 1.0, y: 0.5 }, // p2 (top-left)
-        { x: 2.0, y: 0.5 }, // p3 (top-right)
-        { x: 3.0, y: 0.0 }, // p4 (right corner)
-        { x: 2.0, y: -0.5 }, // p5 (bottom-right)
-        { x: 1.0, y: -0.5 }, // p6 (bottom-left)
+        {x: 0.0, y: 0.0}, // p1 (left corner)
+        {x: 1.0, y: 0.5}, // p2 (top-left)
+        {x: 2.0, y: 0.5}, // p3 (top-right)
+        {x: 3.0, y: 0.0}, // p4 (right corner)
+        {x: 2.0, y: -0.5}, // p5 (bottom-right)
+        {x: 1.0, y: -0.5}, // p6 (bottom-left)
       ];
 
       const ear = service.calculateEAR(eyeLandmarks);
@@ -37,10 +40,10 @@ describe('Liveness Service Unit Tests', () => {
     it('should calculate correct MAR', () => {
       // mouthLandmarks: left, right, top, bottom
       const mouthLandmarks: Landmark[] = [
-        { x: 0.0, y: 0.0 }, // left corner
-        { x: 4.0, y: 0.0 }, // right corner
-        { x: 2.0, y: 1.0 }, // top lip
-        { x: 2.0, y: -1.0 }, // bottom lip
+        {x: 0.0, y: 0.0}, // left corner
+        {x: 4.0, y: 0.0}, // right corner
+        {x: 2.0, y: 1.0}, // top lip
+        {x: 2.0, y: -1.0}, // bottom lip
       ];
 
       const mar = service.calculateMAR(mouthLandmarks);
@@ -59,16 +62,16 @@ describe('Liveness Service Unit Tests', () => {
     it('should calculate correct yaw ratio', () => {
       // faceLandmarks: [leftCheek, nose, rightCheek]
       const faceCentered: Landmark[] = [
-        { x: 0.0, y: 0.0 },
-        { x: 2.0, y: 0.0 },
-        { x: 4.0, y: 0.0 },
+        {x: 0.0, y: 0.0},
+        {x: 2.0, y: 0.0},
+        {x: 4.0, y: 0.0},
       ];
       expect(service.calculateYawRatio(faceCentered)).toBeCloseTo(1.0, 4);
 
       const faceTurnedRight: Landmark[] = [
-        { x: 0.0, y: 0.0 },
-        { x: 1.0, y: 0.0 }, // nose closer to left cheek
-        { x: 4.0, y: 0.0 },
+        {x: 0.0, y: 0.0},
+        {x: 1.0, y: 0.0}, // nose closer to left cheek
+        {x: 4.0, y: 0.0},
       ];
       // distLeft = 1.0, distRight = 3.0 => 1.0 / 3.0 = 0.3333
       expect(service.calculateYawRatio(faceTurnedRight)).toBeCloseTo(0.3333, 4);
@@ -99,7 +102,7 @@ describe('Liveness Service Unit Tests', () => {
 
     it('should process frames and increment counts for BLINK challenge', () => {
       service.resetSession(['BLINK']);
-      
+
       // Initially active is BLINK (target 2 blinks)
       // Step 1: Normal frame (EAR = 0.35)
       let state = service.processFrame(0.35, 0.15, 1.0);
@@ -119,7 +122,7 @@ describe('Liveness Service Unit Tests', () => {
       state = service.processFrame(0.15, 0.15, 1.0);
       // Open
       state = service.processFrame(0.35, 0.15, 1.0);
-      
+
       // Should complete the session since target is 2
       expect(state.isComplete).toBe(true);
       expect(state.isPassed).toBe(true);
@@ -129,13 +132,13 @@ describe('Liveness Service Unit Tests', () => {
       service.resetSession(['SMILE']);
 
       // Frame 1: No smile (MAR = 0.20)
-      let state = service.processFrame(0.35, 0.20, 1.0);
+      let state = service.processFrame(0.35, 0.2, 1.0);
       expect(state.isComplete).toBe(false);
 
       // Smile: MAR > 0.50 (e.g. 0.60) for 3 consecutive frames
-      service.processFrame(0.35, 0.60, 1.0);
-      service.processFrame(0.35, 0.60, 1.0);
-      state = service.processFrame(0.35, 0.60, 1.0);
+      service.processFrame(0.35, 0.6, 1.0);
+      service.processFrame(0.35, 0.6, 1.0);
+      state = service.processFrame(0.35, 0.6, 1.0);
 
       expect(state.isComplete).toBe(true);
       expect(state.isPassed).toBe(true);
@@ -145,9 +148,9 @@ describe('Liveness Service Unit Tests', () => {
       service.resetSession(['HEAD_TURN']);
 
       // Yaw ratio turned (e.g. 0.40 < 0.60) for 3 consecutive frames
-      service.processFrame(0.35, 0.20, 0.40);
-      service.processFrame(0.35, 0.20, 0.40);
-      const state = service.processFrame(0.35, 0.20, 0.40);
+      service.processFrame(0.35, 0.2, 0.4);
+      service.processFrame(0.35, 0.2, 0.4);
+      const state = service.processFrame(0.35, 0.2, 0.4);
 
       expect(state.isComplete).toBe(true);
       expect(state.isPassed).toBe(true);
@@ -160,7 +163,7 @@ describe('Liveness Service Unit Tests', () => {
       expect(metricsBlink.ear).toBe(0.14);
 
       const metricsSmile = service.getSimulatedMetrics('SMILE', 2000); // smile build-up
-      expect(metricsSmile.mar).toBeGreaterThan(0.40);
+      expect(metricsSmile.mar).toBeGreaterThan(0.4);
     });
   });
 });

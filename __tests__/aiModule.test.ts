@@ -1,7 +1,13 @@
-import { cosineSimilarity, isFaceMatched } from '../src/utils/similarity';
-import { getDynamicThreshold, detectEnvironmentCondition } from '../src/ai/dynamicThreshold';
-import { benchmarkEmbeddingSpeed, benchmarkMatchingPipeline } from '../src/ai/benchmark';
-import { faceEmbeddingGenerator } from '../src/ai/faceEmbedding';
+import {cosineSimilarity, isFaceMatched} from '../src/utils/similarity';
+import {
+  getDynamicThreshold,
+  detectEnvironmentCondition,
+} from '../src/ai/dynamicThreshold';
+import {
+  benchmarkEmbeddingSpeed,
+  benchmarkMatchingPipeline,
+} from '../src/ai/benchmark';
+import {faceEmbeddingGenerator} from '../src/ai/faceEmbedding';
 
 // ─────────────────────────────────────────────────────────
 // TEST 1: Cosine Similarity
@@ -28,7 +34,9 @@ describe('Similarity Utility', () => {
   });
 
   it('should throw an error if embedding dimensions differ', () => {
-    expect(() => cosineSimilarity([1, 2, 3], [1, 2])).toThrow('Embedding size mismatch');
+    expect(() => cosineSimilarity([1, 2, 3], [1, 2])).toThrow(
+      'Embedding size mismatch',
+    );
   });
 });
 
@@ -63,8 +71,8 @@ describe('Dynamic Threshold', () => {
   });
 
   it('should further raise threshold if image quality is low', () => {
-    const normalResult = getDynamicThreshold(120, 1.0);   // good quality
-    const blurryResult = getDynamicThreshold(120, 0.3);   // blurry image
+    const normalResult = getDynamicThreshold(120, 1.0); // good quality
+    const blurryResult = getDynamicThreshold(120, 0.3); // blurry image
     expect(blurryResult.threshold).toBeGreaterThan(normalResult.threshold);
   });
 });
@@ -74,12 +82,16 @@ describe('Dynamic Threshold', () => {
 // ─────────────────────────────────────────────────────────
 describe('FaceEmbeddingGenerator (DEMO_MODE) — ArcFace-MobileNetV2', () => {
   it('should generate an embedding with exactly 512 dimensions (ArcFace-MobileNetV2)', async () => {
-    const embedding = await faceEmbeddingGenerator.generateEmbedding('test_face.jpg');
+    const embedding = await faceEmbeddingGenerator.generateEmbedding(
+      'test_face.jpg',
+    );
     expect(embedding.length).toBe(512); // upgraded from 128 (MobileFaceNet) → 512 (ArcFace)
   });
 
   it('should return a normalized unit vector (L2 norm ≈ 1.0)', async () => {
-    const embedding = await faceEmbeddingGenerator.generateEmbedding('test_face.jpg');
+    const embedding = await faceEmbeddingGenerator.generateEmbedding(
+      'test_face.jpg',
+    );
     const norm = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
     expect(norm).toBeCloseTo(1.0, 3);
   });

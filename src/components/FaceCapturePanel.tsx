@@ -205,8 +205,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  header: {
-  },
+  header: {},
   headerDescription: {
     marginTop: 6,
   },

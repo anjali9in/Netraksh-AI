@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { jest } from '@jest/globals';
+import {jest} from '@jest/globals';
 
 export {};
 
@@ -33,7 +33,11 @@ const mockExecute = async (sql: string, params: any[] = []) => {
   }
 
   if (normalizedSql.includes('INSERT INTO schema_migrations')) {
-    mockDbState.migrations.push({ id: params[0], name: params[1], applied_at: params[2] });
+    mockDbState.migrations.push({
+      id: params[0],
+      name: params[1],
+      applied_at: params[2],
+    });
     return {
       insertId: params[0],
       rowsAffected: 1,
@@ -42,9 +46,13 @@ const mockExecute = async (sql: string, params: any[] = []) => {
   }
 
   // employee_face_templates
-  if (normalizedSql.includes('INSERT OR REPLACE INTO employee_face_templates')) {
+  if (
+    normalizedSql.includes('INSERT OR REPLACE INTO employee_face_templates')
+  ) {
     const employeeId = params[0];
-    const index = mockDbState.templates.findIndex(t => t.employee_id === employeeId);
+    const index = mockDbState.templates.findIndex(
+      t => t.employee_id === employeeId,
+    );
     const newTemplate = {
       employee_id: params[0],
       encrypted_embedding: params[1],
@@ -65,9 +73,15 @@ const mockExecute = async (sql: string, params: any[] = []) => {
     };
   }
 
-  if (normalizedSql.includes('SELECT encrypted_embedding, model_version FROM employee_face_templates WHERE employee_id = ?')) {
+  if (
+    normalizedSql.includes(
+      'SELECT encrypted_embedding, model_version FROM employee_face_templates WHERE employee_id = ?',
+    )
+  ) {
     const employeeId = params[0];
-    const filtered = mockDbState.templates.filter(t => t.employee_id === employeeId);
+    const filtered = mockDbState.templates.filter(
+      t => t.employee_id === employeeId,
+    );
     return {
       insertId: undefined,
       rowsAffected: 0,
@@ -75,7 +89,11 @@ const mockExecute = async (sql: string, params: any[] = []) => {
     };
   }
 
-  if (normalizedSql.includes('SELECT employee_id, encrypted_embedding, model_version FROM employee_face_templates')) {
+  if (
+    normalizedSql.includes(
+      'SELECT employee_id, encrypted_embedding, model_version FROM employee_face_templates',
+    )
+  ) {
     return {
       insertId: undefined,
       rowsAffected: 0,
@@ -108,7 +126,11 @@ const mockExecute = async (sql: string, params: any[] = []) => {
     };
   }
 
-  if (normalizedSql.includes('SELECT * FROM auth_logs WHERE sync_status = \'PENDING\'')) {
+  if (
+    normalizedSql.includes(
+      "SELECT * FROM auth_logs WHERE sync_status = 'PENDING'",
+    )
+  ) {
     const filtered = mockDbState.logs.filter(l => l.sync_status === 'PENDING');
     return {
       insertId: undefined,
@@ -127,7 +149,11 @@ const mockExecute = async (sql: string, params: any[] = []) => {
     };
   }
 
-  if (normalizedSql.includes('UPDATE auth_logs SET sync_status = \'SYNCED\', log_hash = ? WHERE id = ?')) {
+  if (
+    normalizedSql.includes(
+      "UPDATE auth_logs SET sync_status = 'SYNCED', log_hash = ? WHERE id = ?",
+    )
+  ) {
     const hash = params[0];
     const id = params[1];
     const log = mockDbState.logs.find(l => l.id === id);
@@ -142,9 +168,12 @@ const mockExecute = async (sql: string, params: any[] = []) => {
     };
   }
 
-  if (normalizedSql.includes('SELECT * FROM auth_logs ORDER BY created_at DESC')) {
+  if (
+    normalizedSql.includes('SELECT * FROM auth_logs ORDER BY created_at DESC')
+  ) {
     const sorted = [...mockDbState.logs].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
     return {
       insertId: undefined,
@@ -153,11 +182,19 @@ const mockExecute = async (sql: string, params: any[] = []) => {
     };
   }
 
-  if (normalizedSql.includes('DELETE FROM auth_logs WHERE sync_status = \'SYNCED\' AND created_at < ?')) {
+  if (
+    normalizedSql.includes(
+      "DELETE FROM auth_logs WHERE sync_status = 'SYNCED' AND created_at < ?",
+    )
+  ) {
     const cutoff = new Date(params[0]).getTime();
     const initialLen = mockDbState.logs.length;
     mockDbState.logs = mockDbState.logs.filter(
-      l => !(l.sync_status === 'SYNCED' && new Date(l.created_at).getTime() < cutoff)
+      l =>
+        !(
+          l.sync_status === 'SYNCED' &&
+          new Date(l.created_at).getTime() < cutoff
+        ),
     );
     const deletedCount = initialLen - mockDbState.logs.length;
     return {
@@ -175,19 +212,46 @@ const mockExecute = async (sql: string, params: any[] = []) => {
   };
 };
 
-jest.mock('@op-engineering/op-sqlite', () => {
-  return {
-    openAsync: jest.fn().mockImplementation(async () => {
+const toResultSet = (result: any) => ({
+  insertId: result.insertId,
+  rowsAffected: result.rowsAffected,
+  rows: {
+    length: result.rows.length,
+    item: (index: number) => result.rows[index],
+    raw: () => result.rows,
+  },
+});
+
+jest.mock('react-native-sqlite-storage', () => {
+  const sqlite = {
+    enablePromise: jest.fn(),
+    openDatabase: jest.fn().mockImplementation(async () => {
       return {
-        execute: jest.fn().mockImplementation(mockExecute),
+        executeSql: jest
+          .fn()
+          .mockImplementation(async (sql: string, params: any[] = []) => {
+            const result = await mockExecute(sql, params);
+            return [toResultSet(result)];
+          }),
         transaction: jest.fn().mockImplementation(async (callback: any) => {
           return callback({
-            execute: jest.fn().mockImplementation(mockExecute),
+            executeSql: jest
+              .fn()
+              .mockImplementation(async (sql: string, params: any[] = []) => {
+                const result = await mockExecute(sql, params);
+                return [undefined, toResultSet(result)];
+              }),
           });
         }),
-        closeAsync: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn().mockResolvedValue(undefined),
       };
     }),
+  };
+
+  return {
+    __esModule: true,
+    default: sqlite,
+    ...sqlite,
   };
 });
 
@@ -196,14 +260,18 @@ jest.mock('@op-engineering/op-sqlite', () => {
 // ============================================================================
 jest.mock('react-native-keychain', () => ({
   setGenericPassword: jest.fn().mockResolvedValue(true),
-  getGenericPassword: jest.fn().mockResolvedValue({ username: 'token', password: 'mock-passcode' }),
+  getGenericPassword: jest
+    .fn()
+    .mockResolvedValue({username: 'token', password: 'mock-passcode'}),
   resetGenericPassword: jest.fn().mockResolvedValue(true),
 }));
 
 jest.mock('react-native-vision-camera', () => {
   return {
     Camera: jest.fn().mockImplementation(() => null),
-    useCameraDevice: jest.fn().mockReturnValue({ id: 'front-camera', name: 'Front Camera' }),
+    useCameraDevice: jest
+      .fn()
+      .mockReturnValue({id: 'front-camera', name: 'Front Camera'}),
     useCameraPermission: jest.fn().mockReturnValue({
       hasPermission: true,
       requestPermission: jest.fn().mockResolvedValue(true),
@@ -211,7 +279,9 @@ jest.mock('react-native-vision-camera', () => {
       status: 'granted',
     }),
     usePhotoOutput: jest.fn().mockReturnValue({
-      capturePhotoToFile: jest.fn().mockResolvedValue({ filePath: 'mock/path/photo.jpg' }),
+      capturePhotoToFile: jest
+        .fn()
+        .mockResolvedValue({filePath: 'mock/path/photo.jpg'}),
     }),
   };
 });
