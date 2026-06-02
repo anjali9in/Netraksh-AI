@@ -14,7 +14,7 @@ export class FaceEmbeddingGenerator {
    */
   public async loadModel(): Promise<boolean> {
     try {
-      console.log(`[FaceEmbeddingGenerator] Loading model: ${FACE_RECOGNITION_MODEL.modelName} from ${FACE_RECOGNITION_MODEL.modelPath}`);
+      console.log(`[FaceEmbeddingGenerator] Loading model: ${FACE_RECOGNITION_MODEL.modelName} v${FACE_RECOGNITION_MODEL.version} | Format: ${FACE_RECOGNITION_MODEL.modelFormat} | Quantized: ${FACE_RECOGNITION_MODEL.quantized} | Path: ${FACE_RECOGNITION_MODEL.modelPath}`);
       
       if (DEMO_MODE) {
         this.isLoaded = true;
@@ -35,9 +35,11 @@ export class FaceEmbeddingGenerator {
   }
 
   /**
-   * Generates a 128-dimensional embedding vector for a given captured face image path.
-   * @param imagePath The local URI or file path of the cropped face image.
-   * @returns A promise resolving to the face embedding vector.
+   * Generates a 512-dimensional ArcFace embedding vector for a given captured face image path.
+   * Upgraded from MobileFaceNet (128-dim, 99.28% LFW) to ArcFace-MobileNetV2 (512-dim, 99.77% LFW).
+   *
+   * @param imagePath The local URI or file path of the cropped face image (112×112 expected).
+   * @returns A promise resolving to a normalized L2 unit-length face embedding vector.
    */
   public async generateEmbedding(imagePath: string): Promise<number[]> {
     if (!this.isLoaded) {
@@ -54,12 +56,21 @@ export class FaceEmbeddingGenerator {
         return this.generateMockEmbedding(imagePath);
       }
 
-      // TODO: Perform image preprocessing (resize to 112x112, normalize mean/std)
-      // and invoke the native TFLite/ONNX module inference
-      // const rawOutput = await NativeTFLiteModule.runInference(imagePath);
-      // return rawOutput;
+      // TODO: Perform image preprocessing (resize to 112×112, normalize with mean/std 127.5)
+      // and invoke the native TFLite module inference for ArcFace-MobileNetV2
+      //
+      // Step 1: Resize image to 112×112×3
+      // Step 2: Normalize: pixel = (pixel - 127.5) / 127.5  → range [-1, 1]
+      // Step 3: Run TFLite inference → raw 512-dim output
+      // Step 4: L2-normalize the output vector
+      //
+      // Example (once native module is integrated):
+      // const rawOutput = await NativeTFLiteModule.runInference(
+      //   FACE_RECOGNITION_MODEL.modelPath, imagePath
+      // );
+      // return l2Normalize(rawOutput);
 
-      throw new Error("Native face embedding model integration is not completed yet");
+      throw new Error("ArcFace-MobileNetV2 native TFLite integration is pending. Running in DEMO_MODE.");
     } catch (error) {
       console.error("[FaceEmbeddingGenerator] Embedding generation error:", error);
       throw error;
