@@ -12,7 +12,7 @@ This document summarizes the performance metrics, model specifications, and expe
 | Parameter        | Configuration         |
 | ---------------- | --------------------- |
 | Test Device      | Android ARM64 Device  |
-| Operating System | Android 7+ / iOS 11+ |
+| Operating System | Android 7+ / iOS 12+ |
 | RAM              | 3 GB Minimum          |
 | Processor        | Mid-range Mobile CPU  |
 | Storage Usage    | Approximately 35 MB   |

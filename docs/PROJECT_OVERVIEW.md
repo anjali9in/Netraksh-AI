@@ -71,7 +71,7 @@ Sensitive biometric information is encrypted before being stored locally.
 ### Cross-Platform Support
 
 * Android 7.0+
-* iOS 11.0+
+* iOS 12.0+
 * Minimum 3 GB RAM
 
 ---
