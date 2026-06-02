@@ -220,9 +220,6 @@ PODS:
   - React-jsinspector (0.69.12)
   - React-logger (0.69.12):
     - glog
-  - react-native-fast-tflite (1.6.0):
-    - React-Core
-    - TensorFlowLiteC (= 2.17.0)
   - react-native-netinfo (9.5.0):
     - React-Core
   - react-native-safe-area-context (4.4.1):
@@ -306,9 +303,6 @@ PODS:
     - React-RCTImage
   - RNSVG (12.4.4):
     - React-Core
-  - TensorFlowLiteC (2.17.0):
-    - TensorFlowLiteC/Core (= 2.17.0)
-  - TensorFlowLiteC/Core (2.17.0)
   - VisionCamera (2.16.8):
     - React
     - React-callinvoker
@@ -336,7 +330,6 @@ DEPENDENCIES:
   - React-jsiexecutor (from `../node_modules/react-native/ReactCommon/jsiexecutor`)
   - React-jsinspector (from `../node_modules/react-native/ReactCommon/jsinspector`)
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
-  - react-native-fast-tflite (from `../node_modules/react-native-fast-tflite`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - react-native-sqlite-storage (from `../node_modules/react-native-sqlite-storage`)
@@ -361,7 +354,6 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - fmt
-    - TensorFlowLiteC
 
 EXTERNAL SOURCES:
   boost:
@@ -402,8 +394,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/jsinspector"
   React-logger:
     :path: "../node_modules/react-native/ReactCommon/logger"
-  react-native-fast-tflite:
-    :path: "../node_modules/react-native-fast-tflite"
   react-native-netinfo:
     :path: "../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
@@ -466,7 +456,6 @@ SPEC CHECKSUMS:
   React-jsiexecutor: e10273ade1e0dd53d3123b3dff47ea698bb7e7bd
   React-jsinspector: f275698149311abc8c32ebb97797d6b97c44adde
   React-logger: 4ef8a0325da47f55082a73ac68fac2dc6039356c
-  react-native-fast-tflite: 7b5b048ff3ef845715ad974bf38f672887adacd9
   react-native-netinfo: 26560022f28c06d8ef00a9ff1e03beefbbb60c2d
   react-native-safe-area-context: 41ffdebd233eddeef75576749f0cf153e83a0681
   react-native-sqlite-storage: 0c84826214baaa498796c7e46a5ccc9a82e114ed
@@ -485,7 +474,6 @@ SPEC CHECKSUMS:
   RNKeychain: bbe2f6d5cc008920324acb49ef86ccc03d3b38e4
   RNScreens: c6ae949c292bee8ed7f355ab2adcfc9a51629951
   RNSVG: e8aaa6223a056a2f21fa9c1b171eaa10cd7f9556
-  TensorFlowLiteC: eac6d689a8d391d1b202dc59e3d9165ba64aaf73
   VisionCamera: ef0bdd333294a63fcf76f9a3c849ceb49e55390c
   Yoga: 8a90b50af67eaa9fe94fd03e550bfeab06096873
 

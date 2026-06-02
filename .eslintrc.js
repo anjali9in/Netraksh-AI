@@ -19,7 +19,7 @@ module.exports = {
       version: 'detect',
     },
   },
-  ignorePatterns: ['backend/dist/**', 'backend/.aws-sam/**'],
+  ignorePatterns: ['backend/dist/**', 'backend/.aws-sam/**', 'tflite-env/**'],
   globals: {
     __DEV__: 'readonly',
   },
