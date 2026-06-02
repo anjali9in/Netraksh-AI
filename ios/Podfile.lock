@@ -220,6 +220,9 @@ PODS:
   - React-jsinspector (0.69.12)
   - React-logger (0.69.12):
     - glog
+  - react-native-fast-tflite (1.6.1):
+    - React-Core
+    - TensorFlowLiteC (= 2.17.0)
   - react-native-netinfo (9.5.0):
     - React-Core
   - react-native-safe-area-context (4.4.1):
@@ -303,6 +306,9 @@ PODS:
     - React-RCTImage
   - RNSVG (12.4.4):
     - React-Core
+  - TensorFlowLiteC (2.17.0):
+    - TensorFlowLiteC/Core (= 2.17.0)
+  - TensorFlowLiteC/Core (2.17.0)
   - VisionCamera (2.16.8):
     - React
     - React-callinvoker
@@ -330,6 +336,7 @@ DEPENDENCIES:
   - React-jsiexecutor (from `../node_modules/react-native/ReactCommon/jsiexecutor`)
   - React-jsinspector (from `../node_modules/react-native/ReactCommon/jsinspector`)
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
+  - react-native-fast-tflite (from `../node_modules/react-native-fast-tflite`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - react-native-sqlite-storage (from `../node_modules/react-native-sqlite-storage`)
@@ -354,6 +361,7 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - fmt
+    - TensorFlowLiteC
 
 EXTERNAL SOURCES:
   boost:
@@ -394,6 +402,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/jsinspector"
   React-logger:
     :path: "../node_modules/react-native/ReactCommon/logger"
+  react-native-fast-tflite:
+    :path: "../node_modules/react-native-fast-tflite"
   react-native-netinfo:
     :path: "../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
@@ -442,23 +452,24 @@ SPEC CHECKSUMS:
   FBReactNativeSpec: 7d1d6c470b6584c0c8923d54be6f89983f140a9a
   fmt: ff9d55029c625d3757ed641535fd4a75fedc7ce9
   glog: 3d02b25ca00c2d456734d0bcff864cbc62f6ae1a
-  RCT-Folly: b9d9fe1fc70114b751c076104e52f3b1b5e5a95a
+  RCT-Folly: ba26c9ca44b1fb56915c3efd9ce618472addc544
   RCTRequired: b9e53f0512019150020156fa0dacd6583ab838be
   RCTTypeSafety: 04b72202bef8302802610dee70bb9407a245b64c
   React: 59288a7ca8104eb8002f01378606fe42eeabf4b5
   React-bridging: b042b8c217f04e568409786de5f221793be49c31
   React-callinvoker: c7b83d582112e2d5a049dc46abf4c64d871b5c45
   React-Codegen: 5747238d0446e3ab1deb967e749a2bfde6a5c866
-  React-Core: d8e1250039d47112513757038d9d9f9b638565c6
+  React-Core: c501478ad5c850b0f0ff26d1009e9410c37ed23a
   React-CoreModules: 63cceb0040ec2b43a258113193be91f934b37f1b
-  React-cxxreact: 429404aac55d8bffca77328002452fc7fa8b29e8
-  React-jsi: a8f60feb519ac00085eb9a39d20eaa65c96b51ea
-  React-jsiexecutor: ce0b9aa647bdf94126eb2ee1f235d329eb8c0aec
+  React-cxxreact: 87a2b40a905744886c7d3e42a9634eea44ca7524
+  React-jsi: 629f62632b96f0c16d6ee81a5dc21f240b7fe5fc
+  React-jsiexecutor: e10273ade1e0dd53d3123b3dff47ea698bb7e7bd
   React-jsinspector: f275698149311abc8c32ebb97797d6b97c44adde
-  React-logger: da69d7f1c9501c78cd60776d52a60d7fa5e4d9c2
-  react-native-netinfo: 48c5f79a84fbc3ba1d28a8b0d04adeda72885fa8
-  react-native-safe-area-context: 99b24a0c5acd0d5dcac2b1a7f18c49ea317be99a
-  react-native-sqlite-storage: f6d515e1c446d1e6d026aa5352908a25d4de3261
+  React-logger: 4ef8a0325da47f55082a73ac68fac2dc6039356c
+  react-native-fast-tflite: 9da4251f28ef611a00df025968a3119c2ae19056
+  react-native-netinfo: 26560022f28c06d8ef00a9ff1e03beefbbb60c2d
+  react-native-safe-area-context: 41ffdebd233eddeef75576749f0cf153e83a0681
+  react-native-sqlite-storage: 0c84826214baaa498796c7e46a5ccc9a82e114ed
   React-perflogger: 5ade0a1627352f1647d283e78331819bb46cceae
   React-RCTActionSheet: 8e94f1e46e09c7035b81fe56c0ed8d78f3ccd340
   React-RCTAnimation: bf2af72f03cf16528db9a830be69fa04b341a1b7
@@ -470,13 +481,14 @@ SPEC CHECKSUMS:
   React-RCTText: ed34088172126f84130eea859d62fedca0dd7975
   React-RCTVibration: c9cd9f21bbcb3b9c6deedbb66f13e373f57dd795
   React-runtimeexecutor: ea78653fbc68bd6f2d3f5e7e311bc5a9dc8bfeca
-  ReactCommon: f4bb9e5209ea5c3c6ab25e100895119e58d6e50a
-  RNKeychain: bfe3d12bf4620fe488771c414530bf16e88f3678
-  RNScreens: 218801c16a2782546d30bd2026bb625c0302d70f
-  RNSVG: ecd661f380a07ba690c9c5929c475a44f432d674
-  VisionCamera: 2a2b6bc1a6934e01c32e35361ea2aa9114483786
+  ReactCommon: 8f32a72413ab8d62d515bcfe66c22d5321ccfbfd
+  RNKeychain: bbe2f6d5cc008920324acb49ef86ccc03d3b38e4
+  RNScreens: c6ae949c292bee8ed7f355ab2adcfc9a51629951
+  RNSVG: e8aaa6223a056a2f21fa9c1b171eaa10cd7f9556
+  TensorFlowLiteC: eac6d689a8d391d1b202dc59e3d9165ba64aaf73
+  VisionCamera: ef0bdd333294a63fcf76f9a3c849ceb49e55390c
   Yoga: 8a90b50af67eaa9fe94fd03e550bfeab06096873
 
-PODFILE CHECKSUM: a8d7652b37bba09b7dfdb65672a55e7532f72a9f
+PODFILE CHECKSUM: 9c01f33d27691b86d10872dc7caedce5ff47bcac
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2
