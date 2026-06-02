@@ -77,6 +77,7 @@ export function FaceCapturePanel({
             {!hasPermission && canRequestPermission ? (
               <View style={styles.inlineAction}>
                 <PrimaryButton
+                  icon="camera"
                   title="Allow Camera"
                   onPress={requestCameraPermission}
                 />
@@ -85,6 +86,7 @@ export function FaceCapturePanel({
             {!hasPermission && !canRequestPermission ? (
               <View style={styles.inlineAction}>
                 <PrimaryButton
+                  icon="settings"
                   title="Open Settings"
                   onPress={openCameraSettings}
                 />
@@ -93,6 +95,7 @@ export function FaceCapturePanel({
             {canUseMockCapture ? (
               <View style={styles.inlineAction}>
                 <PrimaryButton
+                  icon="camera"
                   title="Use Mock Capture"
                   onPress={useMockCapture}
                 />
@@ -110,9 +113,10 @@ export function FaceCapturePanel({
       ) : null}
 
       {capturedImage ? (
-        <PrimaryButton title="Retake Photo" onPress={retake} />
+        <PrimaryButton icon="refresh" title="Retake Photo" onPress={retake} />
       ) : hasPermission ? (
         <PrimaryButton
+          icon="camera"
           title={isCapturing ? 'Capturing...' : 'Capture'}
           onPress={captureFaceImage}
           disabled={isCapturing || !isCameraReady}

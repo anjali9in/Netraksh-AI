@@ -1,17 +1,23 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
+
+import {ButtonIcon, ButtonIconName} from './icons/ButtonIcon';
 
 type PrimaryButtonProps = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
+  icon?: ButtonIconName;
 };
 
 export function PrimaryButton({
   title,
   onPress,
   disabled = false,
+  icon,
 }: PrimaryButtonProps): React.JSX.Element {
+  const iconColor = disabled ? '#64748b' : '#ffffff';
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -23,9 +29,12 @@ export function PrimaryButton({
         pressed && !disabled && styles.pressed,
       ]}
     >
-      <Text style={[styles.title, disabled && styles.disabledTitle]}>
-        {title}
-      </Text>
+      <View style={styles.content}>
+        {icon ? <ButtonIcon color={iconColor} name={icon} /> : null}
+        <Text style={[styles.title, disabled && styles.disabledTitle]}>
+          {title}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -35,10 +44,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#1d4ed8',
     borderRadius: 8,
-    minHeight: 48,
     justifyContent: 'center',
+    minHeight: 48,
     paddingHorizontal: 18,
     paddingVertical: 12,
+  },
+  content: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
   },
   disabled: {
     backgroundColor: '#cbd5e1',

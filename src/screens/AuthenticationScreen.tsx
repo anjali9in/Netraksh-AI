@@ -36,6 +36,7 @@ export function AuthenticationScreen(): React.JSX.Element {
         />
       ) : null}
       <PrimaryButton
+        icon="shield"
         title="Continue Authentication"
         onPress={() => {}}
         disabled={!capturedImagePath}

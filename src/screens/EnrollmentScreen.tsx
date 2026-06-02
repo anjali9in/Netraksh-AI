@@ -33,6 +33,7 @@ export function EnrollmentScreen(): React.JSX.Element {
         <StatusBadge label="Face image captured for enrollment" status="info" />
       ) : null}
       <PrimaryButton
+        icon="check"
         title="Continue Enrollment"
         onPress={() => {}}
         disabled={!capturedImagePath}
