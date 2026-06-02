@@ -21,6 +21,11 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    aaptOptions {
+        noCompress "tflite"
+    }
+
+    namespace "com.netrakshai"
     defaultConfig {
         applicationId "com.netrakshai"
         minSdkVersion rootProject.ext.minSdkVersion

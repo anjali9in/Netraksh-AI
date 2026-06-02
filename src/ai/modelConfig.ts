@@ -2,7 +2,7 @@ export type ModelFormat = 'tflite' | 'onnx' | 'coreml';
 
 export interface ModelConfig {
   modelName: string;
-  modelPath: string;      // path to the local model file (.tflite or .onnx)
+  modelPath: any;      // path to the local model file (.tflite or .onnx or require asset)
   modelFormat: ModelFormat;
   inputWidth: number;
   inputHeight: number;
@@ -27,7 +27,7 @@ export interface ModelConfig {
  */
 export const FACE_RECOGNITION_MODEL: ModelConfig = {
   modelName: "ArcFace-MobileNetV2",
-  modelPath: "models/arcface_mobilenet_v2.tflite",
+  modelPath: require('../assets/models/arcface_mobilenet_v2.tflite'),
   modelFormat: 'tflite',
   inputWidth: 112,
   inputHeight: 112,

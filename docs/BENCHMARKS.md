@@ -1,6 +1,8 @@
-# BENCHMARKS.md
+# Netraksh-AI: Performance Benchmark Report
 
-This document summarizes the performance metrics, model specifications, and expected system behavior of Netraksh AI. The benchmarks are intended to demonstrate that the application can perform face recognition and attendance verification efficiently on standard mobile devices.
+This document tracks the performance metrics, model footprints, and system execution profiles of **Netraksh-AI**. These benchmarks verify that the application performs facial authentication and liveness verification efficiently on standard midrange mobile devices in completely offline environments.
+
+---
 
 ## 🏗️ 1. Test Environment
 
