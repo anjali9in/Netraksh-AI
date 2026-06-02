@@ -25,7 +25,7 @@ export function ScreenContainer({
 
 const styles = StyleSheet.create({
   content: {
-    gap: 16,
+    gap: 10,
     padding: 20,
   },
   safeArea: {

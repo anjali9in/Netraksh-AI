@@ -12,6 +12,11 @@ export function AuthenticationScreen(): React.JSX.Element {
     null,
   );
 
+  const handleAuthentication = (empId: string, imagePath: string | null) => {
+    console.log('Continue authentication with Employee ID:', empId);
+    console.log('Captured image path:', imagePath);
+  };
+
   return (
     <ScreenContainer>
       <Text style={styles.placeholder}>
@@ -28,6 +33,7 @@ export function AuthenticationScreen(): React.JSX.Element {
         title="Authentication Capture"
         description="Use the front camera to capture the person being verified."
         onPhotoCaptured={image => setCapturedImagePath(image.path)}
+        onPhotoCleared={() => setCapturedImagePath(null)}
       />
       {capturedImagePath ? (
         <StatusBadge
@@ -38,7 +44,7 @@ export function AuthenticationScreen(): React.JSX.Element {
       <PrimaryButton
         icon="shield"
         title="Continue Authentication"
-        onPress={() => {}}
+        onPress={() => handleAuthentication(employeeId, capturedImagePath)}
         disabled={!capturedImagePath}
       />
     </ScreenContainer>
