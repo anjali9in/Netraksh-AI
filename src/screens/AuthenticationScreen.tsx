@@ -1,22 +1,20 @@
 import React, {useState} from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Alert, StyleSheet, Text, View} from 'react-native';
 
+import {AppHeader} from '../components/AppHeader';
+import {EmployeeInput} from '../components/EmployeeInput';
+import {InfoCard} from '../components/InfoCard';
 import {LiveScannerPanel} from '../components/LiveScannerPanel';
 import {PrimaryButton} from '../components/PrimaryButton';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
-import {secureStorageService} from '../services/SecureStorageService';
-import {offlineDatabaseService} from '../services/OfflineDatabaseService';
-import {livenessService} from '../services/liveness/livenessService';
 import {getDynamicThreshold} from '../ai/dynamicThreshold';
 import {FACE_RECOGNITION_MODEL} from '../ai/modelConfig';
+import {offlineDatabaseService} from '../services/OfflineDatabaseService';
+import {secureStorageService} from '../services/SecureStorageService';
+import {livenessService} from '../services/liveness/livenessService';
+import {colors} from '../theme/colors';
+import {radius, spacing} from '../theme/spacing';
 
 type AuthStep = 'ID_INPUT' | 'LIVE_SCANNING' | 'MATCHING' | 'RESULT';
 
@@ -46,11 +44,8 @@ export function AuthenticationScreen(): React.JSX.Element {
     setStep('MATCHING');
     setCapturedImagePath(imagePath);
 
-    // Simulate lighting and quality metrics
-    const simulatedBrightness = 90 + Math.floor(Math.random() * 60); // Optimal: 90 - 150
-    const simulatedQuality = 0.85 + Math.random() * 0.12; // Good quality: 85% - 97%
-
-    // Determine dynamic match threshold
+    const simulatedBrightness = 90 + Math.floor(Math.random() * 60);
+    const simulatedQuality = 0.85 + Math.random() * 0.12;
     const dynamicResult = getDynamicThreshold(
       simulatedBrightness,
       simulatedQuality,
@@ -65,7 +60,6 @@ export function AuthenticationScreen(): React.JSX.Element {
       );
       const elapsedMs = Date.now() - startTime;
 
-      // Log attempts in database
       const logId = await offlineDatabaseService.logAuthAttempt({
         employeeId: employeeId.trim().toUpperCase(),
         authStatus: matchResult.success ? 'SUCCESS' : 'FAILED',
@@ -74,18 +68,17 @@ export function AuthenticationScreen(): React.JSX.Element {
           : matchResult.error || 'Face template mismatch',
         similarityScore:
           matchResult.score !== undefined ? matchResult.score : null,
-        livenessStatus: 'PASSED', // successfully passed in previous step
+        livenessStatus: 'PASSED',
         challengeType:
           livenessService.getSessionState().challenges[0]?.type || 'BLINK',
         deviceId: 'device-tablet-01',
         modelVersion: FACE_RECOGNITION_MODEL.modelName,
       });
 
-      // Retrieve full entry to display generated integrity hash
       let logHash = '';
       if (logId) {
         const logs = await offlineDatabaseService.getAllLogs();
-        const found = logs.find(l => l.id === logId);
+        const found = logs.find(log => log.id === logId);
         if (found) {
           logHash = found.logHash || '';
         }
@@ -100,7 +93,6 @@ export function AuthenticationScreen(): React.JSX.Element {
           : matchResult.error || 'Face template mismatch',
         logHash,
       });
-
       setStep('RESULT');
     } catch (error) {
       console.error(error);
@@ -119,92 +111,98 @@ export function AuthenticationScreen(): React.JSX.Element {
     setStep('ID_INPUT');
   };
 
-  // UI rendering based on steps
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
-      {step === 'ID_INPUT' && (
-        <View style={styles.card}>
-          <Text style={styles.title}>Secure Face Login</Text>
-          <Text style={styles.subtitle}>
-            Authenticate securely using on-device face recognition and liveness
-            detection.
-          </Text>
-          <TextInput
-            autoCapitalize="characters"
+      <AppHeader
+        title="Authenticate User"
+        subtitle="Verify employee identity with local face matching and liveness checks."
+        statusLabel="Offline auth enabled"
+        status="success"
+      />
+
+      {step === 'ID_INPUT' ? (
+        <InfoCard
+          title="Secure Face Login"
+          subtitle="Enter the employee ID before starting the on-device verification flow."
+          style={styles.section}
+        >
+          <EmployeeInput
+            helperText="Authentication attempts are logged locally with integrity hashes."
             onChangeText={setEmployeeId}
-            placeholder="ENTER EMPLOYEE ID (e.g. EMP042)"
-            placeholderTextColor="#94a3b8"
-            style={styles.input}
             value={employeeId}
           />
-          <PrimaryButton
-            title="Start Verification"
-            onPress={startVerification}
-          />
-        </View>
-      )}
+          <View style={styles.primaryAction}>
+            <PrimaryButton
+              icon="shield"
+              title="Start Verification"
+              onPress={startVerification}
+            />
+          </View>
+        </InfoCard>
+      ) : null}
 
-      {step === 'LIVE_SCANNING' && (
+      {step === 'LIVE_SCANNING' ? (
         <LiveScannerPanel
           employeeId={employeeId}
           onLivenessComplete={runFaceMatching}
           onCancel={() => setStep('ID_INPUT')}
         />
-      )}
+      ) : null}
 
-      {step === 'MATCHING' && (
-        <View style={styles.matchingCard}>
-          <ActivityIndicator color="#6366f1" size="large" />
-          <Text style={styles.matchingText}>Verifying Face Embeddings...</Text>
-          <Text style={styles.matchingSubtext}>
-            Matching 512-dim face landmarks against offline database templates.
-          </Text>
-        </View>
-      )}
+      {step === 'MATCHING' ? (
+        <InfoCard style={styles.section}>
+          <View style={styles.matchingContent}>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={styles.matchingText}>Verifying face embeddings</Text>
+            <Text style={styles.matchingSubtext}>
+              Matching 512-dim face landmarks against encrypted offline
+              templates.
+            </Text>
+          </View>
+        </InfoCard>
+      ) : null}
 
-      {step === 'RESULT' && authResult && (
-        <View style={styles.card}>
-          <Text
-            style={[
-              styles.resultTitle,
-              {color: authResult.success ? '#10b981' : '#ef4444'},
-            ]}
-          >
-            {authResult.success
-              ? 'Authentication Success ✅'
-              : 'Authentication Failed ❌'}
-          </Text>
+      {step === 'RESULT' && authResult ? (
+        <InfoCard
+          title={
+            authResult.success ? 'Authentication Success' : 'Access Denied'
+          }
+          subtitle={
+            authResult.success
+              ? 'Attendance logged offline with tamper-evident hash.'
+              : 'Failed attempt was recorded for audit review.'
+          }
+          style={styles.section}
+        >
+          <StatusBadge
+            label={
+              authResult.success
+                ? 'Access granted'
+                : authResult.reason || 'Access denied'
+            }
+            status={authResult.success ? 'success' : 'error'}
+          />
 
           <View style={styles.detailsBox}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Employee ID:</Text>
-              <Text style={styles.detailValue}>{employeeId.toUpperCase()}</Text>
-            </View>
-            {authResult.score !== undefined && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Similarity Score:</Text>
-                <Text style={styles.detailValue}>
-                  {authResult.score.toFixed(4)}
-                </Text>
-              </View>
-            )}
-            {authResult.matchTimeMs !== undefined && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Pipeline Time:</Text>
-                <Text style={styles.detailValue}>
-                  {authResult.matchTimeMs} ms
-                </Text>
-              </View>
-            )}
-            {authResult.reason && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Failure Reason:</Text>
-                <Text style={styles.detailValue}>{authResult.reason}</Text>
-              </View>
-            )}
+            <DetailRow label="Employee ID" value={employeeId.toUpperCase()} />
+            {authResult.score !== undefined ? (
+              <DetailRow
+                label="Similarity Score"
+                value={authResult.score.toFixed(4)}
+              />
+            ) : null}
+            {authResult.matchTimeMs !== undefined ? (
+              <DetailRow
+                label="Pipeline Time"
+                value={`${authResult.matchTimeMs} ms`}
+              />
+            ) : null}
+            {authResult.reason ? (
+              <DetailRow label="Failure Reason" value={authResult.reason} />
+            ) : null}
             {authResult.logHash ? (
               <View style={styles.hashBox}>
-                <Text style={styles.hashLabel}>Integrity Hash (SHA-256):</Text>
+                <Text style={styles.hashLabel}>Integrity Hash (SHA-256)</Text>
                 <Text style={styles.hashText} numberOfLines={2}>
                   {authResult.logHash}
                 </Text>
@@ -212,204 +210,100 @@ export function AuthenticationScreen(): React.JSX.Element {
             ) : null}
           </View>
 
-          <StatusBadge
-            label={
-              authResult.success
-                ? 'Access Granted. Attendance logged offline.'
-                : 'Access Denied. Log created.'
-            }
-            status={authResult.success ? 'success' : 'error'}
-          />
-
           <PrimaryButton title="Done" onPress={resetAll} />
-        </View>
-      )}
+        </InfoCard>
+      ) : null}
     </ScreenContainer>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): React.JSX.Element {
+  return (
+    <View style={styles.detailRow}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue}>{value}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: 32,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 20,
-    shadowColor: '#0f172a',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  title: {
-    color: '#0f172a',
-    fontSize: 22,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: '#475569',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    borderWidth: 1,
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '600',
-    minHeight: 48,
-    marginBottom: 14,
-    paddingHorizontal: 14,
-    textAlign: 'center',
-  },
-  inputDisabled: {
-    backgroundColor: '#e2e8f0',
-    color: '#64748b',
-  },
-  cameraWrapper: {
-    flex: 1,
-  },
-  hudCard: {
-    backgroundColor: '#0f172a',
-    borderRadius: 12,
-    padding: 20,
-  },
-  hudTitle: {
-    color: '#34d399',
-    fontSize: 18,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  hudStatus: {
-    color: '#94a3b8',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 2,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  challengeBox: {
-    alignItems: 'center',
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
-    borderColor: '#334155',
-    borderWidth: 1,
-    justifyContent: 'center',
-    marginTop: 16,
-    padding: 16,
-  },
-  challengeInstruction: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  challengeProgress: {
-    color: '#10b981',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 6,
-  },
-  metricContainer: {
-    marginTop: 16,
-  },
-  metricLabel: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  barBackground: {
-    backgroundColor: '#1e293b',
-    borderRadius: 4,
-    height: 8,
-    marginTop: 6,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  metricValue: {
-    color: '#64748b',
-    fontSize: 11,
-    marginTop: 6,
-    textAlign: 'right',
-  },
-  matchingCard: {
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 32,
-  },
-  matchingText: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 12,
-  },
-  matchingSubtext: {
-    color: '#64748b',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  resultTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  detailsBox: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 8,
-    borderColor: '#cbd5e1',
-    borderWidth: 1,
-    marginBottom: 14,
-    marginTop: 14,
-    padding: 14,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+    backgroundColor: colors.background,
+    paddingBottom: spacing.xxxl,
   },
   detailLabel: {
-    color: '#64748b',
-    fontSize: 14,
-    fontWeight: '500',
+    color: colors.textSubtle,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  detailRow: {
+    alignItems: 'center',
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
   },
   detailValue: {
-    color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '700',
+    color: colors.text,
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    marginLeft: spacing.md,
+    textAlign: 'right',
+    width: '100%',
+  },
+  detailsBox: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    marginBottom: spacing.lg,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   hashBox: {
-    borderTopColor: '#e2e8f0',
-    borderTopWidth: 1,
-    paddingTop: 8,
-    marginTop: 4,
+    paddingVertical: spacing.md,
   },
   hashLabel: {
-    color: '#64748b',
+    color: colors.textSubtle,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   hashText: {
-    color: '#475569',
+    color: colors.textMuted,
     fontFamily: 'Courier',
     fontSize: 11,
-    lineHeight: 14,
-    marginTop: 4,
+    lineHeight: 15,
+    marginTop: spacing.xs,
+  },
+  matchingContent: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
+  matchingSubtext: {
+    color: colors.textSubtle,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  matchingText: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '800',
+    marginTop: spacing.md,
+  },
+  primaryAction: {
+    marginTop: spacing.lg,
+  },
+  section: {
+    marginTop: spacing.xl,
   },
 });

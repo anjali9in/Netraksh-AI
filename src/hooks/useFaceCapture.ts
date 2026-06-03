@@ -20,7 +20,9 @@ export function useFaceCapture({
   onPhotoCaptured,
   onPhotoCleared,
 }: UseFaceCaptureParams = {}) {
-  const device = useCameraDevice('front') ?? useCameraDevice('back');
+  const frontDevice = useCameraDevice('front');
+  const backDevice = useCameraDevice('back');
+  const device = frontDevice ?? backDevice;
 
   const [status, setStatus] =
     useState<CameraPermissionStatus>('not-determined');
@@ -37,8 +39,7 @@ export function useFaceCapture({
   const hasRequestedPermission = useRef(false);
 
   useEffect(() => {
-    const s = Camera.getCameraPermissionStatus();
-    setStatus(s as CameraPermissionStatus);
+    setStatus(Camera.getCameraPermissionStatus() as CameraPermissionStatus);
   }, []);
 
   const requestCameraPermission = useCallback(async () => {

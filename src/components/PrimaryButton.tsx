@@ -7,6 +7,8 @@ import {
   View,
 } from 'react-native';
 
+import {colors} from '../theme/colors';
+import {radius, spacing} from '../theme/spacing';
 import {ButtonIcon, ButtonIconName} from './icons/ButtonIcon';
 
 type PrimaryButtonProps = {
@@ -15,6 +17,7 @@ type PrimaryButtonProps = {
   disabled?: boolean;
   icon?: ButtonIconName;
   loading?: boolean;
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
 };
 
 export function PrimaryButton({
@@ -23,9 +26,13 @@ export function PrimaryButton({
   disabled = false,
   icon,
   loading = false,
+  variant = 'primary',
 }: PrimaryButtonProps): React.JSX.Element {
   const isDisabled = disabled || loading;
-  const iconColor = isDisabled ? '#64748b' : '#ffffff';
+  const iconColor =
+    isDisabled || variant === 'secondary' || variant === 'ghost'
+      ? colors.textSubtle
+      : colors.surface;
 
   return (
     <Pressable
@@ -35,6 +42,7 @@ export function PrimaryButton({
       onPress={onPress}
       style={({pressed}) => [
         styles.button,
+        styles[variant],
         isDisabled && styles.disabled,
         pressed && !isDisabled && styles.pressed,
       ]}
@@ -49,6 +57,8 @@ export function PrimaryButton({
           style={[
             styles.title,
             (icon || loading) && styles.titleWithIcon,
+            (variant === 'secondary' || variant === 'ghost') &&
+              styles.secondaryTitle,
             isDisabled && styles.disabledTitle,
           ]}
         >
@@ -62,33 +72,55 @@ export function PrimaryButton({
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    backgroundColor: '#1d4ed8',
-    borderRadius: 8,
+    borderRadius: radius.md,
     justifyContent: 'center',
     minHeight: 48,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
   },
   content: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
   },
+  danger: {
+    backgroundColor: colors.error,
+  },
   disabled: {
-    backgroundColor: '#cbd5e1',
+    backgroundColor: colors.border,
+    borderColor: colors.border,
   },
   disabledTitle: {
-    color: '#64748b',
+    color: colors.textSubtle,
+  },
+  ghost: {
+    backgroundColor: 'transparent',
+  },
+  primary: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.primaryDark,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    elevation: 3,
   },
   pressed: {
     opacity: 0.82,
   },
+  secondary: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+  },
+  secondaryTitle: {
+    color: colors.text,
+  },
   title: {
-    color: '#ffffff',
+    color: colors.surface,
     fontSize: 16,
     fontWeight: '700',
   },
   titleWithIcon: {
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
 });

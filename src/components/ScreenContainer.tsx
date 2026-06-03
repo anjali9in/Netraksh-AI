@@ -2,6 +2,9 @@ import React from 'react';
 import {ScrollView, StyleSheet, ViewStyle} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
+import {colors} from '../theme/colors';
+import {spacing} from '../theme/spacing';
+
 type ScreenContainerProps = {
   children: React.ReactNode;
   contentContainerStyle?: ViewStyle;
@@ -25,10 +28,10 @@ export function ScreenContainer({
 
 const styles = StyleSheet.create({
   content: {
-    padding: 20,
+    padding: spacing.xl,
   },
   safeArea: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background,
     flex: 1,
   },
 });
