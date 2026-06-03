@@ -1,3 +1,6 @@
+# After npm install (applies patches for @op-engineering/op-sqlite), run: cd ios && pod install
+# Minimum iOS: 12.4 (matches NetrakshAI.xcodeproj). op-sqlite is patched for 12.4 via patch-package.
+
 def patch_text_file(path)
   return unless File.exist?(path)
 

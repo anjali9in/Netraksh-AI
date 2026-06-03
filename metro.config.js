@@ -1,21 +1,9 @@
-const { getDefaultConfig } = require('metro-config');
+const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
 
-module.exports = (async () => {
-  const {
-    resolver: { assetExts },
-  } = await getDefaultConfig();
+const defaultConfig = getDefaultConfig(__dirname);
 
-  return {
-    transformer: {
-      getTransformOptions: async () => ({
-        transform: {
-          experimentalImportSupport: false,
-          inlineRequires: true,
-        },
-      }),
-    },
-    resolver: {
-      assetExts: [...assetExts, 'tflite'],
-    },
-  };
-})();
+module.exports = mergeConfig(defaultConfig, {
+  resolver: {
+    assetExts: [...defaultConfig.resolver.assetExts, 'tflite'],
+  },
+});

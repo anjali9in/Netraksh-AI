@@ -1,0 +1,59 @@
+diff --git a/node_modules/@op-engineering/op-sqlite/android/build.gradle b/node_modules/@op-engineering/op-sqlite/android/build.gradle
+index f3e7784..7a689ea 100644
+--- a/node_modules/@op-engineering/op-sqlite/android/build.gradle
++++ b/node_modules/@op-engineering/op-sqlite/android/build.gradle
+@@ -57,12 +57,10 @@ android {
+   
+   // Used to override the NDK path/version on internal CI or by allowing
+   // users to customize the NDK path/version from their root project (e.g. for M1 support)
+-  if (rootProject.hasProperty("ndkPath")) {
++  if (rootProject.ext.has("ndkPath")) {
+     ndkPath rootProject.ext.ndkPath
+   }
+-  if (rootProject.hasProperty("ndkVersion")) {
+-    ndkVersion rootProject.ext.ndkVersion
+-  }
++  ndkVersion safeExtGet("ndkVersion", "23.1.7779620")
+ 
+   buildFeatures {
+     prefab true
+@@ -141,24 +139,9 @@ repositories {
+ 
+ def kotlin_version = getExtOrDefault("kotlinVersion")
+ dependencies {
+-  implementation 'com.facebook.react:react-native'
++  implementation("com.facebook.react:react-android")
+   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+   if (System.getenv("OP_SQLITE_USE_SQLCIPHER") == '1') {
+     implementation('com.android.ndk.thirdparty:openssl:1.1.1q-beta-1')
+   }
+ }
+-
+-// Resolves "LOCAL_SRC_FILES points to a missing file, Check that libfb.so exists or that its path is correct".
+-tasks.whenTaskAdded { task ->
+-  if (task.name.contains("configureCMakeDebug")) {
+-    rootProject.getTasksByName("packageReactNdkDebugLibs", true).forEach {
+-      task.dependsOn(it)
+-    }
+-  }
+-  // We want to add a dependency for both configureCMakeRelease and configureCMakeRelWithDebInfo
+-  if (task.name.contains("configureCMakeRel")) {
+-    rootProject.getTasksByName("packageReactNdkReleaseLibs", true).forEach {
+-      task.dependsOn(it)
+-    }
+-  }
+-}
+\ No newline at end of file
+diff --git a/node_modules/@op-engineering/op-sqlite/op-sqlite.podspec b/node_modules/@op-engineering/op-sqlite/op-sqlite.podspec
+index f6ecb1e..baf9734 100644
+--- a/node_modules/@op-engineering/op-sqlite/op-sqlite.podspec
++++ b/node_modules/@op-engineering/op-sqlite/op-sqlite.podspec
+@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
+   s.license      = package["license"]
+   s.authors      = package["author"]
+ 
+-  s.platforms    = { :ios => "13.0", :osx => "10.15" }
++  s.platforms    = { :ios => "12.4", :osx => "10.15" }
+   s.source       = { :git => "https://github.com/op-engineering/op-sqlite.git", :tag => "#{s.version}" }
+   
+   # s.header_mappings_dir = "cpp"
