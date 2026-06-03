@@ -90,6 +90,10 @@ export function useFaceCapture({
     try {
       const photo = await cameraRef.current.takePhoto({
         flash: 'off',
+        qualityPrioritization: 'quality',
+        enableAutoStabilization: true,
+        enableAutoDistortionCorrection: true,
+        enablePrecapture: true,
       });
 
       const image: CapturedFaceImage = {
@@ -97,6 +101,17 @@ export function useFaceCapture({
         uri: toFileUri(photo.path),
         capturedAt: new Date().toISOString(),
         source: 'camera',
+        width: photo.width,
+        height: photo.height,
+        orientation: photo.orientation,
+        isMirrored: photo.isMirrored,
+        metadata: {
+          brightnessValue: photo.metadata?.['{Exif}']?.BrightnessValue,
+          exposureTime: photo.metadata?.['{Exif}']?.ExposureTime,
+          isoSpeedRatings: photo.metadata?.['{Exif}']?.ISOSpeedRatings,
+          subjectArea: photo.metadata?.['{Exif}']?.SubjectArea,
+          flash: photo.metadata?.['{Exif}']?.Flash,
+        },
       };
 
       setCapturedImage(image);
