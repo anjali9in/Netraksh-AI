@@ -9,7 +9,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 
+import {AppHeader} from '../components/AppHeader';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
 import {
@@ -18,6 +20,7 @@ import {
 } from '../services/OfflineDatabaseService';
 
 export function OfflineLogsScreen(): React.JSX.Element {
+  const navigation = useNavigation();
   const [logs, setLogs] = useState<AuthLogEntry[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuthLogEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,6 +150,14 @@ export function OfflineLogsScreen(): React.JSX.Element {
 
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
+      <AppHeader
+        title="Offline Logs"
+        subtitle="Review locally stored authentication and sync records."
+        statusLabel={`${pendingSyncCount} pending sync`}
+        status={pendingSyncCount > 0 ? 'warning' : 'success'}
+        onBackPress={() => navigation.goBack()}
+      />
+
       {/* Metrics Cards */}
       <View style={styles.metricsRow}>
         <View style={[styles.metricCard, {borderLeftColor: '#4f46e5'}]}>
@@ -359,6 +370,7 @@ const styles = StyleSheet.create({
   },
   metricsRow: {
     flexDirection: 'row',
+    marginTop: 16,
   },
   metricCard: {
     flex: 1,

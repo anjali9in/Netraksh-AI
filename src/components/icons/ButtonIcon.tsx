@@ -9,6 +9,7 @@ import Svg, {
 } from 'react-native-svg';
 
 export type ButtonIconName =
+  | 'arrowLeft'
   | 'camera'
   | 'check'
   | 'chart'
@@ -51,6 +52,13 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
   };
 
   switch (name) {
+    case 'arrowLeft':
+      return (
+        <>
+          <Line x1="19" x2="5" y1="12" y2="12" {...lineProps} />
+          <Polyline points="12 19 5 12 12 5" {...lineProps} />
+        </>
+      );
     case 'camera':
       return (
         <>
