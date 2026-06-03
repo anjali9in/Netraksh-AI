@@ -1,3 +1,6 @@
+# After npm install (applies patches for @op-engineering/op-sqlite), run: cd ios && pod install
+# Minimum iOS: 12.4 (matches NetrakshAI.xcodeproj). op-sqlite is patched for 12.4 via patch-package.
+
 def patch_text_file(path)
   return unless File.exist?(path)
 
@@ -17,10 +20,15 @@ end
 
 script_phases_path = File.expand_path('../node_modules/react-native/scripts/react_native_pods_utils/script_phases.rb', __dir__)
 patch_text_file(script_phases_path) do |contents|
-  contents.gsub(
-    '/bin/sh -c "$WITH_ENVIRONMENT $SCRIPT_PHASES_SCRIPT"',
-    '"$WITH_ENVIRONMENT" "$SCRIPT_PHASES_SCRIPT"'
-  )
+  contents
+    .gsub(
+      '/bin/sh -c "$WITH_ENVIRONMENT $SCRIPT_PHASES_SCRIPT"',
+      '"$WITH_ENVIRONMENT" "$SCRIPT_PHASES_SCRIPT"'
+    )
+    .gsub(
+      "ERB.new(template, 0, '->')",
+      "ERB.new(template, trim_mode: '->')"
+    )
 end
 
 with_environment_path = File.expand_path('../node_modules/react-native/scripts/xcode/with-environment.sh', __dir__)
@@ -63,7 +71,7 @@ end
 require_relative '../node_modules/react-native/scripts/react_native_pods'
 require_relative '../node_modules/@react-native-community/cli-platform-ios/native_modules'
 
-platform :ios, min_ios_version_supported
+platform :ios, '12.4'
 install! 'cocoapods', :deterministic_uuids => false
 
 target 'NetrakshAI' do
@@ -82,9 +90,10 @@ target 'NetrakshAI' do
     react_native_post_install(installer)
     __apply_Xcode_12_5_M1_post_install_workaround(installer)
 
+    # Set iOS 12.4 for all pods to ensure compatibility
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = min_ios_version_supported
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.4'
       end
     end
   end

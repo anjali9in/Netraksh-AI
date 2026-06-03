@@ -1,46 +1,27 @@
 apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
 
-project.ext.react = [
-    enableHermes: false,
-]
-
-apply from: file("../../node_modules/react-native/react.gradle")
-
-def enableSeparateBuildPerCPUArchitecture = false
 def enableProguardInReleaseBuilds = false
 def jscFlavor = 'org.webkit:android-jsc:+'
-def enableHermes = project.ext.react.get("enableHermes", false)
 
 android {
+    ndkVersion rootProject.ext.ndkVersion
     compileSdkVersion rootProject.ext.compileSdkVersion
-    buildToolsVersion rootProject.ext.buildToolsVersion
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-
-    aaptOptions {
-        noCompress "tflite"
-    }
-
     namespace "com.netrakshai"
+
+    buildFeatures {
+        prefab true
+    }
+
     defaultConfig {
         applicationId "com.netrakshai"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
-    }
-
-    splits {
-        abi {
-            reset()
-            enable enableSeparateBuildPerCPUArchitecture
-            universalApk false
-            include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
-        }
+        manifestPlaceholders = [usesCleartextTraffic: "true"]
+        buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
+        buildConfigField "boolean", "IS_HERMES_ENABLED", (findProperty("hermesEnabled") ?: "true").toString()
     }
 
     signingConfigs {
@@ -67,17 +48,17 @@ android {
         pickFirst '**/libc++_shared.so'
         pickFirst '**/libfbjni.so'
     }
+
+    androidResources {
+        noCompress 'tflite'
+    }
 }
 
 dependencies {
-    implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation "com.facebook.react:react-native:+"
-    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
+    implementation("com.facebook.react:react-android")
 
-    if (enableHermes) {
-        implementation("com.facebook.react:hermes-engine:+") {
-            exclude group: 'com.facebook.fbjni'
-        }
+    if (hermesEnabled.toBoolean()) {
+        implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
     }

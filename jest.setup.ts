@@ -212,90 +212,43 @@ const mockExecute = async (sql: string, params: any[] = []) => {
   };
 };
 
-const toResultSet = (result: any) => ({
-  insertId: result.insertId,
-  rowsAffected: result.rowsAffected,
-  rows: {
-    length: result.rows.length,
-    item: (index: number) => result.rows[index],
-    raw: () => result.rows,
-  },
-});
+jest.mock('@op-engineering/op-sqlite', () => {
+  const createConnection = () => ({
+    execute: jest.fn().mockImplementation(async (sql: string, params: any[] = []) => {
+      const result = await mockExecute(sql, params);
+      return {
+        insertId: result.insertId,
+        rowsAffected: result.rowsAffected,
+        rows: {_array: result.rows},
+      };
+    }),
+    executeAsync: jest.fn().mockImplementation(async (sql: string, params: any[] = []) => {
+      const result = await mockExecute(sql, params);
+      return {
+        insertId: result.insertId,
+        rowsAffected: result.rowsAffected,
+        rows: {_array: result.rows},
+      };
+    }),
+    transaction: jest.fn().mockImplementation(async (callback: any) => {
+      return callback({
+        execute: jest.fn().mockImplementation(async (sql: string, params: any[] = []) => {
+          const result = await mockExecute(sql, params);
+          return {
+            insertId: result.insertId,
+            rowsAffected: result.rowsAffected,
+            rows: {_array: result.rows},
+          };
+        }),
+      });
+    }),
+    close: jest.fn(),
+  });
 
-jest.mock(
-  'react-native-sqlite-storage',
-  () => {
-    const sqlite = {
-      enablePromise: jest.fn(),
-      openDatabase: jest.fn().mockImplementation(async () => {
-        return {
-          executeSql: jest
-            .fn()
-            .mockImplementation(async (sql: string, params: any[] = []) => {
-              const result = await mockExecute(sql, params);
-              return [toResultSet(result)];
-            }),
-          transaction: jest.fn().mockImplementation(async (callback: any) => {
-            return callback({
-              executeSql: jest
-                .fn()
-                .mockImplementation(async (sql: string, params: any[] = []) => {
-                  const result = await mockExecute(sql, params);
-                  return [undefined, toResultSet(result)];
-                }),
-            });
-          }),
-          close: jest.fn().mockResolvedValue(undefined),
-        };
-      }),
-    };
-
-    return {
-      __esModule: true,
-      default: sqlite,
-      ...sqlite,
-    };
-  },
-  {virtual: true},
-);
-
-jest.mock(
-  '@op-engineering/op-sqlite',
-  () => {
-    return {
-      openAsync: jest.fn().mockImplementation(async () => {
-        return {
-          execute: jest
-            .fn()
-            .mockImplementation(async (sql: string, params: any[] = []) => {
-              const result = await mockExecute(sql, params);
-              return {
-                insertId: result.insertId,
-                rowsAffected: result.rowsAffected,
-                rows: result.rows,
-              };
-            }),
-          transaction: jest.fn().mockImplementation(async (callback: any) => {
-            return callback({
-              execute: jest
-                .fn()
-                .mockImplementation(async (sql: string, params: any[] = []) => {
-                  const result = await mockExecute(sql, params);
-                  return {
-                    insertId: result.insertId,
-                    rowsAffected: result.rowsAffected,
-                    rows: result.rows,
-                  };
-                }),
-            });
-          }),
-          closeAsync: jest.fn().mockResolvedValue(undefined),
-        };
-      }),
-    };
-  },
-  {virtual: true},
-);
+  return {
+    open: jest.fn().mockImplementation(() => createConnection()),
+  };
+}, { virtual: true });
 
 // ============================================================================
 // OTHER NATIVE MODULE MOCKS
@@ -416,4 +369,4 @@ jest.mock('react-native-nitro-image', () => {
       };
     }),
   };
-});
+}, {virtual: true});
