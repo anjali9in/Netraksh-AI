@@ -349,6 +349,32 @@ jest.mock('react-native', () => {
   return RN;
 });
 
+jest.mock('react-native-fs', () => ({
+  readFile: jest.fn().mockResolvedValue(''),
+  unlink: jest.fn().mockResolvedValue(undefined),
+  DocumentDirectoryPath: '/mock-documents',
+  CachesDirectoryPath: '/mock-caches',
+}), {virtual: true});
+
+jest.mock('@bam.tech/react-native-image-resizer', () => ({
+  createResizedImage: jest.fn().mockResolvedValue({
+    path: '/mock-resized-path.jpg',
+    uri: 'file:///mock-resized-path.jpg',
+    name: 'mock-resized-path.jpg',
+    size: 1024,
+    width: 112,
+    height: 112,
+  }),
+}), {virtual: true});
+
+jest.mock('jpeg-js', () => ({
+  decode: jest.fn().mockReturnValue({
+    width: 112,
+    height: 112,
+    data: new ArrayBuffer(112 * 112 * 4),
+  }),
+}), {virtual: true});
+
 // ============================================================================
 // AI MODEL & IMAGE PROCESSING MOCKS
 // ============================================================================

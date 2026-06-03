@@ -54,22 +54,28 @@ async function encryptEmbedding(embedding: number[]): Promise<string> {
  * Decrypts/deserializes the embedding vector from a string representation.
  */
 async function decryptEmbedding(encrypted: string): Promise<number[]> {
-  if (encrypted.startsWith('[') && encrypted.endsWith(']')) {
-    return JSON.parse(encrypted) as number[];
+  if (!encrypted) {
+    throw new Error('Encrypted embedding string is empty or undefined');
   }
-  if (!encrypted.includes(':')) {
+  const cleanEncrypted = encrypted.replace(/\0/g, '').trim();
+  if (cleanEncrypted.startsWith('[') && cleanEncrypted.endsWith(']')) {
+    return JSON.parse(cleanEncrypted) as number[];
+  }
+  if (!cleanEncrypted.includes(':')) {
     try {
-      const jsonStr = base64Decode(encrypted);
+      let jsonStr = base64Decode(cleanEncrypted);
+      jsonStr = jsonStr.replace(/\0/g, '').trim();
       if (jsonStr.startsWith('[') && jsonStr.endsWith(']')) {
         return JSON.parse(jsonStr) as number[];
       }
     } catch (e) {
       console.warn('[FaceMatcher] Failed to base64 decode legacy embedding, trying direct parse:', e);
     }
-    return JSON.parse(encrypted) as number[];
+    return JSON.parse(cleanEncrypted) as number[];
   }
-  const jsonStr = await decryptData(encrypted);
-  return JSON.parse(jsonStr) as number[];
+  const jsonStr = await decryptData(cleanEncrypted);
+  const cleanJsonStr = jsonStr.replace(/\0/g, '').trim();
+  return JSON.parse(cleanJsonStr) as number[];
 }
 
 /**
