@@ -10,8 +10,8 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import type {ButtonIconName} from './icons/ButtonIcon';
 import {
+  FOOTER_NAV_ITEMS,
   MAIN_NAV_ITEMS,
-  PROFILE_NAV_ITEM,
 } from '../app/navigation/navigationConfig';
 import {ROUTES, type RouteName} from '../app/navigation/routes';
 import {colors} from '../theme/colors';
@@ -81,12 +81,15 @@ export function LeftNavigationBar({
       </View>
 
       <View style={styles.footer}>
-        <NavButton
-          active={activeRoute === PROFILE_NAV_ITEM.route}
-          icon={PROFILE_NAV_ITEM.icon}
-          label={PROFILE_NAV_ITEM.label}
-          onPress={() => navigateTo(PROFILE_NAV_ITEM.route)}
-        />
+        {FOOTER_NAV_ITEMS.map(item => (
+          <NavButton
+            key={item.route}
+            active={activeRoute === item.route}
+            icon={item.icon}
+            label={item.label}
+            onPress={() => navigateTo(item.route)}
+          />
+        ))}
       </View>
     </View>
   );

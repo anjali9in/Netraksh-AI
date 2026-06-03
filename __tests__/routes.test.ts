@@ -8,5 +8,6 @@ describe('ROUTES', () => {
     expect(ROUTES.OFFLINE_LOGS).toBe('OfflineLogs');
     expect(ROUTES.BENCHMARK).toBe('Benchmark');
     expect(ROUTES.PROFILE).toBe('Profile');
+    expect(ROUTES.SETTINGS).toBe('Settings');
   });
 });

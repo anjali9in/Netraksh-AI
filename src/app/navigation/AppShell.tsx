@@ -1,9 +1,9 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 
+import {AppBar} from '../../components/AppBar';
 import {NavigationDrawer} from '../../components/NavigationDrawer';
 import {colors} from '../../theme/colors';
-import {NavigationMenuProvider} from './NavigationMenuContext';
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -11,12 +11,11 @@ type AppShellProps = {
 
 export function AppShell({children}: AppShellProps): React.JSX.Element {
   return (
-    <NavigationMenuProvider>
-      <View style={styles.shell}>
-        <View style={styles.content}>{children}</View>
-        <NavigationDrawer />
-      </View>
-    </NavigationMenuProvider>
+    <View style={styles.shell}>
+      <AppBar />
+      <View style={styles.content}>{children}</View>
+      <NavigationDrawer />
+    </View>
   );
 }
 

@@ -133,32 +133,6 @@ export function HomeScreen(): React.JSX.Element {
           </InfoCard>
 
           <InfoCard
-            title="Offline Logs"
-            subtitle="Inspect tamper-evident attendance and verification records."
-            style={styles.actionCard}
-          >
-            <PrimaryButton
-              icon="logs"
-              title="View Offline Logs"
-              onPress={() => navigation.navigate(ROUTES.OFFLINE_LOGS)}
-              variant="secondary"
-            />
-          </InfoCard>
-
-          <InfoCard
-            title="Benchmark Report"
-            subtitle="Review model performance, thresholds, and demo metrics."
-            style={styles.actionCard}
-          >
-            <PrimaryButton
-              icon="chart"
-              title="View Benchmark Report"
-              onPress={() => navigation.navigate(ROUTES.BENCHMARK)}
-              variant="secondary"
-            />
-          </InfoCard>
-
-          <InfoCard
             title="Sync Pending Data"
             subtitle={
               pendingLogs > 0

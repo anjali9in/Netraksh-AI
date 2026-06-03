@@ -16,6 +16,7 @@ export type ButtonIconName =
   | 'close'
   | 'home'
   | 'logs'
+  | 'menu'
   | 'refresh'
   | 'settings'
   | 'shield'
@@ -101,6 +102,14 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
           <Path d="M15 3v6h6" {...lineProps} />
           <Line x1="9" x2="17" y1="12" y2="12" {...lineProps} />
           <Line x1="9" x2="17" y1="16" y2="16" {...lineProps} />
+        </>
+      );
+    case 'menu':
+      return (
+        <>
+          <Line x1="4" x2="20" y1="6" y2="6" {...lineProps} />
+          <Line x1="4" x2="20" y1="12" y2="12" {...lineProps} />
+          <Line x1="4" x2="20" y1="18" y2="18" {...lineProps} />
         </>
       );
     case 'refresh':

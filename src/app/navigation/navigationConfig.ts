@@ -15,8 +15,17 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
   {route: ROUTES.BENCHMARK, label: 'Bench', icon: 'chart'},
 ];
 
-export const PROFILE_NAV_ITEM: NavItem = {
-  route: ROUTES.PROFILE,
-  label: 'Profile',
-  icon: 'user',
+export const FOOTER_NAV_ITEMS: NavItem[] = [
+  {route: ROUTES.PROFILE, label: 'Profile', icon: 'user'},
+  {route: ROUTES.SETTINGS, label: 'Settings', icon: 'settings'},
+];
+
+export const ROUTE_TITLES: Record<RouteName, string> = {
+  [ROUTES.HOME]: 'Home',
+  [ROUTES.ENROLLMENT]: 'Enroll User',
+  [ROUTES.AUTHENTICATION]: 'Authenticate',
+  [ROUTES.OFFLINE_LOGS]: 'Offline Logs',
+  [ROUTES.BENCHMARK]: 'Benchmark',
+  [ROUTES.PROFILE]: 'Profile',
+  [ROUTES.SETTINGS]: 'Settings',
 };

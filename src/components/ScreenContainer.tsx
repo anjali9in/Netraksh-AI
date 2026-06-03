@@ -15,7 +15,7 @@ export function ScreenContainer({
   contentContainerStyle,
 }: ScreenContainerProps): React.JSX.Element {
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={[styles.content, contentContainerStyle]}
         keyboardShouldPersistTaps="handled"
