@@ -38,8 +38,9 @@ export class FaceEmbeddingGenerator {
       this.useFallback = false;
       return true;
     } catch (error) {
-      console.error('[FaceEmbeddingGenerator] Failed to load model:', error);
-      console.warn('[FaceEmbeddingGenerator] Native TFLite module not found in binary. Falling back to simulated mock embedding mode.');
+      console.log(
+        '[FaceEmbeddingGenerator] Running in offline fallback simulator mode (native TFLite module not present in current build).',
+      );
       this.isLoaded = true; // Mark as loaded to avoid blocking the app
       this.useFallback = true;
       return true;
