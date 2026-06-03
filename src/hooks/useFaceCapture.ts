@@ -1,15 +1,15 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Linking} from 'react-native';
-import {Camera, useCameraDevices} from 'react-native-vision-camera';
+import {
+  Camera,
+  CameraRef,
+  useCameraDevice,
+  useCameraPermission,
+  usePhotoOutput,
+} from 'react-native-vision-camera';
 
 import type {CapturedFaceImage} from '../types/CameraTypes';
 import {toFileUri} from '../utils/fileUtils';
-
-type CameraPermissionStatus =
-  | 'not-determined'
-  | 'denied'
-  | 'never_ask_again'
-  | 'authorized';
 
 type UseFaceCaptureParams = {
   onPhotoCaptured?: (image: CapturedFaceImage) => void;
@@ -20,13 +20,10 @@ export function useFaceCapture({
   onPhotoCaptured,
   onPhotoCleared,
 }: UseFaceCaptureParams = {}) {
-  const devices = useCameraDevices();
-  const device = devices.front ?? devices.back;
-
-  const [status, setStatus] =
-    useState<CameraPermissionStatus>('not-determined');
-  const hasPermission = status === 'authorized';
-  const canRequestPermission = status === 'not-determined';
+  const device = useCameraDevice('front') ?? useCameraDevice('back');
+  const {hasPermission, requestPermission, canRequestPermission, status} =
+    useCameraPermission();
+  const photoOutput = usePhotoOutput();
 
   const [capturedImage, setCapturedImage] = useState<CapturedFaceImage | null>(
     null,
@@ -34,33 +31,17 @@ export function useFaceCapture({
   const [isCapturing, setIsCapturing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const cameraRef = useRef<Camera>(null);
+  const cameraRef = useRef<CameraRef>(null);
   const hasRequestedPermission = useRef(false);
-
-  useEffect(() => {
-    Camera.getCameraPermissionStatus().then(s =>
-      setStatus(s as CameraPermissionStatus),
-    );
-  }, []);
 
   const requestCameraPermission = useCallback(async () => {
     setErrorMessage(null);
-
-    if (!canRequestPermission) {
-      setErrorMessage('Camera permission must be enabled from Settings.');
-      return false;
-    }
-
-    const result = await Camera.requestCameraPermission();
-    const granted = result === 'authorized';
-    setStatus(result as CameraPermissionStatus);
-
+    const granted = await requestPermission();
     if (!granted) {
       setErrorMessage('Camera permission is required to capture a face image.');
     }
-
     return granted;
-  }, [canRequestPermission]);
+  }, [requestPermission]);
 
   const openCameraSettings = useCallback(async () => {
     await Linking.openSettings();
@@ -81,21 +62,22 @@ export function useFaceCapture({
       return;
     }
 
-    if (!cameraRef.current) {
-      setErrorMessage('Camera is not ready.');
-      return;
-    }
-
     setIsCapturing(true);
 
     try {
-      const photo = await cameraRef.current.takePhoto({
-        flash: 'off',
-      });
+      const photo = await photoOutput.capturePhoto(
+        {
+          flashMode: 'off',
+        },
+        {},
+      );
+
+      const tempPath = await photo.saveToTemporaryFileAsync();
+      photo.dispose();
 
       const image: CapturedFaceImage = {
-        path: photo.path,
-        uri: toFileUri(photo.path),
+        path: tempPath,
+        uri: toFileUri(tempPath),
         capturedAt: new Date().toISOString(),
         source: 'camera',
       };
@@ -111,7 +93,13 @@ export function useFaceCapture({
     } finally {
       setIsCapturing(false);
     }
-  }, [device, hasPermission, onPhotoCaptured, requestCameraPermission]);
+  }, [
+    device,
+    hasPermission,
+    onPhotoCaptured,
+    requestCameraPermission,
+    photoOutput,
+  ]);
 
   const useMockCapture = useCallback(() => {
     const capturedAt = new Date().toISOString();
@@ -134,31 +122,28 @@ export function useFaceCapture({
   }, [onPhotoCleared]);
 
   useEffect(() => {
-    if (
-      hasPermission ||
-      !canRequestPermission ||
-      hasRequestedPermission.current
-    ) {
+    if (hasPermission || hasRequestedPermission.current) {
       return;
     }
 
     hasRequestedPermission.current = true;
     requestCameraPermission();
-  }, [canRequestPermission, hasPermission, requestCameraPermission]);
+  }, [hasPermission, requestCameraPermission]);
 
   return {
     cameraRef,
-    canRequestPermission,
+    photoOutput,
     capturedImage,
     captureFaceImage,
     canUseMockCapture: __DEV__ && hasPermission && !device,
     device,
     errorMessage,
     hasPermission,
+    canRequestPermission,
+    permissionStatus: status,
     isCameraReady: hasPermission && Boolean(device),
     isCapturing,
     openCameraSettings,
-    permissionStatus: status,
     requestCameraPermission,
     retake,
     useMockCapture,

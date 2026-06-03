@@ -20,10 +20,10 @@ Traditional attendance systems depend on continuous internet access, making them
 
 Netraksh AI addresses this problem by providing:
 
-* Offline face-based authentication
-* Liveness verification to prevent spoofing
-* Secure local storage
-* Automatic cloud synchronization when connectivity is restored
+- Offline face-based authentication
+- Liveness verification to prevent spoofing
+- Secure local storage
+- Automatic cloud synchronization when connectivity is restored
 
 ---
 
@@ -58,9 +58,9 @@ Face recognition is performed entirely on the device without sending biometric d
 
 The system verifies that a real person is present by asking the user to perform a random action such as:
 
-* Blink
-* Smile
-* Turn their head
+- Blink
+- Smile
+- Turn their head
 
 This helps prevent authentication using photographs, screenshots, or recorded videos.
 
@@ -70,9 +70,9 @@ Sensitive biometric information is encrypted before being stored locally.
 
 ### Cross-Platform Support
 
-* Android 7.0+
-* iOS 11.0+
-* Minimum 3 GB RAM
+- Android 7.0+
+- iOS 11.0+
+- Minimum 3 GB RAM
 
 ---
 
@@ -92,10 +92,10 @@ A random challenge is generated.
 
 Examples:
 
-* Blink
-* Smile
-* Turn Left
-* Turn Right
+- Blink
+- Smile
+- Turn Left
+- Turn Right
 
 The system tracks facial landmarks in real time to verify the action.
 
@@ -131,28 +131,28 @@ Runs on standard Android and iOS devices without requiring specialized hardware.
 
 ### Completed
 
-* Face Detection
-* Face Recognition Pipeline
-* Liveness Detection
-* Offline Storage
-* Cloud Synchronization Framework
-* Automated Unit Testing
+- Face Detection
+- Face Recognition Pipeline
+- Liveness Detection
+- Offline Storage
+- Cloud Synchronization Framework
+- Automated Unit Testing
 
 ### Testing Status
 
-* 6 Test Suites Passed
-* 37 Tests Passed
-* 0 Failures
+- 6 Test Suites Passed
+- 37 Tests Passed
+- 0 Failures
 
 ---
 
 ## Future Roadmap
 
-* Passive liveness detection
-* Multi-face support
-* Hardware acceleration using NNAPI and CoreML
-* Administrative analytics dashboard
-* Performance optimization for lower-end devices
+- Passive liveness detection
+- Multi-face support
+- Hardware acceleration using NNAPI and CoreML
+- Administrative analytics dashboard
+- Performance optimization for lower-end devices
 
 ---
 

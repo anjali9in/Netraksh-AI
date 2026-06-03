@@ -1,5 +1,5 @@
-import { FACE_RECOGNITION_MODEL } from './modelConfig';
-import { DEMO_MODE } from '../config/appConfig';
+import {FACE_RECOGNITION_MODEL} from './modelConfig';
+import {DEMO_MODE} from '../config/appConfig';
 
 export class FaceEmbeddingGenerator {
   private isLoaded: boolean = false;
@@ -15,21 +15,23 @@ export class FaceEmbeddingGenerator {
    */
   public async loadModel(): Promise<boolean> {
     try {
-      console.log(`[FaceEmbeddingGenerator] Loading model: ${FACE_RECOGNITION_MODEL.modelName} v${FACE_RECOGNITION_MODEL.version} | Format: ${FACE_RECOGNITION_MODEL.modelFormat} | Quantized: ${FACE_RECOGNITION_MODEL.quantized} | Path: ${FACE_RECOGNITION_MODEL.modelPath}`);
-      
+      console.log(
+        `[FaceEmbeddingGenerator] Loading model: ${FACE_RECOGNITION_MODEL.modelName} v${FACE_RECOGNITION_MODEL.version} | Format: ${FACE_RECOGNITION_MODEL.modelFormat} | Quantized: ${FACE_RECOGNITION_MODEL.quantized} | Path: ${FACE_RECOGNITION_MODEL.modelPath}`,
+      );
+
       if (DEMO_MODE) {
         this.isLoaded = true;
         return true;
       }
 
       // Load model using react-native-fast-tflite
-      const { loadTensorflowModel } = require('react-native-fast-tflite');
+      const {loadTensorflowModel} = require('react-native-fast-tflite');
       this.model = await loadTensorflowModel(FACE_RECOGNITION_MODEL.modelPath);
-      
+
       this.isLoaded = true;
       return true;
     } catch (error) {
-      console.error("[FaceEmbeddingGenerator] Failed to load model:", error);
+      console.error('[FaceEmbeddingGenerator] Failed to load model:', error);
       this.isLoaded = false;
       return false;
     }
@@ -46,25 +48,27 @@ export class FaceEmbeddingGenerator {
     if (!this.isLoaded) {
       const loaded = await this.loadModel();
       if (!loaded) {
-        throw new Error("Model is not loaded and failed to initialize");
+        throw new Error('Model is not loaded and failed to initialize');
       }
     }
 
     try {
       if (DEMO_MODE) {
         // Return a mock embedding vector of the correct dimension for simulation/development
-        console.log(`[FaceEmbeddingGenerator] DEMO_MODE: Generating mock embedding for ${imagePath}`);
+        console.log(
+          `[FaceEmbeddingGenerator] DEMO_MODE: Generating mock embedding for ${imagePath}`,
+        );
         return this.generateMockEmbedding(imagePath);
       }
 
       // 1. Load image using react-native-nitro-image
-      const { loadImage } = require('react-native-nitro-image');
-      const img = await loadImage({ filePath: imagePath });
+      const {loadImage} = require('react-native-nitro-image');
+      const img = await loadImage({filePath: imagePath});
 
       // 2. Resize to model expectations (112x112)
       const resized = await img.resizeAsync(
         FACE_RECOGNITION_MODEL.inputWidth,
-        FACE_RECOGNITION_MODEL.inputHeight
+        FACE_RECOGNITION_MODEL.inputHeight,
       );
 
       // 3. Extract raw pixel data
@@ -75,12 +79,12 @@ export class FaceEmbeddingGenerator {
 
       // 5. Run inference
       if (!this.model) {
-        throw new Error("Tensorflow model is not initialized");
+        throw new Error('Tensorflow model is not initialized');
       }
-      
+
       const output = await this.model.run([floatData.buffer]);
       if (!output || output.length === 0) {
-        throw new Error("Model inference returned no outputs");
+        throw new Error('Model inference returned no outputs');
       }
 
       // output[0] is a Float32Array (or Uint8Array if quantized output) containing the 512-dim embedding.
@@ -90,7 +94,10 @@ export class FaceEmbeddingGenerator {
       // 6. L2-Normalize the output vector to ensure accurate cosine similarity matching
       return this.l2Normalize(embedding);
     } catch (error) {
-      console.error("[FaceEmbeddingGenerator] Embedding generation error:", error);
+      console.error(
+        '[FaceEmbeddingGenerator] Embedding generation error:',
+        error,
+      );
       throw error;
     }
   }
@@ -99,7 +106,7 @@ export class FaceEmbeddingGenerator {
    * Preprocesses raw pixel data into a normalized Float32Array scaled to [-1.0, 1.0] in RGB format.
    */
   private preprocessPixels(pixelData: any): Float32Array {
-    const { buffer, pixelFormat, width, height } = pixelData;
+    const {buffer, pixelFormat, width, height} = pixelData;
     const data = new Uint8Array(buffer);
     const totalPixels = width * height;
     const floatData = new Float32Array(totalPixels * 3);
@@ -194,7 +201,7 @@ export class FaceEmbeddingGenerator {
   private generateMockEmbedding(imagePath: string): number[] {
     const dim = FACE_RECOGNITION_MODEL.embeddingDimension;
     const embedding: number[] = new Array(dim);
-    
+
     // Create a simple hash from the imagePath to generate a deterministic but distinct embedding per face
     let hash = 0;
     for (let i = 0; i < imagePath.length; i++) {

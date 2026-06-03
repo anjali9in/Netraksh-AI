@@ -8,10 +8,10 @@ The system is designed for field environments where connectivity may be unreliab
 
 The AI pipeline consists of four major components:
 
-* Face Detection
-* Face Recognition
-* Liveness Verification
-* Adaptive Thresholding
+- Face Detection
+- Face Recognition
+- Liveness Verification
+- Adaptive Thresholding
 
 Together, these components verify both a user's identity and physical presence before granting authentication.
 
@@ -42,11 +42,11 @@ ArcFace is a widely used face recognition framework that learns highly distincti
 
 Key advantages include:
 
-* Fast execution on smartphones
-* Small storage footprint
-* Offline operation
-* Efficient memory usage
-* Suitable for real-time authentication
+- Fast execution on smartphones
+- Small storage footprint
+- Offline operation
+- Efficient memory usage
+- Suitable for real-time authentication
 
 ---
 
@@ -78,9 +78,9 @@ The detected face region is isolated from the background and prepared for furthe
 
 To ensure consistency across different devices and lighting conditions, the detected face is:
 
-* Cropped from the image
-* Resized to 112 × 112 pixels
-* Normalized before model inference
+- Cropped from the image
+- Resized to 112 × 112 pixels
+- Normalized before model inference
 
 ### Step 3: Embedding Generation
 
@@ -106,8 +106,8 @@ Netraksh AI uses **Cosine Similarity** to compare facial embeddings.
 
 Where:
 
-* **A** = Current face embedding
-* **B** = Stored face embedding
+- **A** = Current face embedding
+- **B** = Stored face embedding
 
 ### Interpretation
 
@@ -128,9 +128,9 @@ To address this, Netraksh AI performs liveness verification before authenticatio
 
 ### Supported Liveness Challenges
 
-* Blink Detection
-* Smile Detection
-* Head Turn Verification
+- Blink Detection
+- Smile Detection
+- Head Turn Verification
 
 ### Authentication Flow
 
@@ -164,10 +164,10 @@ Environmental conditions can affect recognition quality.
 
 Examples include:
 
-* Poor lighting
-* Motion blur
-* Camera noise
-* Partial shadows
+- Poor lighting
+- Motion blur
+- Camera noise
+- Partial shadows
 
 To improve reliability, Netraksh AI dynamically adjusts verification thresholds based on image quality.
 
@@ -218,12 +218,12 @@ The AI pipeline is supported by automated testing to ensure reliability and cons
 
 ### Tested Components
 
-* Face Recognition Logic
-* Liveness Detection
-* Database Operations
-* Input Validation
-* Device Services
-* Routing Logic
+- Face Recognition Logic
+- Liveness Detection
+- Database Operations
+- Input Validation
+- Device Services
+- Routing Logic
 
 Automated testing helps ensure that new changes do not affect core authentication functionality.
 
@@ -233,12 +233,12 @@ Automated testing helps ensure that new changes do not affect core authenticatio
 
 Planned enhancements include:
 
-* Passive liveness detection
-* Multi-face recognition support
-* Hardware acceleration using NNAPI and CoreML
-* Faster inference on low-end devices
-* Enhanced anti-spoofing techniques
-* Expanded test coverage
+- Passive liveness detection
+- Multi-face recognition support
+- Hardware acceleration using NNAPI and CoreML
+- Faster inference on low-end devices
+- Enhanced anti-spoofing techniques
+- Expanded test coverage
 
 ---
 

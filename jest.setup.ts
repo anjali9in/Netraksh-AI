@@ -222,54 +222,52 @@ const toResultSet = (result: any) => ({
   },
 });
 
-jest.mock('react-native-sqlite-storage', () => {
-  const sqlite = {
-    enablePromise: jest.fn(),
-    openDatabase: jest.fn().mockImplementation(async () => {
-      return {
-        executeSql: jest
-          .fn()
-          .mockImplementation(async (sql: string, params: any[] = []) => {
-            const result = await mockExecute(sql, params);
-            return [toResultSet(result)];
+jest.mock(
+  'react-native-sqlite-storage',
+  () => {
+    const sqlite = {
+      enablePromise: jest.fn(),
+      openDatabase: jest.fn().mockImplementation(async () => {
+        return {
+          executeSql: jest
+            .fn()
+            .mockImplementation(async (sql: string, params: any[] = []) => {
+              const result = await mockExecute(sql, params);
+              return [toResultSet(result)];
+            }),
+          transaction: jest.fn().mockImplementation(async (callback: any) => {
+            return callback({
+              executeSql: jest
+                .fn()
+                .mockImplementation(async (sql: string, params: any[] = []) => {
+                  const result = await mockExecute(sql, params);
+                  return [undefined, toResultSet(result)];
+                }),
+            });
           }),
-        transaction: jest.fn().mockImplementation(async (callback: any) => {
-          return callback({
-            executeSql: jest
-              .fn()
-              .mockImplementation(async (sql: string, params: any[] = []) => {
-                const result = await mockExecute(sql, params);
-                return [undefined, toResultSet(result)];
-              }),
-          });
-        }),
-        close: jest.fn().mockResolvedValue(undefined),
-      };
-    }),
-  };
+          close: jest.fn().mockResolvedValue(undefined),
+        };
+      }),
+    };
 
-  return {
-    __esModule: true,
-    default: sqlite,
-    ...sqlite,
-  };
-}, { virtual: true });
+    return {
+      __esModule: true,
+      default: sqlite,
+      ...sqlite,
+    };
+  },
+  {virtual: true},
+);
 
-jest.mock('@op-engineering/op-sqlite', () => {
-  return {
-    openAsync: jest.fn().mockImplementation(async () => {
-      return {
-        execute: jest.fn().mockImplementation(async (sql: string, params: any[] = []) => {
-          const result = await mockExecute(sql, params);
-          return {
-            insertId: result.insertId,
-            rowsAffected: result.rowsAffected,
-            rows: result.rows,
-          };
-        }),
-        transaction: jest.fn().mockImplementation(async (callback: any) => {
-          return callback({
-            execute: jest.fn().mockImplementation(async (sql: string, params: any[] = []) => {
+jest.mock(
+  '@op-engineering/op-sqlite',
+  () => {
+    return {
+      openAsync: jest.fn().mockImplementation(async () => {
+        return {
+          execute: jest
+            .fn()
+            .mockImplementation(async (sql: string, params: any[] = []) => {
               const result = await mockExecute(sql, params);
               return {
                 insertId: result.insertId,
@@ -277,13 +275,27 @@ jest.mock('@op-engineering/op-sqlite', () => {
                 rows: result.rows,
               };
             }),
-          });
-        }),
-        closeAsync: jest.fn().mockResolvedValue(undefined),
-      };
-    }),
-  };
-}, { virtual: true });
+          transaction: jest.fn().mockImplementation(async (callback: any) => {
+            return callback({
+              execute: jest
+                .fn()
+                .mockImplementation(async (sql: string, params: any[] = []) => {
+                  const result = await mockExecute(sql, params);
+                  return {
+                    insertId: result.insertId,
+                    rowsAffected: result.rowsAffected,
+                    rows: result.rows,
+                  };
+                }),
+            });
+          }),
+          closeAsync: jest.fn().mockResolvedValue(undefined),
+        };
+      }),
+    };
+  },
+  {virtual: true},
+);
 
 // ============================================================================
 // OTHER NATIVE MODULE MOCKS
@@ -344,7 +356,7 @@ jest.mock('react-native-fast-tflite', () => {
         run: jest.fn().mockImplementation(async (inputs: any[]) => {
           const inputBuffer = inputs[0];
           const inputView = new Float32Array(inputBuffer);
-          
+
           // Generate a sum hash based on input buffer values (first 100 values to avoid overflow/NaN)
           let sum = 0;
           const len = Math.min(inputView.length, 100);
@@ -353,18 +365,18 @@ jest.mock('react-native-fast-tflite', () => {
               sum += inputView[i] * (i + 1);
             }
           }
-          
+
           // Return a mock output array buffer of size 512 floats
           const buffer = new ArrayBuffer(512 * 4);
           const view = new Float32Array(buffer);
-          
+
           let sumSq = 0;
           for (let i = 0; i < 512; i++) {
             const val = Math.sin(sum + i) * Math.cos(sum * i);
             view[i] = val;
             sumSq += val * val;
           }
-          
+
           const norm = Math.sqrt(sumSq);
           for (let i = 0; i < 512; i++) {
             view[i] = norm === 0 ? 0 : view[i] / norm;
@@ -388,7 +400,8 @@ jest.mock('react-native-nitro-image', () => {
               const buffer = new ArrayBuffer(112 * 112 * 4);
               const view = new Uint8Array(buffer);
               for (let i = 0; i < view.length; i++) {
-                const charIndex = (Math.floor(i / 4) + (i % 4)) % filePath.length;
+                const charIndex =
+                  (Math.floor(i / 4) + (i % 4)) % filePath.length;
                 view[i] = (i + filePath.charCodeAt(charIndex || 0)) % 256;
               }
               return {
@@ -404,5 +417,3 @@ jest.mock('react-native-nitro-image', () => {
     }),
   };
 });
-
-

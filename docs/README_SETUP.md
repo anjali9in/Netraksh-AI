@@ -61,7 +61,9 @@ emulator -avd <AVD_NAME>
 To ensure the project works across different machines and environments without changing shared files, use the following:
 
 #### 1. Android SDK & Build Paths
+
 Create/edit `android/local.properties`. This file is ignored by Git and should contain machine-specific paths:
+
 ```properties
 # Windows example
 sdk.dir=C:/Users/YourUser/AppData/Local/Android/Sdk
@@ -71,11 +73,14 @@ sdk.dir=C:/Users/YourUser/AppData/Local/Android/Sdk
 ```
 
 #### 2. Java / JDK
+
 The project requires **Java 21**. It is best to set this globally via environment variables:
+
 - **Windows**: `setx JAVA_HOME "C:\Program Files\Java\jdk-21"`
 - **macOS/Linux**: `export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home"`
 
 #### 3. App Environment
+
 App-level constants are in `src/config/env.ts`. For different backend environments, you can modify these values or (in future steps) use a `.env` file.
 
 Then run:

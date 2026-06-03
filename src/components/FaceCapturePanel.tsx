@@ -27,6 +27,7 @@ export function FaceCapturePanel({
   const [appState, setAppState] = React.useState(AppState.currentState);
   const {
     cameraRef,
+    photoOutput,
     canRequestPermission,
     canUseMockCapture,
     capturedImage,
@@ -87,7 +88,7 @@ export function FaceCapturePanel({
               ref={cameraRef}
               device={device}
               isActive={isCameraActive}
-              photo={true}
+              outputs={[photoOutput]}
               style={StyleSheet.absoluteFill}
             />
           ) : (

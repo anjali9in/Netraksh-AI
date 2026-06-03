@@ -4,7 +4,9 @@ const AUTH_STATUSES = new Set(['SUCCESS', 'FAILED']);
 const LIVENESS_STATUSES = new Set(['PASSED', 'FAILED']);
 const CHALLENGE_TYPES = new Set(['BLINK', 'SMILE', 'HEAD_TURN']);
 
-export function parseSyncAuthLogsRequest(body: string | null): SyncAuthLogsRequest {
+export function parseSyncAuthLogsRequest(
+  body: string | null,
+): SyncAuthLogsRequest {
   if (!body) {
     throw new Error('Request body is required.');
   }
@@ -71,7 +73,10 @@ function validateAuthLog(value: unknown): AuthLog {
   };
 }
 
-function assertString(value: unknown, fieldName: string): asserts value is string {
+function assertString(
+  value: unknown,
+  fieldName: string,
+): asserts value is string {
   if (typeof value !== 'string' || value.length === 0) {
     throw new Error(`${fieldName} is required.`);
   }

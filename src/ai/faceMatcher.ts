@@ -1,7 +1,7 @@
-import { getLocalDatabase } from '../services/database/localDatabase';
-import { cosineSimilarity } from '../utils/similarity';
-import { FACE_RECOGNITION_MODEL } from './modelConfig';
-import { faceEmbeddingGenerator } from './faceEmbedding';
+import {getLocalDatabase} from '../services/database/localDatabase';
+import {cosineSimilarity} from '../utils/similarity';
+import {FACE_RECOGNITION_MODEL} from './modelConfig';
+import {faceEmbeddingGenerator} from './faceEmbedding';
 
 export type MatchResult = {
   success: boolean;
@@ -12,7 +12,8 @@ export type MatchResult = {
 };
 
 // Pure TypeScript base64 encoding helper to avoid global environment or compiler issues (btoa/Buffer)
-const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const BASE64_CHARS =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 function base64Encode(str: string): string {
   let result = '';
@@ -43,9 +44,12 @@ function base64Decode(str: string): string {
   const cleanStr = str.replace(/=+$/, '');
   while (i < cleanStr.length) {
     const code1 = BASE64_CHARS.indexOf(cleanStr.charAt(i++));
-    const code2 = i < cleanStr.length ? BASE64_CHARS.indexOf(cleanStr.charAt(i++)) : 0;
-    const code3 = i < cleanStr.length ? BASE64_CHARS.indexOf(cleanStr.charAt(i++)) : 0;
-    const code4 = i < cleanStr.length ? BASE64_CHARS.indexOf(cleanStr.charAt(i++)) : 0;
+    const code2 =
+      i < cleanStr.length ? BASE64_CHARS.indexOf(cleanStr.charAt(i++)) : 0;
+    const code3 =
+      i < cleanStr.length ? BASE64_CHARS.indexOf(cleanStr.charAt(i++)) : 0;
+    const code4 =
+      i < cleanStr.length ? BASE64_CHARS.indexOf(cleanStr.charAt(i++)) : 0;
 
     const byte1 = (code1 << 2) | (code2 >> 4);
     const byte2 = ((code2 & 15) << 4) | (code3 >> 2);
@@ -84,16 +88,20 @@ function decryptEmbedding(encrypted: string): number[] {
 export async function registerEmployeeFace(
   employeeId: string,
   imagePath: string,
-  deviceId: string = 'unknown-device'
+  deviceId: string = 'unknown-device',
 ): Promise<boolean> {
   try {
-    console.log(`[FaceMatcher] Registering employee face for ID: ${employeeId}`);
-    
+    console.log(
+      `[FaceMatcher] Registering employee face for ID: ${employeeId}`,
+    );
+
     // Generate embedding
     const embedding = await faceEmbeddingGenerator.generateEmbedding(imagePath);
-    
+
     if (embedding.length !== FACE_RECOGNITION_MODEL.embeddingDimension) {
-      throw new Error(`Embedding dimension mismatch. Expected ${FACE_RECOGNITION_MODEL.embeddingDimension}, got ${embedding.length}`);
+      throw new Error(
+        `Embedding dimension mismatch. Expected ${FACE_RECOGNITION_MODEL.embeddingDimension}, got ${embedding.length}`,
+      );
     }
 
     const encrypted = encryptEmbedding(embedding);
@@ -104,13 +112,25 @@ export async function registerEmployeeFace(
       `INSERT OR REPLACE INTO employee_face_templates 
        (employee_id, encrypted_embedding, model_version, device_id, created_at, updated_at) 
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [employeeId, encrypted, FACE_RECOGNITION_MODEL.modelName, deviceId, now, now]
+      [
+        employeeId,
+        encrypted,
+        FACE_RECOGNITION_MODEL.modelName,
+        deviceId,
+        now,
+        now,
+      ],
     );
 
-    console.log(`[FaceMatcher] Successfully registered face template for employee: ${employeeId}`);
+    console.log(
+      `[FaceMatcher] Successfully registered face template for employee: ${employeeId}`,
+    );
     return true;
   } catch (error) {
-    console.error(`[FaceMatcher] Registration failed for employee ${employeeId}:`, error);
+    console.error(
+      `[FaceMatcher] Registration failed for employee ${employeeId}:`,
+      error,
+    );
     return false;
   }
 }
@@ -122,16 +142,16 @@ export async function registerEmployeeFace(
 export async function verifyEmployeeFace(
   employeeId: string,
   imagePath: string,
-  customThreshold = FACE_RECOGNITION_MODEL.threshold
+  customThreshold = FACE_RECOGNITION_MODEL.threshold,
 ): Promise<MatchResult> {
   const startTime = Date.now();
   try {
     console.log(`[FaceMatcher] Verifying face for employee ID: ${employeeId}`);
-    
+
     const db = await getLocalDatabase();
     const result = await db.execute(
       `SELECT encrypted_embedding, model_version FROM employee_face_templates WHERE employee_id = ?`,
-      [employeeId]
+      [employeeId],
     );
 
     if (result.rows.length === 0) {
@@ -147,17 +167,25 @@ export async function verifyEmployeeFace(
     const storedModelVersion = row.model_version as string;
 
     if (storedModelVersion !== FACE_RECOGNITION_MODEL.modelName) {
-      console.warn(`[FaceMatcher] Model version mismatch: Stored=${storedModelVersion}, Active=${FACE_RECOGNITION_MODEL.modelName}. Recalculation might be needed.`);
+      console.warn(
+        `[FaceMatcher] Model version mismatch: Stored=${storedModelVersion}, Active=${FACE_RECOGNITION_MODEL.modelName}. Recalculation might be needed.`,
+      );
     }
 
     const storedEmbedding = decryptEmbedding(storedEncryptedEmbedding);
-    const currentEmbedding = await faceEmbeddingGenerator.generateEmbedding(imagePath);
+    const currentEmbedding = await faceEmbeddingGenerator.generateEmbedding(
+      imagePath,
+    );
 
     const score = cosineSimilarity(storedEmbedding, currentEmbedding);
     const matched = score >= customThreshold;
     const matchTimeMs = Date.now() - startTime;
 
-    console.log(`[FaceMatcher] Verification result: ${matched ? 'MATCH' : 'MISMATCH'} (Score: ${score.toFixed(4)}, Time: ${matchTimeMs}ms)`);
+    console.log(
+      `[FaceMatcher] Verification result: ${
+        matched ? 'MATCH' : 'MISMATCH'
+      } (Score: ${score.toFixed(4)}, Time: ${matchTimeMs}ms)`,
+    );
 
     return {
       success: matched,
@@ -166,7 +194,10 @@ export async function verifyEmployeeFace(
       employeeId,
     };
   } catch (error) {
-    console.error(`[FaceMatcher] Verification failed for employee ${employeeId}:`, error);
+    console.error(
+      `[FaceMatcher] Verification failed for employee ${employeeId}:`,
+      error,
+    );
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
@@ -181,15 +212,17 @@ export async function verifyEmployeeFace(
  */
 export async function identifyEmployeeFace(
   imagePath: string,
-  customThreshold = FACE_RECOGNITION_MODEL.threshold
+  customThreshold = FACE_RECOGNITION_MODEL.threshold,
 ): Promise<MatchResult> {
   const startTime = Date.now();
   try {
-    console.log('[FaceMatcher] Identifying face against all registered templates');
+    console.log(
+      '[FaceMatcher] Identifying face against all registered templates',
+    );
 
     const db = await getLocalDatabase();
     const result = await db.execute(
-      `SELECT employee_id, encrypted_embedding, model_version FROM employee_face_templates`
+      `SELECT employee_id, encrypted_embedding, model_version FROM employee_face_templates`,
     );
 
     if (result.rows.length === 0) {
@@ -200,7 +233,9 @@ export async function identifyEmployeeFace(
       };
     }
 
-    const currentEmbedding = await faceEmbeddingGenerator.generateEmbedding(imagePath);
+    const currentEmbedding = await faceEmbeddingGenerator.generateEmbedding(
+      imagePath,
+    );
     let bestMatchId: string | undefined;
     let bestScore = -1;
 
@@ -220,7 +255,11 @@ export async function identifyEmployeeFace(
     const matched = bestScore >= customThreshold;
 
     if (matched && bestMatchId) {
-      console.log(`[FaceMatcher] Identification SUCCESS: Found employee ${bestMatchId} (Score: ${bestScore.toFixed(4)}, Time: ${matchTimeMs}ms)`);
+      console.log(
+        `[FaceMatcher] Identification SUCCESS: Found employee ${bestMatchId} (Score: ${bestScore.toFixed(
+          4,
+        )}, Time: ${matchTimeMs}ms)`,
+      );
       return {
         success: true,
         employeeId: bestMatchId,
@@ -228,7 +267,11 @@ export async function identifyEmployeeFace(
         matchTimeMs,
       };
     } else {
-      console.log(`[FaceMatcher] Identification FAILED: Best match score ${bestScore.toFixed(4)} is below threshold ${customThreshold}`);
+      console.log(
+        `[FaceMatcher] Identification FAILED: Best match score ${bestScore.toFixed(
+          4,
+        )} is below threshold ${customThreshold}`,
+      );
       return {
         success: false,
         error: 'No matching employee found',

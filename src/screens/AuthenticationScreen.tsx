@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,25 +8,17 @@ import {
   View,
 } from 'react-native';
 
-import {FaceCapturePanel} from '../components/FaceCapturePanel';
+import {LiveScannerPanel} from '../components/LiveScannerPanel';
 import {PrimaryButton} from '../components/PrimaryButton';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
 import {secureStorageService} from '../services/SecureStorageService';
 import {offlineDatabaseService} from '../services/OfflineDatabaseService';
-import {
-  livenessService,
-  LivenessSessionState,
-} from '../services/liveness/livenessService';
+import {livenessService} from '../services/liveness/livenessService';
 import {getDynamicThreshold} from '../ai/dynamicThreshold';
 import {FACE_RECOGNITION_MODEL} from '../ai/modelConfig';
 
-type AuthStep =
-  | 'ID_INPUT'
-  | 'CAMERA_CAPTURE'
-  | 'LIVENESS_CHALLENGE'
-  | 'MATCHING'
-  | 'RESULT';
+type AuthStep = 'ID_INPUT' | 'LIVE_SCANNING' | 'MATCHING' | 'RESULT';
 
 export function AuthenticationScreen(): React.JSX.Element {
   const [employeeId, setEmployeeId] = useState('');
@@ -34,9 +26,6 @@ export function AuthenticationScreen(): React.JSX.Element {
     null,
   );
   const [step, setStep] = useState<AuthStep>('ID_INPUT');
-  const [livenessState, setLivenessState] =
-    useState<LivenessSessionState | null>(null);
-  const [metrics, setMetrics] = useState({ear: 0.32, mar: 0.18, yawRatio: 1.0});
   const [authResult, setAuthResult] = useState<{
     success: boolean;
     score?: number;
@@ -45,75 +34,17 @@ export function AuthenticationScreen(): React.JSX.Element {
     logHash?: string;
   } | null>(null);
 
-  // Timer reference for liveness simulation
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<number>(0);
-
   const startVerification = () => {
     if (!employeeId.trim()) {
       Alert.alert('Validation Error', 'Please enter your Employee ID first.');
       return;
     }
-    setStep('CAMERA_CAPTURE');
+    setStep('LIVE_SCANNING');
   };
 
-  const handlePhotoCaptured = (image: {path: string}) => {
-    setCapturedImagePath(image.path);
-    // Proceed to liveness challenge after camera capture
-    startLivenessChallenges();
-  };
-
-  const startLivenessChallenges = () => {
-    const initialState = livenessService.resetSession();
-    setLivenessState(initialState);
-    setStep('LIVENESS_CHALLENGE');
-    startTimeRef.current = Date.now();
-
-    // Start simulation loop
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    timerRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTimeRef.current;
-      const currentChallenge =
-        livenessService.getSessionState().challenges[
-          livenessService.getSessionState().currentChallengeIndex
-        ];
-
-      if (!currentChallenge) {
-        // Liveness completed
-        clearInterval(timerRef.current!);
-        timerRef.current = null;
-        runFaceMatching();
-        return;
-      }
-
-      // Simulate live visual fluctuations in eye blinking, smiles, or turns
-      const sim = livenessService.getSimulatedMetrics(
-        currentChallenge.type,
-        elapsed,
-      );
-      setMetrics(sim);
-
-      // Process in state machine
-      const updatedState = livenessService.processFrame(
-        sim.ear,
-        sim.mar,
-        sim.yawRatio,
-      );
-      setLivenessState(updatedState);
-
-      if (updatedState.isComplete && updatedState.isPassed) {
-        clearInterval(timerRef.current!);
-        timerRef.current = null;
-        runFaceMatching();
-      }
-    }, 100);
-  };
-
-  const runFaceMatching = async () => {
+  const runFaceMatching = async (imagePath: string) => {
     setStep('MATCHING');
+    setCapturedImagePath(imagePath);
 
     // Simulate lighting and quality metrics
     const simulatedBrightness = 90 + Math.floor(Math.random() * 60); // Optimal: 90 - 150
@@ -129,7 +60,7 @@ export function AuthenticationScreen(): React.JSX.Element {
       const startTime = Date.now();
       const matchResult = await secureStorageService.verifyFace(
         employeeId.trim().toUpperCase(),
-        capturedImagePath || 'mock://captured-face.jpg',
+        imagePath || 'mock://captured-face.jpg',
         dynamicResult.threshold,
       );
       const elapsedMs = Date.now() - startTime;
@@ -185,17 +116,8 @@ export function AuthenticationScreen(): React.JSX.Element {
     setEmployeeId('');
     setCapturedImagePath(null);
     setAuthResult(null);
-    setLivenessState(null);
     setStep('ID_INPUT');
   };
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, []);
 
   // UI rendering based on steps
   return (
@@ -222,96 +144,12 @@ export function AuthenticationScreen(): React.JSX.Element {
         </View>
       )}
 
-      {step === 'CAMERA_CAPTURE' && (
-        <View style={styles.cameraWrapper}>
-          <FaceCapturePanel
-            title="Facial Login"
-            description="Center your face inside the frame to begin authentication logs."
-            onPhotoCaptured={handlePhotoCaptured}
-            onPhotoCleared={() => setCapturedImagePath(null)}
-          />
-        </View>
-      )}
-
-      {step === 'LIVENESS_CHALLENGE' && livenessState && (
-        <View style={styles.hudCard}>
-          <Text style={styles.hudTitle}>🤖 NETRAKSH-AI HUD</Text>
-          <Text style={styles.hudStatus}>LIVENESS VERIFICATION ACTIVE</Text>
-
-          <View style={styles.challengeBox}>
-            <ActivityIndicator color="#10b981" style={{marginBottom: 8}} />
-            <Text style={styles.challengeInstruction}>
-              {
-                livenessState.challenges[livenessState.currentChallengeIndex]
-                  ?.instruction
-              }
-            </Text>
-            <Text style={styles.challengeProgress}>
-              Challenge {livenessState.currentChallengeIndex + 1} of{' '}
-              {livenessState.challenges.length}
-            </Text>
-          </View>
-
-          {/* Realistic metric bars */}
-          <View style={styles.metricContainer}>
-            <Text style={styles.metricLabel}>Eye Aspect Ratio (EAR):</Text>
-            <View style={styles.barBackground}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    width: `${Math.min(100, metrics.ear * 250)}%`,
-                    backgroundColor: metrics.ear < 0.22 ? '#34d399' : '#60a5fa',
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.metricValue}>
-              {metrics.ear.toFixed(3)} (Threshold &lt; 0.22)
-            </Text>
-          </View>
-
-          <View style={styles.metricContainer}>
-            <Text style={styles.metricLabel}>Mouth Aspect Ratio (MAR):</Text>
-            <View style={styles.barBackground}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    width: `${Math.min(100, metrics.mar * 150)}%`,
-                    backgroundColor: metrics.mar > 0.5 ? '#34d399' : '#fbcfe8',
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.metricValue}>
-              {metrics.mar.toFixed(3)} (Threshold &gt; 0.50)
-            </Text>
-          </View>
-
-          <View style={styles.metricContainer}>
-            <Text style={styles.metricLabel}>
-              Yaw Ratio (Head Orientation):
-            </Text>
-            <View style={styles.barBackground}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    width: `${Math.min(100, metrics.yawRatio * 50)}%`,
-                    backgroundColor:
-                      metrics.yawRatio < 0.6 || metrics.yawRatio > 1.6
-                        ? '#34d399'
-                        : '#c084fc',
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.metricValue}>
-              {metrics.yawRatio.toFixed(3)} (Centered ≈ 1.0)
-            </Text>
-          </View>
-        </View>
+      {step === 'LIVE_SCANNING' && (
+        <LiveScannerPanel
+          employeeId={employeeId}
+          onLivenessComplete={runFaceMatching}
+          onCancel={() => setStep('ID_INPUT')}
+        />
       )}
 
       {step === 'MATCHING' && (

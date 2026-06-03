@@ -9,10 +9,10 @@ The app is built in layers, so everything’s organized—there’s a clear sepa
 When the device is offline, attendance records are stored locally in an encrypted database. Once an internet connection becomes available, the records are automatically synchronized with the cloud.
 
 flowchart TD
-    subgraph "Presentation Layer"
-        App["src/app"]
-        Screens["src/screens"]
-        Components["src/components"]
+subgraph "Presentation Layer"
+App["src/app"]
+Screens["src/screens"]
+Components["src/components"]
 
         App --> Screens
         Screens --> Components
@@ -58,17 +58,17 @@ flowchart TD
 2. Project Structure
 
 src/
-├── ai/             # Face recognition and ML logic
-├── app/            # App entry point and navigation
-├── assets/         # Models and static assets
-├── components/     # Reusable UI components
-├── config/         # Configuration files
-├── hooks/          # Custom React hooks
-├── screens/        # Application screens
-├── services/       # Database and API services
-├── store/          # Global state management
-├── types/          # TypeScript interfaces
-└── utils/          # Helper functions
+├── ai/ # Face recognition and ML logic
+├── app/ # App entry point and navigation
+├── assets/ # Models and static assets
+├── components/ # Reusable UI components
+├── config/ # Configuration files
+├── hooks/ # Custom React hooks
+├── screens/ # Application screens
+├── services/ # Database and API services
+├── store/ # Global state management
+├── types/ # TypeScript interfaces
+└── utils/ # Helper functions
 
 docs/
 ├── ARCHITECTURE.md
@@ -78,7 +78,7 @@ docs/
 
 resources/
 └── images/
-    └── logo.png
+└── logo.png
 
 ---
 
@@ -98,29 +98,29 @@ Custom hooks manage communication between the UI and backend services. Global ap
 
 Examples include:
 
-* Face recognition status
-* Attendance records
-* Synchronization status
-* User session information
+- Face recognition status
+- Attendance records
+- Synchronization status
+- User session information
 
 Services
 
 The services layer handles:
 
-* Database operations
-* Encryption
-* API communication
-* Offline synchronization
+- Database operations
+- Encryption
+- API communication
+- Offline synchronization
 
 AI Module
 
 The AI module is responsible for:
 
-* Face detection
-* Image preprocessing
-* Embedding generation
-* Face matching
-* Liveness verification
+- Face detection
+- Image preprocessing
+- Embedding generation
+- Face matching
+- Liveness verification
 
 ---
 
@@ -129,12 +129,12 @@ The AI module is responsible for:
 Netraksh AI performs all biometric processing locally on the device.
 
 flowchart LR
-    A["Camera Frame"]
-    B["Face Detection"]
-    C["Face Crop & Resize"]
-    D["ArcFace Model"]
-    E["Face Embedding"]
-    F["Similarity Check"]
+A["Camera Frame"]
+B["Face Detection"]
+C["Face Crop & Resize"]
+D["ArcFace Model"]
+E["Face Embedding"]
+F["Similarity Check"]
 
     A --> B
     B --> C
@@ -157,17 +157,17 @@ Model: ArcFace MobileNetV2
 
 Advantages
 
-* Lightweight and mobile-friendly
-* Fast inference on smartphones
-* High face recognition accuracy
+- Lightweight and mobile-friendly
+- Fast inference on smartphones
+- High face recognition accuracy
 
 Model Size
 
-* Approximately 5–15 MB
+- Approximately 5–15 MB
 
 Average Inference Time
 
-* Less than 300 ms on supported devices
+- Less than 300 ms on supported devices
 
 ---
 
@@ -194,12 +194,12 @@ Temporary image crops and processing buffers are removed after verification is c
 The application is designed to function even without internet connectivity.
 
 flowchart TD
-    A["Attendance Record"]
-    B["Encrypted SQLite"]
-    C{"Internet Available?"}
-    D["Offline Queue"]
-    E["AWS API Gateway"]
-    F["DynamoDB"]
+A["Attendance Record"]
+B["Encrypted SQLite"]
+C{"Internet Available?"}
+D["Offline Queue"]
+E["AWS API Gateway"]
+F["DynamoDB"]
 
     A --> B
     B --> C
@@ -248,12 +248,12 @@ Lightweight models allow deployment on standard Android devices.
 
 8. Future Enhancements
 
-* Improved liveness detection
-* Multi-face tracking support
-* Hardware acceleration using NNAPI and CoreML
-* Administrative analytics dashboard
-* Bulk employee enrollment
-* Role-based access control
-* Performance optimization for low-end devices
+- Improved liveness detection
+- Multi-face tracking support
+- Hardware acceleration using NNAPI and CoreML
+- Administrative analytics dashboard
+- Bulk employee enrollment
+- Role-based access control
+- Performance optimization for low-end devices
 
 ---

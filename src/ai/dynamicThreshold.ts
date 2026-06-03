@@ -1,6 +1,11 @@
-import { FACE_MATCH_THRESHOLD } from '../config/thresholds';
+import {FACE_MATCH_THRESHOLD} from '../config/thresholds';
 
-export type EnvironmentCondition = 'OPTIMAL' | 'LOW_LIGHT' | 'HARSH_LIGHT' | 'SHADOW' | 'UNKNOWN';
+export type EnvironmentCondition =
+  | 'OPTIMAL'
+  | 'LOW_LIGHT'
+  | 'HARSH_LIGHT'
+  | 'SHADOW'
+  | 'UNKNOWN';
 
 export type ThresholdResult = {
   threshold: number;
@@ -12,7 +17,9 @@ export type ThresholdResult = {
  * Detects the lighting environment from an image brightness score.
  * @param brightnessScore A value between 0 (pure black) and 255 (pure white), representing average pixel brightness.
  */
-export function detectEnvironmentCondition(brightnessScore: number): EnvironmentCondition {
+export function detectEnvironmentCondition(
+  brightnessScore: number,
+): EnvironmentCondition {
   if (brightnessScore < 40) {
     return 'LOW_LIGHT'; // Dark tunnel, night-time, or unlit area
   } else if (brightnessScore > 210) {
@@ -38,7 +45,7 @@ export function detectEnvironmentCondition(brightnessScore: number): Environment
  */
 export function getDynamicThreshold(
   brightnessScore: number,
-  imageQualityScore: number = 1.0
+  imageQualityScore: number = 1.0,
 ): ThresholdResult {
   const condition = detectEnvironmentCondition(brightnessScore);
   let threshold = FACE_MATCH_THRESHOLD; // Baseline: 0.68 (ArcFace-MobileNetV2)
@@ -47,38 +54,49 @@ export function getDynamicThreshold(
   switch (condition) {
     case 'OPTIMAL':
       threshold = FACE_MATCH_THRESHOLD; // 0.68
-      reason = 'Optimal lighting detected. Using standard ArcFace baseline threshold.';
+      reason =
+        'Optimal lighting detected. Using standard ArcFace baseline threshold.';
       break;
 
     case 'SHADOW':
       threshold = FACE_MATCH_THRESHOLD + 0.03; // 0.71
-      reason = 'Shadow/partial shade detected. Threshold raised slightly for safety.';
+      reason =
+        'Shadow/partial shade detected. Threshold raised slightly for safety.';
       break;
 
     case 'LOW_LIGHT':
       threshold = FACE_MATCH_THRESHOLD + 0.07; // 0.75
-      reason = 'Low light detected. Threshold raised significantly to prevent false positives.';
+      reason =
+        'Low light detected. Threshold raised significantly to prevent false positives.';
       break;
 
     case 'HARSH_LIGHT':
       threshold = FACE_MATCH_THRESHOLD + 0.05; // 0.73
-      reason = 'Harsh/glare lighting detected. Threshold raised to compensate for over-exposed face regions.';
+      reason =
+        'Harsh/glare lighting detected. Threshold raised to compensate for over-exposed face regions.';
       break;
 
     case 'UNKNOWN':
     default:
       threshold = FACE_MATCH_THRESHOLD + 0.05; // 0.73 (conservative fallback)
-      reason = 'Unknown lighting condition. Using conservative threshold as a safety fallback.';
+      reason =
+        'Unknown lighting condition. Using conservative threshold as a safety fallback.';
       break;
   }
 
   // Additional adjustment: if the image is blurry, raise threshold further
   if (imageQualityScore < 0.5) {
     threshold = Math.min(threshold + 0.05, 0.95); // Cap at 0.95 to avoid being impossibly strict
-    reason += ` Image quality is low (score: ${imageQualityScore.toFixed(2)}). Threshold raised further.`;
+    reason += ` Image quality is low (score: ${imageQualityScore.toFixed(
+      2,
+    )}). Threshold raised further.`;
   }
 
-  console.log(`[DynamicThreshold] Condition: ${condition} | Brightness: ${brightnessScore} | Quality: ${imageQualityScore.toFixed(2)} | Threshold: ${threshold.toFixed(2)}`);
+  console.log(
+    `[DynamicThreshold] Condition: ${condition} | Brightness: ${brightnessScore} | Quality: ${imageQualityScore.toFixed(
+      2,
+    )} | Threshold: ${threshold.toFixed(2)}`,
+  );
 
   return {
     threshold,

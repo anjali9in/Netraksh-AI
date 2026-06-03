@@ -34,7 +34,9 @@ export class SqliteDatabase implements LocalDatabase {
     await db.transaction(async nativeTransaction => {
       transactionResult = await callback({
         execute: async (sql: string, params: DatabaseParams = []) => {
-          const mappedParams = params.map(p => (p === undefined ? null : p)) as any[];
+          const mappedParams = params.map(p =>
+            p === undefined ? null : p,
+          ) as any[];
           const result = await nativeTransaction.execute(sql, mappedParams);
           return mapQueryResult(result);
         },

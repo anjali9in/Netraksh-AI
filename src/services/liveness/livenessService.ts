@@ -1,4 +1,4 @@
-import { BLINK_THRESHOLD } from '../../config/thresholds';
+import {BLINK_THRESHOLD} from '../../config/thresholds';
 
 export type LivenessChallengeType = 'BLINK' | 'SMILE' | 'HEAD_TURN';
 
@@ -44,19 +44,25 @@ export class LivenessService {
    * Resets the liveness challenge session.
    * Generates a new sequence of challenges.
    */
-  public resetSession(challengesToInclude?: LivenessChallengeType[]): LivenessSessionState {
-    const pool: LivenessChallengeType[] = challengesToInclude || ['BLINK', 'SMILE', 'HEAD_TURN'];
-    
+  public resetSession(
+    challengesToInclude?: LivenessChallengeType[],
+  ): LivenessSessionState {
+    const pool: LivenessChallengeType[] = challengesToInclude || [
+      'BLINK',
+      'SMILE',
+      'HEAD_TURN',
+    ];
+
     // Randomize the challenges
     const randomized = [...pool].sort(() => 0.5 - Math.random());
-    
+
     // Take at least 2 challenges for a solid flow
     const selectedTypes = randomized.slice(0, Math.max(2, randomized.length));
 
     this.activeChallenges = selectedTypes.map(type => {
       let instruction = '';
       let targetCount = 1;
-      
+
       switch (type) {
         case 'BLINK':
           instruction = 'Blink your eyes twice';
@@ -101,8 +107,9 @@ export class LivenessService {
    */
   public getSessionState(): LivenessSessionState {
     const isComplete = this.currentIndex >= this.activeChallenges.length;
-    const isPassed = isComplete && this.activeChallenges.every(c => c.status === 'PASSED');
-    
+    const isPassed =
+      isComplete && this.activeChallenges.every(c => c.status === 'PASSED');
+
     return {
       challenges: this.activeChallenges,
       currentChallengeIndex: this.currentIndex,
@@ -118,7 +125,7 @@ export class LivenessService {
    */
   public calculateEAR(eyeLandmarks: Landmark[]): number {
     if (eyeLandmarks.length < 6) return 1.0;
-    
+
     // eyeLandmarks: p1, p2, p3, p4, p5, p6
     const p1 = eyeLandmarks[0];
     const p2 = eyeLandmarks[1];
@@ -127,9 +134,15 @@ export class LivenessService {
     const p5 = eyeLandmarks[4];
     const p6 = eyeLandmarks[5];
 
-    const distVertical1 = Math.sqrt(Math.pow(p2.x - p6.x, 2) + Math.pow(p2.y - p6.y, 2));
-    const distVertical2 = Math.sqrt(Math.pow(p3.x - p5.x, 2) + Math.pow(p3.y - p5.y, 2));
-    const distHorizontal = Math.sqrt(Math.pow(p1.x - p4.x, 2) + Math.pow(p1.y - p4.y, 2));
+    const distVertical1 = Math.sqrt(
+      Math.pow(p2.x - p6.x, 2) + Math.pow(p2.y - p6.y, 2),
+    );
+    const distVertical2 = Math.sqrt(
+      Math.pow(p3.x - p5.x, 2) + Math.pow(p3.y - p5.y, 2),
+    );
+    const distHorizontal = Math.sqrt(
+      Math.pow(p1.x - p4.x, 2) + Math.pow(p1.y - p4.y, 2),
+    );
 
     if (distHorizontal === 0) return 1.0;
 
@@ -149,8 +162,12 @@ export class LivenessService {
     const top = mouthLandmarks[2];
     const bottom = mouthLandmarks[3];
 
-    const distVertical = Math.sqrt(Math.pow(top.x - bottom.x, 2) + Math.pow(top.y - bottom.y, 2));
-    const distHorizontal = Math.sqrt(Math.pow(left.x - right.x, 2) + Math.pow(left.y - right.y, 2));
+    const distVertical = Math.sqrt(
+      Math.pow(top.x - bottom.x, 2) + Math.pow(top.y - bottom.y, 2),
+    );
+    const distHorizontal = Math.sqrt(
+      Math.pow(left.x - right.x, 2) + Math.pow(left.y - right.y, 2),
+    );
 
     if (distHorizontal === 0) return 0.0;
 
@@ -163,7 +180,7 @@ export class LivenessService {
    */
   public calculateYawRatio(faceLandmarks: Landmark[]): number {
     if (faceLandmarks.length < 3) return 1.0;
-    
+
     // faceLandmarks: [leftCheekBoundary, noseBridge, rightCheekBoundary]
     const leftCheek = faceLandmarks[0];
     const nose = faceLandmarks[1];
@@ -179,13 +196,13 @@ export class LivenessService {
   /**
    * Processes a frame of face landmarks. Evaluates the active challenge.
    * If the challenge conditions are met, progresses the challenge state machine.
-   * 
+   *
    * @param landmarks The full face landmark array.
    */
   public processFrame(
     earVal: number,
     marVal: number,
-    yawRatioVal: number
+    yawRatioVal: number,
   ): LivenessSessionState {
     const state = this.getSessionState();
     if (state.isComplete) {
@@ -215,7 +232,9 @@ export class LivenessService {
           // If we had a closed eye for at least 1-2 frames and now it is open again, register a blink
           if (this.blinkFramesCount >= 1 && this.blinkFramesCount < 10) {
             currentChallenge.currentCount++;
-            console.log(`[LivenessService] Blink registered! Count: ${currentChallenge.currentCount}/${currentChallenge.targetCount}`);
+            console.log(
+              `[LivenessService] Blink registered! Count: ${currentChallenge.currentCount}/${currentChallenge.targetCount}`,
+            );
           }
           this.blinkFramesCount = 0;
         }
@@ -227,9 +246,10 @@ export class LivenessService {
 
       case 'SMILE':
         // Check for smile: MAR goes above 0.50 (wide mouth stretching)
-        if (marVal > 0.50) {
+        if (marVal > 0.5) {
           this.smileFramesCount++;
-          if (this.smileFramesCount >= 3) { // held for 3 frames
+          if (this.smileFramesCount >= 3) {
+            // held for 3 frames
             currentChallenge.currentCount++;
             this.passCurrentChallenge();
           }
@@ -240,9 +260,10 @@ export class LivenessService {
 
       case 'HEAD_TURN':
         // Check for head turn: Yaw ratio < 0.60 (turn right) or > 1.60 (turn left)
-        if (yawRatioVal < 0.60 || yawRatioVal > 1.60) {
+        if (yawRatioVal < 0.6 || yawRatioVal > 1.6) {
           this.headTurnFramesCount++;
-          if (this.headTurnFramesCount >= 3) { // held head turn for 3 frames
+          if (this.headTurnFramesCount >= 3) {
+            // held head turn for 3 frames
             currentChallenge.currentCount++;
             this.passCurrentChallenge();
           }
@@ -263,13 +284,15 @@ export class LivenessService {
       const current = this.activeChallenges[this.currentIndex];
       current.status = 'PASSED';
       current.currentCount = current.targetCount;
-      
+
       this.currentIndex++;
       if (this.currentIndex < this.activeChallenges.length) {
         this.activeChallenges[this.currentIndex].status = 'ACTIVE';
       }
-      
-      console.log(`[LivenessService] Challenge ${current.type} PASSED. Progressed to index ${this.currentIndex}`);
+
+      console.log(
+        `[LivenessService] Challenge ${current.type} PASSED. Progressed to index ${this.currentIndex}`,
+      );
     }
   }
 
@@ -279,8 +302,8 @@ export class LivenessService {
    */
   public getSimulatedMetrics(
     challengeType: LivenessChallengeType,
-    timeMs: number
-  ): { ear: number; mar: number; yawRatio: number } {
+    timeMs: number,
+  ): {ear: number; mar: number; yawRatio: number} {
     let ear = 0.32 + Math.sin(timeMs / 100) * 0.02; // Baseline eye open
     let mar = 0.18 + Math.cos(timeMs / 150) * 0.02; // Baseline neutral mouth
     let yawRatio = 1.0 + Math.sin(timeMs / 200) * 0.05; // Centered face
@@ -314,7 +337,7 @@ export class LivenessService {
         break;
     }
 
-    return { ear, mar, yawRatio };
+    return {ear, mar, yawRatio};
   }
 }
 
