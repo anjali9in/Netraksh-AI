@@ -92,7 +92,6 @@ export function useFaceCapture({
         flash: 'off',
         qualityPrioritization: 'quality',
         enableAutoStabilization: true,
-        enableAutoDistortionCorrection: true,
         enablePrecapture: true,
       });
 
