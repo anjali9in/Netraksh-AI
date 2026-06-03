@@ -2,6 +2,7 @@ import {getLocalDatabase} from '../services/database/localDatabase';
 import {cosineSimilarity} from '../utils/similarity';
 import {FACE_RECOGNITION_MODEL} from './modelConfig';
 import {faceEmbeddingGenerator} from './faceEmbedding';
+import {encryptData, decryptData} from '../utils/crypto';
 
 export type MatchResult = {
   success: boolean;
@@ -15,27 +16,6 @@ export type MatchResult = {
 const BASE64_CHARS =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
-function base64Encode(str: string): string {
-  let result = '';
-  let i = 0;
-  while (i < str.length) {
-    const c1 = str.charCodeAt(i++);
-    const c2 = i < str.length ? str.charCodeAt(i++) : NaN;
-    const c3 = i < str.length ? str.charCodeAt(i++) : NaN;
-
-    const byte1 = c1 >> 2;
-    const byte2 = ((c1 & 3) << 4) | (isNaN(c2) ? 0 : c2 >> 4);
-    const byte3 = isNaN(c2) ? 64 : ((c2 & 15) << 2) | (isNaN(c3) ? 0 : c3 >> 6);
-    const byte4 = isNaN(c3) ? 64 : c3 & 63;
-
-    result +=
-      BASE64_CHARS.charAt(byte1) +
-      BASE64_CHARS.charAt(byte2) +
-      (byte3 === 64 ? '=' : BASE64_CHARS.charAt(byte3)) +
-      (byte4 === 64 ? '=' : BASE64_CHARS.charAt(byte4));
-  }
-  return result;
-}
 
 function base64Decode(str: string): string {
   let result = '';
@@ -65,19 +45,30 @@ function base64Decode(str: string): string {
 /**
  * Encrypts/serializes the embedding vector to a secure string representation.
  */
-function encryptEmbedding(embedding: number[]): string {
+async function encryptEmbedding(embedding: number[]): Promise<string> {
   const jsonStr = JSON.stringify(embedding);
-  return base64Encode(jsonStr);
+  return encryptData(jsonStr);
 }
 
 /**
  * Decrypts/deserializes the embedding vector from a string representation.
  */
-function decryptEmbedding(encrypted: string): number[] {
+async function decryptEmbedding(encrypted: string): Promise<number[]> {
   if (encrypted.startsWith('[') && encrypted.endsWith(']')) {
     return JSON.parse(encrypted) as number[];
   }
-  const jsonStr = base64Decode(encrypted);
+  if (!encrypted.includes(':')) {
+    try {
+      const jsonStr = base64Decode(encrypted);
+      if (jsonStr.startsWith('[') && jsonStr.endsWith(']')) {
+        return JSON.parse(jsonStr) as number[];
+      }
+    } catch (e) {
+      console.warn('[FaceMatcher] Failed to base64 decode legacy embedding, trying direct parse:', e);
+    }
+    return JSON.parse(encrypted) as number[];
+  }
+  const jsonStr = await decryptData(encrypted);
   return JSON.parse(jsonStr) as number[];
 }
 
@@ -104,7 +95,7 @@ export async function registerEmployeeFace(
       );
     }
 
-    const encrypted = encryptEmbedding(embedding);
+    const encrypted = await encryptEmbedding(embedding);
     const db = await getLocalDatabase();
     const now = new Date().toISOString();
 
@@ -172,7 +163,7 @@ export async function verifyEmployeeFace(
       );
     }
 
-    const storedEmbedding = decryptEmbedding(storedEncryptedEmbedding);
+    const storedEmbedding = await decryptEmbedding(storedEncryptedEmbedding);
     const currentEmbedding = await faceEmbeddingGenerator.generateEmbedding(
       imagePath,
     );
@@ -242,7 +233,7 @@ export async function identifyEmployeeFace(
     for (const row of result.rows) {
       const employeeId = row.employee_id as string;
       const storedEncryptedEmbedding = row.encrypted_embedding as string;
-      const storedEmbedding = decryptEmbedding(storedEncryptedEmbedding);
+      const storedEmbedding = await decryptEmbedding(storedEncryptedEmbedding);
 
       const score = cosineSimilarity(storedEmbedding, currentEmbedding);
       if (score > bestScore) {

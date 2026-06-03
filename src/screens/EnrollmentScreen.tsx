@@ -141,6 +141,7 @@ export function EnrollmentScreen(): React.JSX.Element {
             'Low light',
             'Blink detected',
           ]}
+          faceDetected={qualityCheck ? qualityCheck.passed : undefined}
           onPhotoCaptured={handlePhotoCaptured}
           onPhotoCleared={() => {
             setCapturedImagePath(null);
