@@ -15,7 +15,7 @@ export function sha256(ascii: string): string {
   const result = [];
   const words: number[] = [];
   let asciiLength = ascii[lengthProperty];
-  
+
   const hash: number[] = [];
   const k: number[] = [];
   let primeCounter = 0;
@@ -45,8 +45,8 @@ export function sha256(ascii: string): string {
     if (j >> 8) return ''; // ASCII check
     words[i >> 2] |= j << ((3 - (i % 4)) * 8);
   }
-  
-  words[words[lengthProperty]] = (asciiLength * 8) / maxWord | 0;
+
+  words[words[lengthProperty]] = ((asciiLength * 8) / maxWord) | 0;
   words[words[lengthProperty]] = (asciiLength * 8) | 0;
 
   // Process each chunk
@@ -56,13 +56,15 @@ export function sha256(ascii: string): string {
 
     for (i = 0; i < 64; i++) {
       if (i >= 16) {
-        const w15 = w[i - 15], w2 = w[i - 2];
+        const w15 = w[i - 15],
+          w2 = w[i - 2];
         const s0 = rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3);
         const s1 = rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10);
         w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
       }
 
-      const a = hash[0], e = hash[4];
+      const a = hash[0],
+        e = hash[4];
       const s0 = rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22);
       const maj = (a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]);
       const t2 = (s0 + maj) | 0;
@@ -91,6 +93,6 @@ export function sha256(ascii: string): string {
       result.push((b < 16 ? '0' : '') + b.toString(16));
     }
   }
-  
+
   return result.join('');
 }

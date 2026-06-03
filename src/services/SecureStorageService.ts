@@ -2,7 +2,7 @@ import {
   registerEmployeeFace,
   verifyEmployeeFace,
   identifyEmployeeFace,
-  MatchResult
+  MatchResult,
 } from '../ai/faceMatcher';
 
 export class SecureStorageService {
@@ -13,9 +13,11 @@ export class SecureStorageService {
   public async registerFace(
     employeeId: string,
     imagePath: string,
-    deviceId: string = 'unknown-device'
+    deviceId: string = 'unknown-device',
   ): Promise<boolean> {
-    console.log(`[SecureStorageService] Registering template for employee: ${employeeId}`);
+    console.log(
+      `[SecureStorageService] Registering template for employee: ${employeeId}`,
+    );
     return registerEmployeeFace(employeeId, imagePath, deviceId);
   }
 
@@ -25,9 +27,11 @@ export class SecureStorageService {
   public async verifyFace(
     employeeId: string,
     imagePath: string,
-    customThreshold?: number
+    customThreshold?: number,
   ): Promise<MatchResult> {
-    console.log(`[SecureStorageService] Verifying face against employee: ${employeeId}`);
+    console.log(
+      `[SecureStorageService] Verifying face against employee: ${employeeId}`,
+    );
     return verifyEmployeeFace(employeeId, imagePath, customThreshold);
   }
 
@@ -36,9 +40,11 @@ export class SecureStorageService {
    */
   public async identifyFace(
     imagePath: string,
-    customThreshold?: number
+    customThreshold?: number,
   ): Promise<MatchResult> {
-    console.log('[SecureStorageService] Identifying face against all stored templates');
+    console.log(
+      '[SecureStorageService] Identifying face against all stored templates',
+    );
     return identifyEmployeeFace(imagePath, customThreshold);
   }
 }

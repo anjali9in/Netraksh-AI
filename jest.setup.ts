@@ -262,8 +262,12 @@ jest.mock('react-native-keychain', () => ({
 }));
 
 jest.mock('react-native-vision-camera', () => {
+  const mockCamera = jest.fn().mockImplementation(() => null);
+  (mockCamera as any).getCameraPermissionStatus = jest.fn().mockReturnValue('granted');
+  (mockCamera as any).requestCameraPermission = jest.fn().mockResolvedValue('granted');
+
   return {
-    Camera: jest.fn().mockImplementation(() => null),
+    Camera: mockCamera,
     useCameraDevice: jest
       .fn()
       .mockReturnValue({id: 'front-camera', name: 'Front Camera'}),
@@ -309,7 +313,7 @@ jest.mock('react-native-fast-tflite', () => {
         run: jest.fn().mockImplementation(async (inputs: any[]) => {
           const inputBuffer = inputs[0];
           const inputView = new Float32Array(inputBuffer);
-          
+
           // Generate a sum hash based on input buffer values (first 100 values to avoid overflow/NaN)
           let sum = 0;
           const len = Math.min(inputView.length, 100);
@@ -318,18 +322,18 @@ jest.mock('react-native-fast-tflite', () => {
               sum += inputView[i] * (i + 1);
             }
           }
-          
+
           // Return a mock output array buffer of size 512 floats
           const buffer = new ArrayBuffer(512 * 4);
           const view = new Float32Array(buffer);
-          
+
           let sumSq = 0;
           for (let i = 0; i < 512; i++) {
             const val = Math.sin(sum + i) * Math.cos(sum * i);
             view[i] = val;
             sumSq += val * val;
           }
-          
+
           const norm = Math.sqrt(sumSq);
           for (let i = 0; i < 512; i++) {
             view[i] = norm === 0 ? 0 : view[i] / norm;
@@ -353,7 +357,8 @@ jest.mock('react-native-nitro-image', () => {
               const buffer = new ArrayBuffer(112 * 112 * 4);
               const view = new Uint8Array(buffer);
               for (let i = 0; i < view.length; i++) {
-                const charIndex = (Math.floor(i / 4) + (i % 4)) % filePath.length;
+                const charIndex =
+                  (Math.floor(i / 4) + (i % 4)) % filePath.length;
                 view[i] = (i + filePath.charCodeAt(charIndex || 0)) % 256;
               }
               return {
@@ -369,5 +374,3 @@ jest.mock('react-native-nitro-image', () => {
     }),
   };
 }, {virtual: true});
-
-

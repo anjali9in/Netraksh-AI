@@ -1,6 +1,6 @@
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) {
-    throw new Error("Embedding size mismatch");
+    throw new Error('Embedding size mismatch');
   }
 
   let dot = 0;
@@ -19,7 +19,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 export function isFaceMatched(
   storedEmbedding: number[],
   currentEmbedding: number[],
-  threshold = 0.68 // ArcFace-MobileNetV2 baseline (was 0.75 for MobileFaceNet)
+  threshold = 0.68, // ArcFace-MobileNetV2 baseline (was 0.75 for MobileFaceNet)
 ): boolean {
   const score = cosineSimilarity(storedEmbedding, currentEmbedding);
   return score >= threshold;

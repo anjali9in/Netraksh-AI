@@ -1,6 +1,6 @@
-import { getLocalDatabase } from './database/localDatabase';
-import { sha256 } from '../utils/hash';
-import type { DatabaseRow } from './database/databaseTypes';
+import {getLocalDatabase} from './database/localDatabase';
+import {sha256} from '../utils/hash';
+import type {DatabaseRow} from './database/databaseTypes';
 import type {AuthLog} from '../types/LogTypes';
 import type {User} from '../types/UserTypes';
 import {authLogRepository} from './database/repositories/authLogRepository';
@@ -35,7 +35,10 @@ export class OfflineDatabaseService {
       console.log('[OfflineDatabaseService] SQLite Database Initialized.');
       return this.isInitialized;
     } catch (error) {
-      console.error('[OfflineDatabaseService] Failed to initialize local database:', error);
+      console.error(
+        '[OfflineDatabaseService] Failed to initialize local database:',
+        error,
+      );
       this.isInitialized = false;
       throw error;
     }
@@ -66,7 +69,7 @@ export class OfflineDatabaseService {
    */
   public verifyLogIntegrity(log: AuthLogEntry): boolean {
     if (!log.logHash) return false;
-    const rest = { ...log };
+    const rest = {...log};
     delete (rest as any).id;
     delete (rest as any).logHash;
     const expectedHash = this.generateLogHash(rest);
@@ -77,7 +80,7 @@ export class OfflineDatabaseService {
    * Logs a new facial authentication attempt locally.
    */
   public async logAuthAttempt(
-    params: Omit<AuthLogEntry, 'id' | 'createdAt' | 'syncStatus' | 'logHash'>
+    params: Omit<AuthLogEntry, 'id' | 'createdAt' | 'syncStatus' | 'logHash'>,
   ): Promise<number | undefined> {
     try {
       const db = await getLocalDatabase();
@@ -92,7 +95,9 @@ export class OfflineDatabaseService {
 
       const logHash = this.generateLogHash(logData);
 
-      console.log(`[OfflineDatabaseService] Logging attempt for ${params.employeeId}. Status: ${params.authStatus}`);
+      console.log(
+        `[OfflineDatabaseService] Logging attempt for ${params.employeeId}. Status: ${params.authStatus}`,
+      );
 
       const result = await db.execute(
         `INSERT INTO auth_logs 
@@ -110,12 +115,15 @@ export class OfflineDatabaseService {
           logData.createdAt,
           logData.syncStatus,
           logHash,
-        ]
+        ],
       );
 
       return result.insertId;
     } catch (error) {
-      console.error('[OfflineDatabaseService] Failed to log auth attempt:', error);
+      console.error(
+        '[OfflineDatabaseService] Failed to log auth attempt:',
+        error,
+      );
       throw error;
     }
   }
@@ -127,12 +135,15 @@ export class OfflineDatabaseService {
     try {
       const db = await getLocalDatabase();
       const result = await db.execute(
-        `SELECT * FROM auth_logs WHERE sync_status = 'PENDING' ORDER BY created_at ASC`
+        `SELECT * FROM auth_logs WHERE sync_status = 'PENDING' ORDER BY created_at ASC`,
       );
 
       return result.rows.map(mapRowToLogEntry);
     } catch (error) {
-      console.error('[OfflineDatabaseService] Failed to fetch pending logs:', error);
+      console.error(
+        '[OfflineDatabaseService] Failed to fetch pending logs:',
+        error,
+      );
       return [];
     }
   }
@@ -144,31 +155,39 @@ export class OfflineDatabaseService {
     if (logIds.length === 0) return true;
     try {
       const db = await getLocalDatabase();
-      
+
       await db.transaction(async tx => {
         for (const id of logIds) {
           // Fetch log first to recalculate its hash with the new sync status
-          const fetchResult = await tx.execute(`SELECT * FROM auth_logs WHERE id = ?`, [id]);
+          const fetchResult = await tx.execute(
+            `SELECT * FROM auth_logs WHERE id = ?`,
+            [id],
+          );
           if (fetchResult.rows.length > 0) {
             const log = mapRowToLogEntry(fetchResult.rows[0]);
             log.syncStatus = 'SYNCED';
-            const rest = { ...log };
+            const rest = {...log};
             delete (rest as any).id;
             delete (rest as any).logHash;
             const newHash = this.generateLogHash(rest);
 
             await tx.execute(
               `UPDATE auth_logs SET sync_status = 'SYNCED', log_hash = ? WHERE id = ?`,
-              [newHash, id]
+              [newHash, id],
             );
           }
         }
       });
 
-      console.log(`[OfflineDatabaseService] Marked ${logIds.length} logs as SYNCED.`);
+      console.log(
+        `[OfflineDatabaseService] Marked ${logIds.length} logs as SYNCED.`,
+      );
       return true;
     } catch (error) {
-      console.error('[OfflineDatabaseService] Failed to update sync status:', error);
+      console.error(
+        '[OfflineDatabaseService] Failed to update sync status:',
+        error,
+      );
       return false;
     }
   }
@@ -180,12 +199,15 @@ export class OfflineDatabaseService {
     try {
       const db = await getLocalDatabase();
       const result = await db.execute(
-        `SELECT * FROM auth_logs ORDER BY created_at DESC`
+        `SELECT * FROM auth_logs ORDER BY created_at DESC`,
       );
 
       return result.rows.map(mapRowToLogEntry);
     } catch (error) {
-      console.error('[OfflineDatabaseService] Failed to fetch all logs:', error);
+      console.error(
+        '[OfflineDatabaseService] Failed to fetch all logs:',
+        error,
+      );
       return [];
     }
   }
@@ -202,13 +224,18 @@ export class OfflineDatabaseService {
 
       const result = await db.execute(
         `DELETE FROM auth_logs WHERE sync_status = 'SYNCED' AND created_at < ?`,
-        [cutoffIso]
+        [cutoffIso],
       );
 
-      console.log(`[OfflineDatabaseService] Purged ${result.rowsAffected} synced logs older than ${olderThanDays} days.`);
+      console.log(
+        `[OfflineDatabaseService] Purged ${result.rowsAffected} synced logs older than ${olderThanDays} days.`,
+      );
       return result.rowsAffected;
     } catch (error) {
-      console.error('[OfflineDatabaseService] Failed to purge old synced logs:', error);
+      console.error(
+        '[OfflineDatabaseService] Failed to purge old synced logs:',
+        error,
+      );
       return 0;
     }
   }

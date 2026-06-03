@@ -52,7 +52,7 @@ export function useFaceCapture({
 
     const result = await Camera.requestCameraPermission();
     const granted = result === 'granted';
-    setStatus(result);
+    setStatus(result as CameraPermissionStatus);
 
     if (!granted) {
       setErrorMessage('Camera permission is required to capture a face image.');
