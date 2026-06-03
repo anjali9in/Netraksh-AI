@@ -7,6 +7,7 @@ import {secureStorage} from '../storage/secureStorage';
 import {logger} from '../../utils/logger';
 import {deviceInfoService} from '../device/deviceInfo';
 import type {DeviceProfile} from '../device/deviceInfo';
+import {deviceContextService} from '../location/deviceContextService';
 import {createOfflineApiError, normalizeApiError} from './apiError';
 
 export const axiosClient = axios.create({
@@ -32,7 +33,11 @@ axiosClient.interceptors.request.use(async config => {
   }
 
   try {
-    attachDeviceHeaders(config, await deviceInfoService.getDeviceProfile());
+    const [profile, location] = await Promise.all([
+      deviceInfoService.getDeviceProfile(),
+      deviceContextService.getCachedDeviceLocationContext(),
+    ]);
+    attachDeviceHeaders(config, profile, location);
   } catch (error) {
     logger.warn('[Device Info] Unable to attach device headers', error);
   }
@@ -73,6 +78,9 @@ function attachAuthorizationHeader(
 function attachDeviceHeaders(
   config: InternalAxiosRequestConfig,
   profile: DeviceProfile,
+  location: Awaited<
+    ReturnType<typeof deviceContextService.getCachedDeviceLocationContext>
+  >,
 ) {
   const headers = AxiosHeaders.from(config.headers);
   headers.set('X-Device-Id', profile.deviceId);
@@ -88,6 +96,18 @@ function attachDeviceHeaders(
 
   if (profile.androidSdkVersion !== undefined) {
     headers.set('X-Android-Sdk', String(profile.androidSdkVersion));
+  }
+
+  if (location.latitude !== undefined) {
+    headers.set('X-Device-Latitude', String(location.latitude));
+  }
+
+  if (location.longitude !== undefined) {
+    headers.set('X-Device-Longitude', String(location.longitude));
+  }
+
+  if (location.ipAddress) {
+    headers.set('X-Device-Ip', location.ipAddress);
   }
 
   config.headers = headers;

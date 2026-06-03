@@ -106,7 +106,7 @@ export function CameraCaptureCard({
             </View>
           ) : capturedImage ? (
             <Image
-              resizeMode="cover"
+              resizeMode="contain"
               source={{uri: capturedImage.uri}}
               style={styles.preview}
             />
@@ -115,6 +115,7 @@ export function CameraCaptureCard({
               ref={cameraRef}
               device={device}
               isActive={isCameraActive}
+              orientation="portrait"
               photo={true}
               style={StyleSheet.absoluteFill}
             />

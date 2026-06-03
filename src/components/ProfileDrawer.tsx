@@ -15,6 +15,7 @@ import type {AuthLogEntry} from '../services/OfflineDatabaseService';
 import type {User} from '../types/UserTypes';
 import {colors} from '../theme/colors';
 import {radius, spacing} from '../theme/spacing';
+import {useNetworkStatus} from '../hooks/useNetworkStatus';
 import {AttendanceCalendar} from './AttendanceCalendar';
 import {ButtonIcon} from './icons/ButtonIcon';
 import {StatusBadge} from './StatusBadge';
@@ -68,6 +69,7 @@ export function ProfileDrawer({
 }: ProfileDrawerProps): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
+  const {isOnline, isChecking: isCheckingNetwork} = useNetworkStatus();
   const pendingSyncCount = useMemo(
     () => logs.filter(log => log.syncStatus === 'PENDING').length,
     [logs],
@@ -157,9 +159,28 @@ export function ProfileDrawer({
                     />
                     <StatusBadge
                       compact
-                      label={pendingSyncCount > 0 ? 'Offline' : 'Synced'}
-                      status={pendingSyncCount > 0 ? 'warning' : 'info'}
+                      label={
+                        isCheckingNetwork
+                          ? 'Network...'
+                          : isOnline
+                          ? 'Online'
+                          : 'Offline'
+                      }
+                      status={
+                        isCheckingNetwork
+                          ? 'info'
+                          : isOnline
+                          ? 'success'
+                          : 'error'
+                      }
                     />
+                    {pendingSyncCount > 0 ? (
+                      <StatusBadge
+                        compact
+                        label={`${pendingSyncCount} pending`}
+                        status="warning"
+                      />
+                    ) : null}
                   </View>
                 </View>
 
@@ -200,13 +221,18 @@ export function ProfileDrawer({
                   <View style={styles.syncPanel}>
                     <View>
                       <Text style={styles.syncTitle}>
-                        {pendingSyncCount > 0
+                        {!isOnline
                           ? 'Waiting for network restore'
+                          : pendingSyncCount > 0
+                          ? 'Online — sync pending'
                           : 'All local logs synced'}
                       </Text>
                       <Text style={styles.syncText}>
-                        AWS sync will resume automatically when connectivity is
-                        available.
+                        {!isOnline
+                          ? 'AWS sync will resume automatically when connectivity is available.'
+                          : pendingSyncCount > 0
+                          ? `${pendingSyncCount} record(s) will upload on the next sync cycle.`
+                          : 'Device is connected and local data matches the cloud queue.'}
                       </Text>
                     </View>
                     <StatusBadge

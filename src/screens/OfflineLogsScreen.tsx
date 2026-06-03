@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
+import {AppHeader} from '../components/AppHeader';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
 import {
@@ -17,6 +17,14 @@ import {
   AuthLogEntry,
 } from '../services/OfflineDatabaseService';
 import {useIsFocused} from '@react-navigation/native';
+import {offlineSyncService} from '../services/OfflineSyncService';
+import {normalizeApiError} from '../services/api/apiError';
+
+type SyncNotice = {
+  title: string;
+  message: string;
+  status: 'success' | 'warning' | 'error' | 'info';
+};
 
 export function OfflineLogsScreen(): React.JSX.Element {
   const isFocused = useIsFocused();
@@ -30,6 +38,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
   const [customDate, setCustomDate] = useState(''); // YYYY-MM-DD
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<SyncNotice | null>(null);
 
   const fetchLogs = async () => {
     setIsLoading(true);
@@ -107,39 +116,41 @@ export function OfflineLogsScreen(): React.JSX.Element {
   };
 
   const handleSync = async () => {
-    const pendingIds = logs
-      .filter(l => l.syncStatus === 'PENDING')
-      .map(l => l.id!)
-      .filter(Boolean);
-
-    if (pendingIds.length === 0) {
-      Alert.alert(
-        'Sync Status',
-        'All logs are already synchronized with the server.',
-      );
+    if (pendingSyncCount === 0) {
+      setSyncNotice({
+        title: 'Sync Queue Empty',
+        message: 'All local authentication logs are already synchronized.',
+        status: 'info',
+      });
       return;
     }
 
     setIsSyncing(true);
-    try {
-      // Simulate network latency upload to cloud server
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    setSyncNotice({
+      title: 'Sync In Progress',
+      message: `Uploading ${pendingSyncCount} pending log(s) to AWS.`,
+      status: 'info',
+    });
 
-      const success = await offlineDatabaseService.markLogsAsSynced(pendingIds);
-      if (success) {
-        Alert.alert(
-          'Sync Success',
-          `Successfully synchronized ${pendingIds.length} logs to the central database.`,
-        );
-        await fetchLogs();
-      } else {
-        Alert.alert('Sync Error', 'An error occurred during synchronization.');
-      }
+    try {
+      const result = await offlineSyncService.syncPendingLogs();
+      await fetchLogs();
+      setSyncNotice({
+        title:
+          result.failedCount > 0 ? 'Partial Sync Complete' : 'Sync Complete',
+        message:
+          result.failedCount > 0
+            ? `${result.syncedCount} log(s) synced. ${result.failedCount} log(s) failed and were marked for review.`
+            : `${result.syncedCount} log(s) synchronized successfully.`,
+        status: result.failedCount > 0 ? 'warning' : 'success',
+      });
     } catch (error) {
-      Alert.alert(
-        'Sync Error',
-        error instanceof Error ? error.message : 'Unknown sync failure',
-      );
+      const apiError = normalizeApiError(error);
+      setSyncNotice({
+        title: apiError.isNetworkError ? 'Network Sync Failed' : 'Sync Failed',
+        message: apiError.message,
+        status: 'error',
+      });
     } finally {
       setIsSyncing(false);
     }
@@ -148,16 +159,20 @@ export function OfflineLogsScreen(): React.JSX.Element {
   const handlePurge = async () => {
     Alert.alert(
       'Purge Sync Logs',
-      'Are you sure you want to delete all synced logs to save space?',
+      'Delete only logs that have already been synchronized?',
       [
         {text: 'Cancel', style: 'cancel'},
         {
           text: 'Purge',
           style: 'destructive',
           onPress: async () => {
-            const count = await offlineDatabaseService.clearSyncedLogs(0); // clear all synced logs
-            Alert.alert('Purged', `Deleted ${count} synchronized logs.`);
+            const count = await offlineDatabaseService.clearSyncedLogs(0);
             await fetchLogs();
+            setSyncNotice({
+              title: 'Purge Complete',
+              message: `Deleted ${count} synchronized log(s). Pending logs were kept on device.`,
+              status: 'success',
+            });
           },
         },
       ],
@@ -176,9 +191,17 @@ export function OfflineLogsScreen(): React.JSX.Element {
   const successCount = logs.filter(l => l.authStatus === 'SUCCESS').length;
   const failCount = logs.filter(l => l.authStatus === 'FAILED').length;
   const pendingSyncCount = logs.filter(l => l.syncStatus === 'PENDING').length;
+  const syncedCount = logs.filter(l => l.syncStatus === 'SYNCED').length;
 
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
+      <AppHeader
+        title="Offline Logs"
+        subtitle="Review locally stored authentication and sync records."
+        statusLabel={`${pendingSyncCount} pending sync`}
+        status={pendingSyncCount > 0 ? 'warning' : 'success'}
+      />
+
       {/* Metrics Cards */}
       <View style={styles.metricsRow}>
         <View style={[styles.metricCard, {borderLeftColor: '#4f46e5'}]}>
@@ -227,7 +250,11 @@ export function OfflineLogsScreen(): React.JSX.Element {
       <View style={styles.actionButtonsRow}>
         <TouchableOpacity
           onPress={handleSync}
-          style={[styles.actionBtn, styles.syncBtn]}
+          style={[
+            styles.actionBtn,
+            styles.syncBtn,
+            isSyncing && styles.actionBtnDisabled,
+          ]}
           disabled={isSyncing}
         >
           {isSyncing ? (
@@ -241,11 +268,30 @@ export function OfflineLogsScreen(): React.JSX.Element {
 
         <TouchableOpacity
           onPress={handlePurge}
-          style={[styles.actionBtn, styles.purgeBtn]}
+          style={[
+            styles.actionBtn,
+            styles.purgeBtn,
+            (isSyncing || syncedCount === 0) && styles.actionBtnDisabled,
+          ]}
+          disabled={isSyncing || syncedCount === 0}
         >
           <Text style={styles.btnText}>Purge Synced</Text>
         </TouchableOpacity>
       </View>
+
+      {syncNotice ? (
+        <View style={styles.syncNoticeCard}>
+          <View style={styles.syncNoticeHeader}>
+            <Text style={styles.syncNoticeTitle}>{syncNotice.title}</Text>
+            <StatusBadge
+              compact
+              label={syncNotice.status.toUpperCase()}
+              status={syncNotice.status}
+            />
+          </View>
+          <Text style={styles.syncNoticeText}>{syncNotice.message}</Text>
+        </View>
+      ) : null}
 
       {/* Filters & Search */}
       <View style={styles.searchFilterCard}>
@@ -392,6 +438,20 @@ export function OfflineLogsScreen(): React.JSX.Element {
                       </Text>
                     </View>
                   ) : null}
+                  {item.latitude !== null && item.longitude !== null ? (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>GPS: </Text>
+                      <Text style={styles.detailVal}>
+                        {item.latitude.toFixed(5)}, {item.longitude.toFixed(5)}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {item.ipAddress ? (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>IP: </Text>
+                      <Text style={styles.detailVal}>{item.ipAddress}</Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* Dynamic Integrity Check */}
@@ -425,6 +485,7 @@ const styles = StyleSheet.create({
   },
   metricsRow: {
     flexDirection: 'row',
+    marginTop: 16,
   },
   metricCard: {
     flex: 1,
@@ -463,6 +524,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  actionBtnDisabled: {
+    opacity: 0.55,
+  },
   syncBtn: {
     backgroundColor: '#4f46e5',
   },
@@ -482,6 +546,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 16,
     padding: 12,
+  },
+  syncNoticeCard: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 16,
+    padding: 12,
+  },
+  syncNoticeHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  syncNoticeText: {
+    color: '#475569',
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 8,
+  },
+  syncNoticeTitle: {
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '800',
   },
   searchInput: {
     backgroundColor: '#f8fafc',

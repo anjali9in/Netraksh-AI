@@ -27,6 +27,12 @@ function mapAuthLogItem(authLog: AuthLog) {
     modelVersion: authLog.modelVersion,
     createdAt: authLog.createdAt,
     logHash: authLog.logHash,
+    latitude: authLog.latitude,
+    longitude: authLog.longitude,
+    locationAccuracy: authLog.locationAccuracy,
+    altitude: authLog.altitude,
+    ipAddress: authLog.ipAddress,
+    locationCapturedAt: authLog.locationCapturedAt,
     syncedAt: new Date().toISOString(),
   };
 }

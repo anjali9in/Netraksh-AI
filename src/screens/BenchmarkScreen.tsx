@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
+import {AppHeader} from '../components/AppHeader';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
 import {
@@ -75,6 +75,13 @@ export function BenchmarkScreen(): React.JSX.Element {
 
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
+      <AppHeader
+        title="Benchmark Report"
+        subtitle="Run on-device AI latency checks for demo validation."
+        statusLabel="Local model test"
+        status="info"
+      />
+
       {/* Device Info Card */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>

@@ -1,4 +1,5 @@
-export const API_BASE_URL = 'https://api.example.com';
+export const API_BASE_URL =
+  'https://iy86kge7h4.execute-api.ap-south-1.amazonaws.com';
 export const API_TIMEOUT_MS = 15000;
 export const DATABASE_PROVIDER = 'sqlite';
 export const DATABASE_NAME = 'netraksh_ai.sqlite';

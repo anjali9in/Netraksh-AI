@@ -1,6 +1,5 @@
 import React, {useState} from 'react';
 import {ActivityIndicator, Alert, StyleSheet, Text, View} from 'react-native';
-
 import {AppHeader} from '../components/AppHeader';
 import {EmployeeInput} from '../components/EmployeeInput';
 import {InfoCard} from '../components/InfoCard';

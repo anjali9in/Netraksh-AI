@@ -4,6 +4,7 @@ export const ROUTES = {
   AUTHENTICATION: 'Authentication',
   OFFLINE_LOGS: 'OfflineLogs',
   BENCHMARK: 'Benchmark',
+  PROFILE: 'Profile',
 } as const;
 
 export type RouteName = (typeof ROUTES)[keyof typeof ROUTES];
@@ -14,4 +15,5 @@ export type RootStackParamList = {
   [ROUTES.AUTHENTICATION]: undefined;
   [ROUTES.OFFLINE_LOGS]: undefined;
   [ROUTES.BENCHMARK]: undefined;
+  [ROUTES.PROFILE]: undefined;
 };

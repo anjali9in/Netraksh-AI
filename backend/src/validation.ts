@@ -57,6 +57,13 @@ function validateAuthLog(value: unknown): AuthLog {
     throw new Error('id must be a number.');
   }
 
+  assertOptionalNumber(authLog.latitude, 'latitude');
+  assertOptionalNumber(authLog.longitude, 'longitude');
+  assertOptionalNumber(authLog.locationAccuracy, 'locationAccuracy');
+  assertOptionalNumber(authLog.altitude, 'altitude');
+  assertOptionalString(authLog.ipAddress, 'ipAddress', false);
+  assertOptionalString(authLog.locationCapturedAt, 'locationCapturedAt', false);
+
   return {
     id: authLog.id,
     employeeId: authLog.employeeId,
@@ -70,6 +77,12 @@ function validateAuthLog(value: unknown): AuthLog {
     createdAt: authLog.createdAt,
     syncStatus: 'PENDING',
     logHash: authLog.logHash,
+    latitude: authLog.latitude,
+    longitude: authLog.longitude,
+    locationAccuracy: authLog.locationAccuracy,
+    altitude: authLog.altitude,
+    ipAddress: authLog.ipAddress,
+    locationCapturedAt: authLog.locationCapturedAt,
   };
 }
 
@@ -84,4 +97,24 @@ function assertString(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function assertOptionalNumber(value: unknown, fieldName: string): void {
+  if (value !== undefined && typeof value !== 'number') {
+    throw new Error(`${fieldName} must be a number.`);
+  }
+}
+
+function assertOptionalString(
+  value: unknown,
+  fieldName: string,
+  required: boolean,
+): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (typeof value !== 'string' || (required && value.length === 0)) {
+    throw new Error(`${fieldName} must be a string.`);
+  }
 }

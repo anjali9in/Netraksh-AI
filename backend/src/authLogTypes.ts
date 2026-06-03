@@ -11,6 +11,12 @@ export type AuthLog = {
   createdAt: string;
   syncStatus: 'PENDING' | 'SYNCED' | 'FAILED';
   logHash?: string;
+  latitude?: number;
+  longitude?: number;
+  locationAccuracy?: number;
+  altitude?: number;
+  ipAddress?: string;
+  locationCapturedAt?: string;
 };
 
 export type SyncAuthLogsRequest = {

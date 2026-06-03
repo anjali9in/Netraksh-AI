@@ -1,6 +1,5 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-
 import {AppHeader} from '../components/AppHeader';
 import {AttendanceCalendar} from '../components/AttendanceCalendar';
 import {InfoCard} from '../components/InfoCard';
