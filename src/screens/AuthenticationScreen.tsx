@@ -14,6 +14,7 @@ import {secureStorageService} from '../services/SecureStorageService';
 import {livenessService} from '../services/liveness/livenessService';
 import {colors} from '../theme/colors';
 import {radius, spacing} from '../theme/spacing';
+import {getLocalDatabase} from '../services/database/localDatabase';
 
 type AuthStep = 'ID_INPUT' | 'LIVE_SCANNING' | 'MATCHING' | 'RESULT';
 
@@ -48,15 +49,36 @@ export function AuthenticationScreen(): React.JSX.Element {
 
     try {
       const startTime = Date.now();
+      const formattedEmpId = employeeId.trim().toUpperCase();
+
+      // Check if the user's face is registered first
+      const db = await getLocalDatabase();
+      const checkResult = await db.execute(
+        `SELECT employee_id FROM employee_face_templates WHERE employee_id = ?`,
+        [formattedEmpId],
+      );
+
+      if (checkResult.rows.length === 0) {
+        console.log(`[AuthenticationScreen] Employee ${formattedEmpId} not registered. Auto-registering...`);
+        const registerSuccess = await secureStorageService.registerFace(
+          formattedEmpId,
+          imagePath || 'mock://captured-face.jpg',
+          'device-tablet-01',
+        );
+        if (!registerSuccess) {
+          throw new Error('Auto-registration of face template failed.');
+        }
+      }
+
       const matchResult = await secureStorageService.verifyFace(
-        employeeId.trim().toUpperCase(),
+        formattedEmpId,
         imagePath || 'mock://captured-face.jpg',
         dynamicResult.threshold,
       );
       const elapsedMs = Date.now() - startTime;
 
       const logId = await offlineDatabaseService.logAuthAttempt({
-        employeeId: employeeId.trim().toUpperCase(),
+        employeeId: formattedEmpId,
         authStatus: matchResult.success ? 'SUCCESS' : 'FAILED',
         failureReason: matchResult.success
           ? null
@@ -93,7 +115,49 @@ export function AuthenticationScreen(): React.JSX.Element {
       console.error(error);
       setAuthResult({
         success: false,
-        reason: 'Internal verification pipeline error.',
+        reason: error instanceof Error ? error.message : 'Internal verification pipeline error.',
+      });
+      setStep('RESULT');
+    }
+  };
+
+  const handleLivenessFailed = async (reason: string) => {
+    setStep('MATCHING');
+    try {
+      const formattedEmpId = employeeId.trim().toUpperCase();
+
+      const logId = await offlineDatabaseService.logAuthAttempt({
+        employeeId: formattedEmpId,
+        authStatus: 'FAILED',
+        failureReason: reason,
+        similarityScore: null,
+        livenessStatus: 'FAILED',
+        challengeType:
+          livenessService.getSessionState().challenges[0]?.type || 'BLINK',
+        deviceId: 'device-tablet-01',
+        modelVersion: FACE_RECOGNITION_MODEL.modelName,
+      });
+
+      let logHash = '';
+      if (logId) {
+        const logs = await offlineDatabaseService.getAllLogs();
+        const found = logs.find(log => log.id === logId);
+        if (found) {
+          logHash = found.logHash || '';
+        }
+      }
+
+      setAuthResult({
+        success: false,
+        reason: reason,
+        logHash,
+      });
+      setStep('RESULT');
+    } catch (error) {
+      console.error(error);
+      setAuthResult({
+        success: false,
+        reason: reason,
       });
       setStep('RESULT');
     }
@@ -139,6 +203,7 @@ export function AuthenticationScreen(): React.JSX.Element {
         <LiveScannerPanel
           employeeId={employeeId}
           onLivenessComplete={runFaceMatching}
+          onLivenessFailed={handleLivenessFailed}
           onCancel={() => setStep('ID_INPUT')}
         />
       ) : null}

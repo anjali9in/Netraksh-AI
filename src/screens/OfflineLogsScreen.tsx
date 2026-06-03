@@ -16,6 +16,7 @@ import {
   offlineDatabaseService,
   AuthLogEntry,
 } from '../services/OfflineDatabaseService';
+import {useIsFocused} from '@react-navigation/native';
 import {offlineSyncService} from '../services/OfflineSyncService';
 import {normalizeApiError} from '../services/api/apiError';
 
@@ -26,12 +27,15 @@ type SyncNotice = {
 };
 
 export function OfflineLogsScreen(): React.JSX.Element {
+  const isFocused = useIsFocused();
   const [logs, setLogs] = useState<AuthLogEntry[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuthLogEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<
     'ALL' | 'SUCCESS' | 'FAILED' | 'PENDING'
   >('ALL');
+  const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'CUSTOM'>('ALL');
+  const [customDate, setCustomDate] = useState(''); // YYYY-MM-DD
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncNotice, setSyncNotice] = useState<SyncNotice | null>(null);
@@ -41,7 +45,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
     try {
       const allLogs = await offlineDatabaseService.getAllLogs();
       setLogs(allLogs);
-      applyFilters(allLogs, searchQuery, statusFilter);
+      applyFilters(allLogs, searchQuery, statusFilter, dateFilter, customDate);
     } catch (error) {
       console.error(error);
     } finally {
@@ -53,6 +57,8 @@ export function OfflineLogsScreen(): React.JSX.Element {
     allLogs: AuthLogEntry[],
     query: string,
     filter: typeof statusFilter,
+    dateMode: typeof dateFilter,
+    dateStr: string,
   ) => {
     let result = [...allLogs];
 
@@ -72,17 +78,41 @@ export function OfflineLogsScreen(): React.JSX.Element {
       result = result.filter(log => log.syncStatus === 'PENDING');
     }
 
+    // Apply Date Filter
+    const today = new Date().toISOString().split('T')[0];
+    const yesterdayObj = new Date();
+    yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+    const yesterday = yesterdayObj.toISOString().split('T')[0];
+
+    if (dateMode === 'TODAY') {
+      result = result.filter(log => log.createdAt.startsWith(today));
+    } else if (dateMode === 'YESTERDAY') {
+      result = result.filter(log => log.createdAt.startsWith(yesterday));
+    } else if (dateMode === 'CUSTOM' && dateStr.trim()) {
+      result = result.filter(log => log.createdAt.startsWith(dateStr.trim()));
+    }
+
     setFilteredLogs(result);
   };
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
-    applyFilters(logs, text, statusFilter);
+    applyFilters(logs, text, statusFilter, dateFilter, customDate);
   };
 
   const handleFilterChange = (filter: typeof statusFilter) => {
     setStatusFilter(filter);
-    applyFilters(logs, searchQuery, filter);
+    applyFilters(logs, searchQuery, filter, dateFilter, customDate);
+  };
+
+  const handleDateFilterChange = (mode: typeof dateFilter) => {
+    setDateFilter(mode);
+    applyFilters(logs, searchQuery, statusFilter, mode, customDate);
+  };
+
+  const handleCustomDateChange = (text: string) => {
+    setCustomDate(text);
+    applyFilters(logs, searchQuery, statusFilter, 'CUSTOM', text);
   };
 
   const handleSync = async () => {
@@ -150,9 +180,11 @@ export function OfflineLogsScreen(): React.JSX.Element {
   };
 
   useEffect(() => {
-    fetchLogs();
+    if (isFocused) {
+      fetchLogs();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isFocused]);
 
   // Summary Metrics
   const totalCount = logs.length;
@@ -292,6 +324,40 @@ export function OfflineLogsScreen(): React.JSX.Element {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Date Filter Bar */}
+        <View style={[styles.filterBar, {marginTop: 8}]}>
+          {(['ALL', 'TODAY', 'YESTERDAY', 'CUSTOM'] as const).map(mode => (
+            <TouchableOpacity
+              key={mode}
+              onPress={() => handleDateFilterChange(mode)}
+              style={[
+                styles.filterTab,
+                dateFilter === mode && styles.activeFilterTab,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  dateFilter === mode && styles.activeFilterText,
+                ]}
+              >
+                {mode}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Custom Date Input */}
+        {dateFilter === 'CUSTOM' ? (
+          <TextInput
+            onChangeText={handleCustomDateChange}
+            placeholder="Enter date (YYYY-MM-DD)..."
+            placeholderTextColor="#94a3b8"
+            style={[styles.searchInput, {marginTop: 8}]}
+            value={customDate}
+          />
+        ) : null}
       </View>
 
       {/* Logs List */}
