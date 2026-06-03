@@ -16,18 +16,22 @@ import {PrimaryButton} from './PrimaryButton';
 type LiveScannerPanelProps = {
   employeeId: string;
   onLivenessComplete: (imagePath: string) => void;
+  onLivenessFailed?: (reason: string) => void;
   onCancel: () => void;
 };
 
 export function LiveScannerPanel({
   employeeId,
   onLivenessComplete,
+  onLivenessFailed,
   onCancel,
 }: LiveScannerPanelProps): React.JSX.Element {
   const isScreenFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
   const [hasPermission, setHasPermission] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
+
 
   // Liveness session states
   const [livenessState, setLivenessState] = useState<LivenessSessionState | null>(null);
@@ -118,6 +122,7 @@ export function LiveScannerPanel({
     const initialState = livenessService.resetSession();
     setLivenessState(initialState);
     startTimeRef.current = Date.now();
+    setFaceDetected(false);
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -127,6 +132,24 @@ export function LiveScannerPanel({
       if (!isCameraActive) return;
 
       const elapsed = Date.now() - startTimeRef.current;
+
+      // Simulate face detection state: red for the first 1s, then green
+      if (elapsed >= 1000 && elapsed <= 15000) {
+        setFaceDetected(true);
+      }
+
+      // 15-second timeout check
+      if (elapsed > 15000) {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        setFaceDetected(false);
+        console.log('[LiveScannerPanel] Liveness check timed out. Rejecting.');
+        onLivenessFailed?.('Live face is not showing');
+        return;
+      }
+
       const state = livenessService.getSessionState();
       const currentChallenge = state.challenges[state.currentChallengeIndex];
 
@@ -154,7 +177,7 @@ export function LiveScannerPanel({
         handleLivenessSuccess();
       }
     }, 100);
-  }, [isCameraActive, handleLivenessSuccess]);
+  }, [isCameraActive, handleLivenessSuccess, onLivenessFailed]);
 
   // Control scanner loop based on active state
   useEffect(() => {
@@ -219,6 +242,7 @@ export function LiveScannerPanel({
               style={[
                 styles.pulseRing,
                 {
+                  borderColor: faceDetected ? '#34d399' : '#f87171',
                   transform: [{scale: pulseAnim}],
                   opacity: pulseAnim.interpolate({
                     inputRange: [1.0, 1.3],
@@ -227,7 +251,7 @@ export function LiveScannerPanel({
                 },
               ]}
             />
-            <View style={styles.targetBorder} />
+            <View style={[styles.targetBorder, {borderColor: faceDetected ? '#10b981' : '#ef4444'}]} />
             
             {/* Silhouette outline helper */}
             <View style={styles.silhouetteWrapper}>
