@@ -6,8 +6,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-
 import {AppHeader} from '../components/AppHeader';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
@@ -20,7 +18,6 @@ import {deviceInfoService} from '../services/device/deviceInfo';
 import type {DeviceProfile} from '../services/device/deviceInfo';
 
 export function BenchmarkScreen(): React.JSX.Element {
-  const navigation = useNavigation();
   const [deviceProfile, setDeviceProfile] = useState<DeviceProfile | null>(
     null,
   );
@@ -83,7 +80,6 @@ export function BenchmarkScreen(): React.JSX.Element {
         subtitle="Run on-device AI latency checks for demo validation."
         statusLabel="Local model test"
         status="info"
-        onBackPress={() => navigation.goBack()}
       />
 
       {/* Device Info Card */}

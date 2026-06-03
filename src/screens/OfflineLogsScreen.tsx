@@ -9,8 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-
 import {AppHeader} from '../components/AppHeader';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
@@ -28,7 +26,6 @@ type SyncNotice = {
 };
 
 export function OfflineLogsScreen(): React.JSX.Element {
-  const navigation = useNavigation();
   const [logs, setLogs] = useState<AuthLogEntry[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuthLogEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -171,7 +168,6 @@ export function OfflineLogsScreen(): React.JSX.Element {
         subtitle="Review locally stored authentication and sync records."
         statusLabel={`${pendingSyncCount} pending sync`}
         status={pendingSyncCount > 0 ? 'warning' : 'success'}
-        onBackPress={() => navigation.goBack()}
       />
 
       {/* Metrics Cards */}
@@ -374,6 +370,20 @@ export function OfflineLogsScreen(): React.JSX.Element {
                       <Text style={[styles.detailVal, {color: '#ef4444'}]}>
                         {item.failureReason}
                       </Text>
+                    </View>
+                  ) : null}
+                  {item.latitude !== null && item.longitude !== null ? (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>GPS: </Text>
+                      <Text style={styles.detailVal}>
+                        {item.latitude.toFixed(5)}, {item.longitude.toFixed(5)}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {item.ipAddress ? (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>IP: </Text>
+                      <Text style={styles.detailVal}>{item.ipAddress}</Text>
                     </View>
                   ) : null}
                 </View>

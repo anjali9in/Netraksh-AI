@@ -4,7 +4,9 @@ import type {AuthLog} from '../types/LogTypes';
 import type {User} from '../types/UserTypes';
 import {authLogRepository} from './database/repositories/authLogRepository';
 import {userRepository} from './database/repositories/userRepository';
+import {deviceContextService} from './location/deviceContextService';
 import {generateAuthLogHash} from '../utils/authLogHash';
+import type {DeviceLocationContext} from '../types/LocationTypes';
 
 export type AuthLogEntry = {
   id?: number;
@@ -19,6 +21,12 @@ export type AuthLogEntry = {
   createdAt: string;
   syncStatus: 'PENDING' | 'SYNCED' | 'FAILED';
   logHash: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationAccuracy: number | null;
+  altitude: number | null;
+  ipAddress: string | null;
+  locationCapturedAt: string | null;
 };
 
 export class OfflineDatabaseService {
@@ -28,6 +36,10 @@ export class OfflineDatabaseService {
    * Initializes the database connection and runs migrations.
    */
   public async initDatabase(): Promise<boolean> {
+    if (this.isInitialized) {
+      return true;
+    }
+
     try {
       console.log('[OfflineDatabaseService] Initializing SQLite Database...');
       const db = await getLocalDatabase();
@@ -48,11 +60,7 @@ export class OfflineDatabaseService {
    * Creates a tamper-proof integrity hash for an authentication log.
    */
   public generateLogHash(log: Omit<AuthLogEntry, 'id' | 'logHash'>): string {
-    return generateAuthLogHash({
-      ...log,
-      failureReason: log.failureReason ?? undefined,
-      similarityScore: log.similarityScore ?? undefined,
-    });
+    return generateAuthLogHash(log);
   }
 
   /**
@@ -71,20 +79,44 @@ export class OfflineDatabaseService {
    * Logs a new facial authentication attempt locally.
    */
   public async logAuthAttempt(
-    params: Omit<AuthLogEntry, 'id' | 'createdAt' | 'syncStatus' | 'logHash'>,
+    params: Omit<
+      AuthLogEntry,
+      | 'id'
+      | 'createdAt'
+      | 'syncStatus'
+      | 'logHash'
+      | 'latitude'
+      | 'longitude'
+      | 'locationAccuracy'
+      | 'altitude'
+      | 'ipAddress'
+      | 'locationCapturedAt'
+    >,
   ): Promise<number | undefined> {
     try {
       const db = await getLocalDatabase();
       const createdAt = new Date().toISOString();
       const syncStatus = 'PENDING' as const;
+      const location = await resolveLocationForAuthLog();
 
-      const logData = {
-        ...params,
+      const logHash = generateAuthLogHash({
+        employeeId: params.employeeId,
+        authStatus: params.authStatus,
+        failureReason: params.failureReason,
+        similarityScore: params.similarityScore,
+        livenessStatus: params.livenessStatus,
+        challengeType: params.challengeType,
+        deviceId: params.deviceId,
+        modelVersion: params.modelVersion,
         createdAt,
         syncStatus,
-      };
-
-      const logHash = this.generateLogHash(logData);
+        latitude: location.latitude ?? null,
+        longitude: location.longitude ?? null,
+        locationAccuracy: location.locationAccuracy ?? null,
+        altitude: location.altitude ?? null,
+        ipAddress: location.ipAddress ?? null,
+        locationCapturedAt: location.locationCapturedAt ?? null,
+      });
 
       console.log(
         `[OfflineDatabaseService] Logging attempt for ${params.employeeId}. Status: ${params.authStatus}`,
@@ -92,20 +124,26 @@ export class OfflineDatabaseService {
 
       const result = await db.execute(
         `INSERT INTO auth_logs 
-        (employee_id, auth_status, failure_reason, similarity_score, liveness_status, challenge_type, device_id, model_version, created_at, sync_status, log_hash) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (employee_id, auth_status, failure_reason, similarity_score, liveness_status, challenge_type, device_id, model_version, created_at, sync_status, log_hash, latitude, longitude, location_accuracy, altitude, ip_address, location_captured_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          logData.employeeId,
-          logData.authStatus,
-          logData.failureReason,
-          logData.similarityScore,
-          logData.livenessStatus,
-          logData.challengeType,
-          logData.deviceId,
-          logData.modelVersion,
-          logData.createdAt,
-          logData.syncStatus,
+          params.employeeId,
+          params.authStatus,
+          params.failureReason,
+          params.similarityScore,
+          params.livenessStatus,
+          params.challengeType,
+          params.deviceId,
+          params.modelVersion,
+          createdAt,
+          syncStatus,
           logHash,
+          location.latitude ?? null,
+          location.longitude ?? null,
+          location.locationAccuracy ?? null,
+          location.altitude ?? null,
+          location.ipAddress ?? null,
+          location.locationCapturedAt ?? null,
         ],
       );
 
@@ -293,7 +331,23 @@ function mapRowToLogEntry(row: DatabaseRow): AuthLogEntry {
     createdAt: row.created_at as string,
     syncStatus: row.sync_status as 'PENDING' | 'SYNCED' | 'FAILED',
     logHash: row.log_hash as string | null,
+    latitude: (row.latitude as number | null) ?? null,
+    longitude: (row.longitude as number | null) ?? null,
+    locationAccuracy: (row.location_accuracy as number | null) ?? null,
+    altitude: (row.altitude as number | null) ?? null,
+    ipAddress: (row.ip_address as string | null) ?? null,
+    locationCapturedAt: (row.location_captured_at as string | null) ?? null,
   };
+}
+
+async function resolveLocationForAuthLog(): Promise<DeviceLocationContext> {
+  let context = await deviceContextService.getCachedDeviceLocationContext();
+
+  if (context.latitude === undefined && context.longitude === undefined) {
+    context = await deviceContextService.refreshDeviceLocationContext();
+  }
+
+  return context;
 }
 
 export const offlineDatabaseService = new OfflineDatabaseService();

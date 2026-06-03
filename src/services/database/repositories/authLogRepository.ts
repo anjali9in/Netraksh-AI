@@ -19,8 +19,14 @@ export class AuthLogRepository {
         model_version,
         created_at,
         sync_status,
-        log_hash
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        log_hash,
+        latitude,
+        longitude,
+        location_accuracy,
+        altitude,
+        ip_address,
+        location_captured_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         authLog.employeeId,
         authLog.authStatus,
@@ -33,6 +39,12 @@ export class AuthLogRepository {
         authLog.createdAt,
         authLog.syncStatus,
         authLog.logHash ?? null,
+        authLog.latitude ?? null,
+        authLog.longitude ?? null,
+        authLog.locationAccuracy ?? null,
+        authLog.altitude ?? null,
+        authLog.ipAddress ?? null,
+        authLog.locationCapturedAt ?? null,
       ],
     );
   }
@@ -108,6 +120,12 @@ function mapAuthLogRow(row: DatabaseRow): AuthLog {
     createdAt: String(row.created_at),
     syncStatus: row.sync_status as AuthLog['syncStatus'],
     logHash: toOptionalString(row.log_hash),
+    latitude: toOptionalNumber(row.latitude),
+    longitude: toOptionalNumber(row.longitude),
+    locationAccuracy: toOptionalNumber(row.location_accuracy),
+    altitude: toOptionalNumber(row.altitude),
+    ipAddress: toOptionalString(row.ip_address),
+    locationCapturedAt: toOptionalString(row.location_captured_at),
   };
 }
 

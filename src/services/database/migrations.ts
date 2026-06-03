@@ -56,6 +56,29 @@ export const MIGRATIONS: Migration[] = [
         ON users (status)`,
     ],
   },
+  {
+    id: 3,
+    name: 'add_location_and_device_context',
+    statements: [
+      `ALTER TABLE auth_logs ADD COLUMN latitude REAL`,
+      `ALTER TABLE auth_logs ADD COLUMN longitude REAL`,
+      `ALTER TABLE auth_logs ADD COLUMN location_accuracy REAL`,
+      `ALTER TABLE auth_logs ADD COLUMN altitude REAL`,
+      `ALTER TABLE auth_logs ADD COLUMN ip_address TEXT`,
+      `ALTER TABLE auth_logs ADD COLUMN location_captured_at TEXT`,
+      `CREATE TABLE IF NOT EXISTS device_context (
+        device_id TEXT PRIMARY KEY NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        location_accuracy REAL,
+        altitude REAL,
+        ip_address TEXT,
+        location_captured_at TEXT,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('PENDING', 'SYNCED', 'FAILED'))
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(database: LocalDatabase): Promise<void> {

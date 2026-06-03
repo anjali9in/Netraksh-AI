@@ -1,7 +1,5 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-
 import {AppHeader} from '../components/AppHeader';
 import {AttendanceCalendar} from '../components/AttendanceCalendar';
 import {InfoCard} from '../components/InfoCard';
@@ -11,8 +9,6 @@ import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 
 export function ProfileScreen(): React.JSX.Element {
-  const navigation = useNavigation();
-
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
       <AppHeader
@@ -20,7 +16,6 @@ export function ProfileScreen(): React.JSX.Element {
         subtitle="Offline user profile, attendance, and sync status."
         statusLabel="Demo profile"
         status="info"
-        onBackPress={() => navigation.goBack()}
       />
 
       <InfoCard title="Personal Information" style={styles.section}>

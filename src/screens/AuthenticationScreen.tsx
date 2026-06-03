@@ -1,7 +1,5 @@
 import React, {useState} from 'react';
 import {ActivityIndicator, Alert, StyleSheet, Text, View} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-
 import {AppHeader} from '../components/AppHeader';
 import {EmployeeInput} from '../components/EmployeeInput';
 import {InfoCard} from '../components/InfoCard';
@@ -20,7 +18,6 @@ import {radius, spacing} from '../theme/spacing';
 type AuthStep = 'ID_INPUT' | 'LIVE_SCANNING' | 'MATCHING' | 'RESULT';
 
 export function AuthenticationScreen(): React.JSX.Element {
-  const navigation = useNavigation();
   const [employeeId, setEmployeeId] = useState('');
   const [step, setStep] = useState<AuthStep>('ID_INPUT');
   const [authResult, setAuthResult] = useState<{
@@ -115,7 +112,6 @@ export function AuthenticationScreen(): React.JSX.Element {
         subtitle="Verify employee identity with local face matching and liveness checks."
         statusLabel="Offline auth enabled"
         status="success"
-        onBackPress={() => navigation.goBack()}
       />
 
       {step === 'ID_INPUT' ? (

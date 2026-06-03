@@ -3,7 +3,7 @@ import {Linking} from 'react-native';
 import {Camera, useCameraDevice} from 'react-native-vision-camera';
 
 import type {CapturedFaceImage} from '../types/CameraTypes';
-import {toFileUri} from '../utils/fileUtils';
+import {normalizeCapturedPhoto} from '../utils/normalizeCapturedPhoto';
 
 type CameraPermissionStatus =
   | 'not-determined'
@@ -95,14 +95,22 @@ export function useFaceCapture({
         enablePrecapture: true,
       });
 
+      const upright = await normalizeCapturedPhoto(
+        photo.path,
+        photo.width,
+        photo.height,
+        photo.orientation,
+        {isFrontCamera: device.position === 'front'},
+      );
+
       const image: CapturedFaceImage = {
-        path: photo.path,
-        uri: toFileUri(photo.path),
+        path: upright.path,
+        uri: upright.uri,
         capturedAt: new Date().toISOString(),
         source: 'camera',
-        width: photo.width,
-        height: photo.height,
-        orientation: photo.orientation,
+        width: upright.width,
+        height: upright.height,
+        orientation: 'portrait',
         isMirrored: photo.isMirrored,
         metadata: {
           brightnessValue: photo.metadata?.['{Exif}']?.BrightnessValue,

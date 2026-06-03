@@ -43,7 +43,7 @@ This list is updated against the current React Native, backend, development-flow
 - Camera quality checks are currently simulated in the enrollment UI; replace with real image/face quality signals.
 - Liveness UI uses simulated EAR/MAR/yaw values during authentication; connect it to real face landmarks from an on-device face detector.
 - The architecture docs mention Google ML Kit face detection, but the current package list does not include a face detection/landmark dependency.
-- `faceEmbedding.ts` references `react-native-nitro-image`, but that dependency is not currently listed in `package.json`; either add/link the dependency or replace image preprocessing with an installed image pipeline.
+- Face embedding preprocessing uses `@bam.tech/react-native-image-resizer`, `react-native-fs`, and `jpeg-js` (Nitro Image requires RN 0.75+ and is not used on RN 0.72).
 - Sync service exists, but automatic network-restore sync is not yet wired into the app lifecycle.
 - Offline Logs screen has manual sync/purge simulation paths; connect it fully to `OfflineSyncService` and production backend responses.
 - Backend sync API is scaffolded, but deployment, environment configuration, auth, and real API URL wiring still need final validation.
@@ -62,8 +62,8 @@ This list is updated against the current React Native, backend, development-flow
    - Feed real landmarks into liveness EAR/MAR/yaw calculations.
    - Show real validation states: face not centered, low light, multiple faces, no face, blink detected.
 
-3. Fix or finalize image preprocessing for TFLite inference.
-   - Add the missing image preprocessing dependency referenced by `faceEmbedding.ts`, or replace it with a supported React Native image processing path.
+3. Validate image preprocessing for TFLite inference on physical devices.
+   - `src/ai/imagePixelLoader.ts` resizes via `@bam.tech/react-native-image-resizer` and decodes with `jpeg-js`.
    - Validate 112x112 RGB normalization on Android and iOS physical devices.
    - Confirm the bundled TFLite model loads correctly with `react-native-fast-tflite`.
 

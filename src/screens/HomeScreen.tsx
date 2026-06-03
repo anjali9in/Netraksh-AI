@@ -6,7 +6,6 @@ import {useNavigation} from '@react-navigation/native';
 import {AppHeader} from '../components/AppHeader';
 import {InfoCard} from '../components/InfoCard';
 import {PrimaryButton} from '../components/PrimaryButton';
-import {ProfileDrawer} from '../components/ProfileDrawer';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
 import {RootStackParamList, ROUTES} from '../app/navigation/routes';
@@ -14,34 +13,17 @@ import {
   offlineDatabaseService,
   AuthLogEntry,
 } from '../services/OfflineDatabaseService';
-import type {User} from '../types/UserTypes';
+import {useNetworkStatus} from '../hooks/useNetworkStatus';
 import {colors} from '../theme/colors';
 import {radius, spacing} from '../theme/spacing';
 
-type HomeNavigation = NativeStackNavigationProp<
-  RootStackParamList,
-  typeof ROUTES.HOME
->;
-
-const DEMO_USER: User = {
-  employeeId: 'EMP-001',
-  fullName: 'Demo User',
-  department: 'Engineering',
-  designation: 'Software Engineer',
-  email: 'demo@netraksh.ai',
-  phone: '+91 98765 43210',
-  siteId: 'HQ-Bangalore',
-  status: 'ACTIVE',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  syncStatus: 'SYNCED',
-};
+type AppNavigation = NativeStackNavigationProp<RootStackParamList>;
 
 export function HomeScreen(): React.JSX.Element {
-  const navigation = useNavigation<HomeNavigation>();
-  const [drawerVisible, setDrawerVisible] = useState(false);
+  const navigation = useNavigation<AppNavigation>();
   const [logs, setLogs] = useState<AuthLogEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {isOnline, isChecking: isCheckingNetwork, connectionType} =
+    useNetworkStatus();
 
   const pendingLogs = logs.filter(log => log.syncStatus === 'PENDING').length;
   const successfulAuth = logs.filter(
@@ -51,15 +33,12 @@ export function HomeScreen(): React.JSX.Element {
 
   const fetchLogs = async () => {
     try {
-      setIsLoading(true);
       await new Promise(resolve => setTimeout(resolve, 500));
       const allLogs = await offlineDatabaseService.getAllLogs();
       setLogs(allLogs);
     } catch (error) {
       console.warn('Could not load attendance logs:', error);
       setLogs([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -68,18 +47,28 @@ export function HomeScreen(): React.JSX.Element {
   }, []);
 
   return (
-    <>
-      <ScreenContainer contentContainerStyle={styles.screenContent}>
+    <ScreenContainer contentContainerStyle={styles.screenContent}>
         <AppHeader
           title="Offline Face Authentication"
           subtitle="Enterprise-grade employee enrollment, liveness checks, and local attendance logs."
           statusLabel={
-            pendingLogs > 0
-              ? `${pendingLogs} logs pending sync`
-              : 'Offline-ready | encrypted local store'
+            isCheckingNetwork
+              ? 'Checking network...'
+              : isOnline
+              ? pendingLogs > 0
+                ? `Online | ${pendingLogs} log(s) pending sync`
+                : `Online | ${connectionType}`
+              : 'No internet | offline mode active'
           }
-          status={pendingLogs > 0 ? 'warning' : 'info'}
-          onProfilePress={() => setDrawerVisible(true)}
+          status={
+            isCheckingNetwork
+              ? 'info'
+              : isOnline
+              ? pendingLogs > 0
+                ? 'warning'
+                : 'success'
+              : 'error'
+          }
         />
 
         <View style={styles.systemPanel}>
@@ -90,8 +79,16 @@ export function HomeScreen(): React.JSX.Element {
             </Text>
           </View>
           <StatusBadge
-            label={isLoading ? 'Checking logs' : 'Offline mode active'}
-            status={isLoading ? 'info' : 'success'}
+            label={
+              isCheckingNetwork
+                ? 'Checking network'
+                : isOnline
+                ? 'Online'
+                : 'Offline'
+            }
+            status={
+              isCheckingNetwork ? 'info' : isOnline ? 'success' : 'error'
+            }
           />
         </View>
 
@@ -184,15 +181,7 @@ export function HomeScreen(): React.JSX.Element {
             />
           </InfoCard>
         </View>
-      </ScreenContainer>
-
-      <ProfileDrawer
-        logs={logs}
-        onClose={() => setDrawerVisible(false)}
-        user={DEMO_USER}
-        visible={drawerVisible}
-      />
-    </>
+    </ScreenContainer>
   );
 }
 

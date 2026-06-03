@@ -1,6 +1,7 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 
+import {useNavigationMenuOptional} from '../app/navigation/NavigationMenuContext';
 import {colors} from '../theme/colors';
 import {radius, spacing} from '../theme/spacing';
 import {ButtonIcon} from './icons/ButtonIcon';
@@ -12,7 +13,9 @@ type AppHeaderProps = {
   statusLabel?: string;
   status?: 'success' | 'warning' | 'error' | 'info';
   onBackPress?: () => void;
-  onProfilePress?: () => void;
+  /** Opens the side navigation drawer. Defaults to the app menu when inside AppShell. */
+  onMenuPress?: () => void;
+  showMenuButton?: boolean;
 };
 
 export function AppHeader({
@@ -21,11 +24,32 @@ export function AppHeader({
   statusLabel,
   status = 'info',
   onBackPress,
-  onProfilePress,
+  onMenuPress,
+  showMenuButton = true,
 }: AppHeaderProps): React.JSX.Element {
+  const navigationMenu = useNavigationMenuOptional();
+  const handleMenuPress = onMenuPress ?? navigationMenu?.openMenu;
+  const shouldShowMenu = showMenuButton && Boolean(handleMenuPress);
+
+  const menuButton = shouldShowMenu ? (
+    <Pressable
+      accessibilityLabel="Open navigation menu"
+      accessibilityRole="button"
+      hitSlop={8}
+      onPress={handleMenuPress}
+      style={({pressed}) => [
+        styles.menuButton,
+        pressed && styles.headerButtonPressed,
+      ]}
+    >
+      <ButtonIcon color={colors.surface} name="user" />
+    </Pressable>
+  ) : null;
+
   if (onBackPress) {
     return (
       <View style={styles.headerWithBack}>
+        {menuButton}
         <Pressable
           accessibilityLabel="Go back"
           accessibilityRole="button"
@@ -33,7 +57,7 @@ export function AppHeader({
           onPress={onBackPress}
           style={({pressed}) => [
             styles.backButton,
-            styles.backButtonOffset,
+            menuButton ? styles.backButtonAfterMenu : styles.backButtonOffset,
             pressed && styles.headerButtonPressed,
           ]}
         >
@@ -54,7 +78,8 @@ export function AppHeader({
 
   return (
     <View style={styles.header}>
-      <View style={styles.copy}>
+      {menuButton}
+      <View style={[styles.copy, shouldShowMenu && styles.copyWithMenu]}>
         <HeaderCopy
           status={status}
           statusLabel={statusLabel}
@@ -62,19 +87,6 @@ export function AppHeader({
           title={title}
         />
       </View>
-      {onProfilePress ? (
-        <Pressable
-          accessibilityLabel="Open profile"
-          accessibilityRole="button"
-          onPress={onProfilePress}
-          style={({pressed}) => [
-            styles.profileButton,
-            pressed && styles.headerButtonPressed,
-          ]}
-        >
-          <ButtonIcon color={colors.surface} name="user" />
-        </Pressable>
-      ) : null}
     </View>
   );
 }
@@ -115,6 +127,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 44,
   },
+  backButtonAfterMenu: {
+    marginRight: spacing.md,
+    marginTop: -2,
+  },
   backButtonOffset: {
     marginLeft: -4,
     marginRight: spacing.xl,
@@ -128,6 +144,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: spacing.md,
   },
+  copyWithMenu: {
+    paddingLeft: spacing.md,
+  },
   eyebrow: {
     color: colors.primary,
     fontSize: 11,
@@ -136,18 +155,19 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'flex-start',
     flexDirection: 'row',
-    justifyContent: 'space-between',
   },
   headerWithBack: {
     alignItems: 'flex-start',
     flexDirection: 'row',
   },
-  profileButton: {
+  menuButton: {
     alignItems: 'center',
     backgroundColor: colors.primary,
     borderRadius: radius.round,
     height: 48,
     justifyContent: 'center',
+    marginRight: spacing.md,
+    marginTop: -2,
     shadowColor: colors.primaryDark,
     shadowOffset: {width: 0, height: 8},
     shadowOpacity: 0.18,

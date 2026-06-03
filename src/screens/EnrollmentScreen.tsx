@@ -116,7 +116,6 @@ export function EnrollmentScreen(): React.JSX.Element {
         subtitle="Register a local encrypted face template for offline access control."
         statusLabel="Template stored on device"
         status="info"
-        onBackPress={() => navigation.goBack()}
       />
 
       <InfoCard

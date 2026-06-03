@@ -1,4 +1,5 @@
 import {FACE_RECOGNITION_MODEL} from './modelConfig';
+import {loadRawPixelsFromImagePath} from './imagePixelLoader';
 import {DEMO_MODE} from '../config/appConfig';
 
 export class FaceEmbeddingGenerator {
@@ -61,18 +62,11 @@ export class FaceEmbeddingGenerator {
         return this.generateMockEmbedding(imagePath);
       }
 
-      // 1. Load image using react-native-nitro-image
-      const {loadImage} = require('react-native-nitro-image');
-      const img = await loadImage({filePath: imagePath});
-
-      // 2. Resize to model expectations (112x112)
-      const resized = await img.resizeAsync(
+      const pixelData = await loadRawPixelsFromImagePath(
+        imagePath,
         FACE_RECOGNITION_MODEL.inputWidth,
         FACE_RECOGNITION_MODEL.inputHeight,
       );
-
-      // 3. Extract raw pixel data
-      const pixelData = await resized.toRawPixelDataAsync();
 
       // 4. Preprocess pixels (convert format to RGB and scale to [-1.0, 1.0])
       const floatData = this.preprocessPixels(pixelData);

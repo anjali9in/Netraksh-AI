@@ -286,10 +286,56 @@ jest.mock('react-native-vision-camera', () => {
 });
 
 jest.mock('@react-native-community/netinfo', () => ({
-  addEventListener: jest.fn(),
+  addEventListener: jest.fn((callback: (state: {isConnected: boolean; isInternetReachable: boolean}) => void) => {
+    callback({isConnected: true, isInternetReachable: true});
+    return jest.fn();
+  }),
   fetch: jest.fn().mockResolvedValue({
     isConnected: true,
     isInternetReachable: true,
+  }),
+}));
+
+jest.mock('react-native-permissions', () => ({
+  PERMISSIONS: {
+    ANDROID: {
+      ACCESS_FINE_LOCATION: 'android.permission.ACCESS_FINE_LOCATION',
+    },
+    IOS: {
+      LOCATION_WHEN_IN_USE: 'ios.permission.LOCATION_WHEN_IN_USE',
+    },
+  },
+  RESULTS: {
+    GRANTED: 'granted',
+    DENIED: 'denied',
+    BLOCKED: 'blocked',
+    UNAVAILABLE: 'unavailable',
+    LIMITED: 'limited',
+  },
+  check: jest.fn().mockResolvedValue('granted'),
+  request: jest.fn().mockResolvedValue('granted'),
+  checkNotifications: jest.fn().mockResolvedValue({status: 'granted'}),
+  requestNotifications: jest.fn().mockResolvedValue({status: 'granted'}),
+}));
+
+jest.mock('./src/services/location/deviceContextService', () => ({
+  deviceContextService: {
+    refreshDeviceLocationContext: jest.fn().mockResolvedValue({}),
+    getCachedDeviceLocationContext: jest.fn().mockResolvedValue({}),
+    markDeviceContextSynced: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
+jest.mock('@react-native-community/geolocation', () => ({
+  getCurrentPosition: jest.fn((success: (position: unknown) => void) => {
+    success({
+      coords: {
+        latitude: 28.6139,
+        longitude: 77.209,
+        accuracy: 12,
+        altitude: 200,
+      },
+    });
   }),
 }));
 
@@ -345,32 +391,22 @@ jest.mock('react-native-fast-tflite', () => {
   };
 });
 
-jest.mock('react-native-nitro-image', () => {
-  return {
-    loadImage: jest.fn().mockImplementation(async (source: any) => {
-      const filePath = source?.filePath || '';
+jest.mock('./src/ai/imagePixelLoader', () => ({
+  loadRawPixelsFromImagePath: jest.fn(
+    async (imagePath: string, width: number, height: number) => {
+      const buffer = new ArrayBuffer(width * height * 4);
+      const view = new Uint8Array(buffer);
+      for (let i = 0; i < view.length; i++) {
+        const charIndex =
+          (Math.floor(i / 4) + (i % 4)) % Math.max(imagePath.length, 1);
+        view[i] = (i + imagePath.charCodeAt(charIndex || 0)) % 256;
+      }
       return {
-        resizeAsync: jest.fn().mockImplementation(async () => {
-          return {
-            toRawPixelDataAsync: jest.fn().mockImplementation(async () => {
-              // Return dummy 112x112 RGBA pixel buffer filled dynamically with filePath characters
-              const buffer = new ArrayBuffer(112 * 112 * 4);
-              const view = new Uint8Array(buffer);
-              for (let i = 0; i < view.length; i++) {
-                const charIndex =
-                  (Math.floor(i / 4) + (i % 4)) % filePath.length;
-                view[i] = (i + filePath.charCodeAt(charIndex || 0)) % 256;
-              }
-              return {
-                buffer,
-                width: 112,
-                height: 112,
-                pixelFormat: 'RGBA',
-              };
-            }),
-          };
-        }),
+        buffer,
+        width,
+        height,
+        pixelFormat: 'RGBA',
       };
-    }),
-  };
-}, {virtual: true});
+    },
+  ),
+}));
