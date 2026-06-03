@@ -1,10 +1,10 @@
 import {getLocalDatabase} from './database/localDatabase';
-import {sha256} from '../utils/hash';
 import type {DatabaseRow} from './database/databaseTypes';
 import type {AuthLog} from '../types/LogTypes';
 import type {User} from '../types/UserTypes';
 import {authLogRepository} from './database/repositories/authLogRepository';
 import {userRepository} from './database/repositories/userRepository';
+import {generateAuthLogHash} from '../utils/authLogHash';
 
 export type AuthLogEntry = {
   id?: number;
@@ -48,20 +48,11 @@ export class OfflineDatabaseService {
    * Creates a tamper-proof integrity hash for an authentication log.
    */
   public generateLogHash(log: Omit<AuthLogEntry, 'id' | 'logHash'>): string {
-    const payload = [
-      log.employeeId,
-      log.authStatus,
-      log.failureReason ?? '',
-      log.similarityScore !== null ? log.similarityScore.toFixed(4) : '',
-      log.livenessStatus,
-      log.challengeType,
-      log.deviceId,
-      log.modelVersion,
-      log.createdAt,
-      log.syncStatus,
-    ].join('|');
-
-    return sha256(payload);
+    return generateAuthLogHash({
+      ...log,
+      failureReason: log.failureReason ?? undefined,
+      similarityScore: log.similarityScore ?? undefined,
+    });
   }
 
   /**

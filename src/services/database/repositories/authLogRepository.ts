@@ -1,4 +1,5 @@
 import type {AuthLog} from '../../../types/LogTypes';
+import {generateAuthLogHash} from '../../../utils/authLogHash';
 import type {DatabaseRow} from '../databaseTypes';
 import {getLocalDatabase} from '../localDatabase';
 
@@ -65,12 +66,30 @@ export class AuthLogRepository {
     syncStatus: AuthLog['syncStatus'],
   ): Promise<void> {
     const database = await getLocalDatabase();
+    const result = await database.execute(
+      `SELECT *
+        FROM auth_logs
+        WHERE id = ?
+        LIMIT 1`,
+      [id],
+    );
+    const existing = result.rows[0] ? mapAuthLogRow(result.rows[0]) : null;
+
+    if (!existing) {
+      return;
+    }
+
+    const nextLog = {
+      ...existing,
+      syncStatus,
+    };
+    const logHash = generateAuthLogHash(nextLog);
 
     await database.execute(
       `UPDATE auth_logs
-        SET sync_status = ?
+        SET sync_status = ?, log_hash = ?
         WHERE id = ?`,
-      [syncStatus, id],
+      [syncStatus, logHash, id],
     );
   }
 }
