@@ -7,5 +7,6 @@ export const DEMO_MODE = false;
 
 export const ROOT_SCREEN_OPTIONS: NativeStackNavigationOptions = {
   headerBackTitle: '',
+  headerShown: false,
   headerTitleAlign: 'center',
 };

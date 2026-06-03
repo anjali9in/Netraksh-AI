@@ -1,25 +1,23 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Alert, StyleSheet, Text, View} from 'react-native';
 
-import {FaceCapturePanel} from '../components/FaceCapturePanel';
+import {AppHeader} from '../components/AppHeader';
+import {CameraCaptureCard} from '../components/CameraCaptureCard';
+import {EmployeeInput} from '../components/EmployeeInput';
+import {InfoCard} from '../components/InfoCard';
 import {PrimaryButton} from '../components/PrimaryButton';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
-import {secureStorageService} from '../services/SecureStorageService';
+import {getDynamicThreshold} from '../ai/dynamicThreshold';
+import {FACE_RECOGNITION_MODEL} from '../ai/modelConfig';
 import {offlineDatabaseService} from '../services/OfflineDatabaseService';
+import {secureStorageService} from '../services/SecureStorageService';
 import {
   livenessService,
   LivenessSessionState,
 } from '../services/liveness/livenessService';
-import {getDynamicThreshold} from '../ai/dynamicThreshold';
-import {FACE_RECOGNITION_MODEL} from '../ai/modelConfig';
+import {colors} from '../theme/colors';
+import {radius, spacing} from '../theme/spacing';
 
 type AuthStep =
   | 'ID_INPUT'
@@ -45,7 +43,6 @@ export function AuthenticationScreen(): React.JSX.Element {
     logHash?: string;
   } | null>(null);
 
-  // Timer reference for liveness simulation
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
@@ -59,7 +56,6 @@ export function AuthenticationScreen(): React.JSX.Element {
 
   const handlePhotoCaptured = (image: {path: string}) => {
     setCapturedImagePath(image.path);
-    // Proceed to liveness challenge after camera capture
     startLivenessChallenges();
   };
 
@@ -69,34 +65,29 @@ export function AuthenticationScreen(): React.JSX.Element {
     setStep('LIVENESS_CHALLENGE');
     startTimeRef.current = Date.now();
 
-    // Start simulation loop
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
 
     timerRef.current = setInterval(() => {
       const elapsed = Date.now() - startTimeRef.current;
+      const session = livenessService.getSessionState();
       const currentChallenge =
-        livenessService.getSessionState().challenges[
-          livenessService.getSessionState().currentChallengeIndex
-        ];
+        session.challenges[session.currentChallengeIndex];
 
       if (!currentChallenge) {
-        // Liveness completed
         clearInterval(timerRef.current!);
         timerRef.current = null;
         runFaceMatching();
         return;
       }
 
-      // Simulate live visual fluctuations in eye blinking, smiles, or turns
       const sim = livenessService.getSimulatedMetrics(
         currentChallenge.type,
         elapsed,
       );
       setMetrics(sim);
 
-      // Process in state machine
       const updatedState = livenessService.processFrame(
         sim.ear,
         sim.mar,
@@ -115,11 +106,8 @@ export function AuthenticationScreen(): React.JSX.Element {
   const runFaceMatching = async () => {
     setStep('MATCHING');
 
-    // Simulate lighting and quality metrics
-    const simulatedBrightness = 90 + Math.floor(Math.random() * 60); // Optimal: 90 - 150
-    const simulatedQuality = 0.85 + Math.random() * 0.12; // Good quality: 85% - 97%
-
-    // Determine dynamic match threshold
+    const simulatedBrightness = 90 + Math.floor(Math.random() * 60);
+    const simulatedQuality = 0.85 + Math.random() * 0.12;
     const dynamicResult = getDynamicThreshold(
       simulatedBrightness,
       simulatedQuality,
@@ -134,7 +122,6 @@ export function AuthenticationScreen(): React.JSX.Element {
       );
       const elapsedMs = Date.now() - startTime;
 
-      // Log attempts in database
       const logId = await offlineDatabaseService.logAuthAttempt({
         employeeId: employeeId.trim().toUpperCase(),
         authStatus: matchResult.success ? 'SUCCESS' : 'FAILED',
@@ -143,18 +130,17 @@ export function AuthenticationScreen(): React.JSX.Element {
           : matchResult.error || 'Face template mismatch',
         similarityScore:
           matchResult.score !== undefined ? matchResult.score : null,
-        livenessStatus: 'PASSED', // successfully passed in previous step
+        livenessStatus: 'PASSED',
         challengeType:
           livenessService.getSessionState().challenges[0]?.type || 'BLINK',
         deviceId: 'device-tablet-01',
         modelVersion: FACE_RECOGNITION_MODEL.modelName,
       });
 
-      // Retrieve full entry to display generated integrity hash
       let logHash = '';
       if (logId) {
         const logs = await offlineDatabaseService.getAllLogs();
-        const found = logs.find(l => l.id === logId);
+        const found = logs.find(log => log.id === logId);
         if (found) {
           logHash = found.logHash || '';
         }
@@ -169,7 +155,6 @@ export function AuthenticationScreen(): React.JSX.Element {
           : matchResult.error || 'Face template mismatch',
         logHash,
       });
-
       setStep('RESULT');
     } catch (error) {
       console.error(error);
@@ -197,54 +182,69 @@ export function AuthenticationScreen(): React.JSX.Element {
     };
   }, []);
 
-  // UI rendering based on steps
+  const currentChallenge =
+    livenessState?.challenges[livenessState.currentChallengeIndex];
+
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
-      {step === 'ID_INPUT' && (
-        <View style={styles.card}>
-          <Text style={styles.title}>Secure Face Login</Text>
-          <Text style={styles.subtitle}>
-            Authenticate securely using on-device face recognition and liveness
-            detection.
-          </Text>
-          <TextInput
-            autoCapitalize="characters"
+      <AppHeader
+        title="Authenticate User"
+        subtitle="Verify employee identity with local face matching and liveness checks."
+        statusLabel="Offline auth enabled"
+        status="success"
+      />
+
+      {step === 'ID_INPUT' ? (
+        <InfoCard
+          title="Secure Face Login"
+          subtitle="Enter the employee ID before starting the on-device verification flow."
+          style={styles.section}
+        >
+          <EmployeeInput
+            helperText="Authentication attempts are logged locally with integrity hashes."
             onChangeText={setEmployeeId}
-            placeholder="ENTER EMPLOYEE ID (e.g. EMP042)"
-            placeholderTextColor="#94a3b8"
-            style={styles.input}
             value={employeeId}
           />
-          <PrimaryButton
-            title="Start Verification"
-            onPress={startVerification}
-          />
-        </View>
-      )}
+          <View style={styles.primaryAction}>
+            <PrimaryButton
+              icon="shield"
+              title="Start Verification"
+              onPress={startVerification}
+            />
+          </View>
+        </InfoCard>
+      ) : null}
 
-      {step === 'CAMERA_CAPTURE' && (
-        <View style={styles.cameraWrapper}>
-          <FaceCapturePanel
+      {step === 'CAMERA_CAPTURE' ? (
+        <View style={styles.section}>
+          <CameraCaptureCard
             title="Facial Login"
-            description="Center your face inside the frame to begin authentication logs."
+            description="Center your face inside the guide frame to start the liveness sequence."
+            validationMessages={[
+              'Face not centered',
+              'Low light',
+              'Blink detected',
+            ]}
             onPhotoCaptured={handlePhotoCaptured}
             onPhotoCleared={() => setCapturedImagePath(null)}
           />
         </View>
-      )}
+      ) : null}
 
-      {step === 'LIVENESS_CHALLENGE' && livenessState && (
-        <View style={styles.hudCard}>
-          <Text style={styles.hudTitle}>🤖 NETRAKSH-AI HUD</Text>
-          <Text style={styles.hudStatus}>LIVENESS VERIFICATION ACTIVE</Text>
+      {step === 'LIVENESS_CHALLENGE' && livenessState ? (
+        <View style={[styles.section, styles.hudCard]}>
+          <View style={styles.hudHeader}>
+            <View>
+              <Text style={styles.hudEyebrow}>LIVENESS VERIFICATION</Text>
+              <Text style={styles.hudTitle}>Active Challenge</Text>
+            </View>
+            <StatusBadge compact label="Live" status="success" />
+          </View>
 
           <View style={styles.challengeBox}>
-            <ActivityIndicator color="#10b981" style={{marginBottom: 8}} />
+            <ActivityIndicator color={colors.success} style={styles.loader} />
             <Text style={styles.challengeInstruction}>
-              {
-                livenessState.challenges[livenessState.currentChallengeIndex]
-                  ?.instruction
-              }
+              {currentChallenge?.instruction}
             </Text>
             <Text style={styles.challengeProgress}>
               Challenge {livenessState.currentChallengeIndex + 1} of{' '}
@@ -252,121 +252,84 @@ export function AuthenticationScreen(): React.JSX.Element {
             </Text>
           </View>
 
-          {/* Realistic metric bars */}
-          <View style={styles.metricContainer}>
-            <Text style={styles.metricLabel}>Eye Aspect Ratio (EAR):</Text>
-            <View style={styles.barBackground}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    width: `${Math.min(100, metrics.ear * 250)}%`,
-                    backgroundColor: metrics.ear < 0.22 ? '#34d399' : '#60a5fa',
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.metricValue}>
-              {metrics.ear.toFixed(3)} (Threshold &lt; 0.22)
-            </Text>
-          </View>
-
-          <View style={styles.metricContainer}>
-            <Text style={styles.metricLabel}>Mouth Aspect Ratio (MAR):</Text>
-            <View style={styles.barBackground}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    width: `${Math.min(100, metrics.mar * 150)}%`,
-                    backgroundColor: metrics.mar > 0.5 ? '#34d399' : '#fbcfe8',
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.metricValue}>
-              {metrics.mar.toFixed(3)} (Threshold &gt; 0.50)
-            </Text>
-          </View>
-
-          <View style={styles.metricContainer}>
-            <Text style={styles.metricLabel}>
-              Yaw Ratio (Head Orientation):
-            </Text>
-            <View style={styles.barBackground}>
-              <View
-                style={[
-                  styles.barFill,
-                  {
-                    width: `${Math.min(100, metrics.yawRatio * 50)}%`,
-                    backgroundColor:
-                      metrics.yawRatio < 0.6 || metrics.yawRatio > 1.6
-                        ? '#34d399'
-                        : '#c084fc',
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.metricValue}>
-              {metrics.yawRatio.toFixed(3)} (Centered ≈ 1.0)
-            </Text>
-          </View>
+          <MetricBar
+            label="Eye Aspect Ratio (EAR)"
+            value={metrics.ear}
+            helper={`${metrics.ear.toFixed(3)} | Threshold < 0.22`}
+            widthPercent={Math.min(100, metrics.ear * 250)}
+            active={metrics.ear < 0.22}
+          />
+          <MetricBar
+            label="Mouth Aspect Ratio (MAR)"
+            value={metrics.mar}
+            helper={`${metrics.mar.toFixed(3)} | Threshold > 0.50`}
+            widthPercent={Math.min(100, metrics.mar * 150)}
+            active={metrics.mar > 0.5}
+          />
+          <MetricBar
+            label="Yaw Ratio (Head Orientation)"
+            value={metrics.yawRatio}
+            helper={`${metrics.yawRatio.toFixed(3)} | Centered near 1.0`}
+            widthPercent={Math.min(100, metrics.yawRatio * 50)}
+            active={metrics.yawRatio < 0.6 || metrics.yawRatio > 1.6}
+          />
         </View>
-      )}
+      ) : null}
 
-      {step === 'MATCHING' && (
-        <View style={styles.matchingCard}>
-          <ActivityIndicator color="#6366f1" size="large" />
-          <Text style={styles.matchingText}>Verifying Face Embeddings...</Text>
-          <Text style={styles.matchingSubtext}>
-            Matching 512-dim face landmarks against offline database templates.
-          </Text>
-        </View>
-      )}
+      {step === 'MATCHING' ? (
+        <InfoCard style={styles.section}>
+          <View style={styles.matchingContent}>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={styles.matchingText}>Verifying face embeddings</Text>
+            <Text style={styles.matchingSubtext}>
+              Matching 512-dim face landmarks against encrypted offline
+              templates.
+            </Text>
+          </View>
+        </InfoCard>
+      ) : null}
 
-      {step === 'RESULT' && authResult && (
-        <View style={styles.card}>
-          <Text
-            style={[
-              styles.resultTitle,
-              {color: authResult.success ? '#10b981' : '#ef4444'},
-            ]}
-          >
-            {authResult.success
-              ? 'Authentication Success ✅'
-              : 'Authentication Failed ❌'}
-          </Text>
+      {step === 'RESULT' && authResult ? (
+        <InfoCard
+          title={
+            authResult.success ? 'Authentication Success' : 'Access Denied'
+          }
+          subtitle={
+            authResult.success
+              ? 'Attendance logged offline with tamper-evident hash.'
+              : 'Failed attempt was recorded for audit review.'
+          }
+          style={styles.section}
+        >
+          <StatusBadge
+            label={
+              authResult.success
+                ? 'Access granted'
+                : authResult.reason || 'Access denied'
+            }
+            status={authResult.success ? 'success' : 'error'}
+          />
 
           <View style={styles.detailsBox}>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Employee ID:</Text>
-              <Text style={styles.detailValue}>{employeeId.toUpperCase()}</Text>
-            </View>
-            {authResult.score !== undefined && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Similarity Score:</Text>
-                <Text style={styles.detailValue}>
-                  {authResult.score.toFixed(4)}
-                </Text>
-              </View>
-            )}
-            {authResult.matchTimeMs !== undefined && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Pipeline Time:</Text>
-                <Text style={styles.detailValue}>
-                  {authResult.matchTimeMs} ms
-                </Text>
-              </View>
-            )}
-            {authResult.reason && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Failure Reason:</Text>
-                <Text style={styles.detailValue}>{authResult.reason}</Text>
-              </View>
-            )}
+            <DetailRow label="Employee ID" value={employeeId.toUpperCase()} />
+            {authResult.score !== undefined ? (
+              <DetailRow
+                label="Similarity Score"
+                value={authResult.score.toFixed(4)}
+              />
+            ) : null}
+            {authResult.matchTimeMs !== undefined ? (
+              <DetailRow
+                label="Pipeline Time"
+                value={`${authResult.matchTimeMs} ms`}
+              />
+            ) : null}
+            {authResult.reason ? (
+              <DetailRow label="Failure Reason" value={authResult.reason} />
+            ) : null}
             {authResult.logHash ? (
               <View style={styles.hashBox}>
-                <Text style={styles.hashLabel}>Integrity Hash (SHA-256):</Text>
+                <Text style={styles.hashLabel}>Integrity Hash (SHA-256)</Text>
                 <Text style={styles.hashText} numberOfLines={2}>
                   {authResult.logHash}
                 </Text>
@@ -374,204 +337,208 @@ export function AuthenticationScreen(): React.JSX.Element {
             ) : null}
           </View>
 
-          <StatusBadge
-            label={
-              authResult.success
-                ? 'Access Granted. Attendance logged offline.'
-                : 'Access Denied. Log created.'
-            }
-            status={authResult.success ? 'success' : 'error'}
-          />
-
           <PrimaryButton title="Done" onPress={resetAll} />
-        </View>
-      )}
+        </InfoCard>
+      ) : null}
     </ScreenContainer>
   );
 }
 
+function MetricBar({
+  label,
+  helper,
+  widthPercent,
+  active,
+}: {
+  label: string;
+  value: number;
+  helper: string;
+  widthPercent: number;
+  active: boolean;
+}): React.JSX.Element {
+  return (
+    <View style={styles.metricContainer}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <View style={styles.barBackground}>
+        <View
+          style={[
+            styles.barFill,
+            {width: `${widthPercent}%`},
+            active ? styles.barActive : styles.barIdle,
+          ]}
+        />
+      </View>
+      <Text style={styles.metricHelper}>{helper}</Text>
+    </View>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): React.JSX.Element {
+  return (
+    <View style={styles.detailRow}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    paddingBottom: 32,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 20,
-    shadowColor: '#0f172a',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  title: {
-    color: '#0f172a',
-    fontSize: 22,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: '#475569',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    borderWidth: 1,
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '600',
-    minHeight: 48,
-    marginBottom: 14,
-    paddingHorizontal: 14,
-    textAlign: 'center',
-  },
-  inputDisabled: {
-    backgroundColor: '#e2e8f0',
-    color: '#64748b',
-  },
-  cameraWrapper: {
-    flex: 1,
-  },
-  hudCard: {
-    backgroundColor: '#0f172a',
-    borderRadius: 12,
-    padding: 20,
-  },
-  hudTitle: {
-    color: '#34d399',
-    fontSize: 18,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  hudStatus: {
-    color: '#94a3b8',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 2,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  challengeBox: {
-    alignItems: 'center',
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
-    borderColor: '#334155',
-    borderWidth: 1,
-    justifyContent: 'center',
-    marginTop: 16,
-    padding: 16,
-  },
-  challengeInstruction: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  challengeProgress: {
-    color: '#10b981',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 6,
-  },
-  metricContainer: {
-    marginTop: 16,
-  },
-  metricLabel: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '600',
+  barActive: {
+    backgroundColor: colors.success,
   },
   barBackground: {
-    backgroundColor: '#1e293b',
-    borderRadius: 4,
-    height: 8,
-    marginTop: 6,
+    backgroundColor: '#d8e2ef',
+    borderRadius: radius.round,
+    height: 9,
+    marginTop: spacing.sm,
     overflow: 'hidden',
   },
   barFill: {
+    borderRadius: radius.round,
     height: '100%',
-    borderRadius: 4,
   },
-  metricValue: {
-    color: '#64748b',
-    fontSize: 11,
-    marginTop: 6,
-    textAlign: 'right',
+  barIdle: {
+    backgroundColor: colors.accent,
   },
-  matchingCard: {
+  challengeBox: {
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    padding: 32,
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+    padding: spacing.lg,
   },
-  matchingText: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 12,
-  },
-  matchingSubtext: {
-    color: '#64748b',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  resultTitle: {
-    fontSize: 20,
+  challengeInstruction: {
+    color: colors.text,
+    fontSize: 17,
     fontWeight: '800',
     textAlign: 'center',
   },
-  detailsBox: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 8,
-    borderColor: '#cbd5e1',
-    borderWidth: 1,
-    marginBottom: 14,
-    marginTop: 14,
-    padding: 14,
+  challengeProgress: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: spacing.sm,
   },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+  container: {
+    backgroundColor: colors.background,
+    paddingBottom: spacing.xxxl,
   },
   detailLabel: {
-    color: '#64748b',
-    fontSize: 14,
-    fontWeight: '500',
+    color: colors.textSubtle,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  detailRow: {
+    alignItems: 'center',
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
   },
   detailValue: {
-    color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '700',
+    color: colors.text,
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    marginLeft: spacing.md,
+    textAlign: 'right',
+  },
+  detailsBox: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    marginBottom: spacing.lg,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   hashBox: {
-    borderTopColor: '#e2e8f0',
-    borderTopWidth: 1,
-    paddingTop: 8,
-    marginTop: 4,
+    paddingVertical: spacing.md,
   },
   hashLabel: {
-    color: '#64748b',
+    color: colors.textSubtle,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   hashText: {
-    color: '#475569',
+    color: colors.textMuted,
     fontFamily: 'Courier',
     fontSize: 11,
-    lineHeight: 14,
-    marginTop: 4,
+    lineHeight: 15,
+    marginTop: spacing.xs,
+  },
+  hudCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    padding: spacing.lg,
+  },
+  hudEyebrow: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  hudHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  hudTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: spacing.xs,
+  },
+  loader: {
+    marginBottom: spacing.sm,
+  },
+  matchingContent: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
+  matchingSubtext: {
+    color: colors.textSubtle,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  matchingText: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '800',
+    marginTop: spacing.md,
+  },
+  metricContainer: {
+    marginTop: spacing.lg,
+  },
+  metricHelper: {
+    color: colors.textSubtle,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: spacing.sm,
+    textAlign: 'right',
+  },
+  metricLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  primaryAction: {
+    marginTop: spacing.lg,
+  },
+  section: {
+    marginTop: spacing.xl,
   },
 });

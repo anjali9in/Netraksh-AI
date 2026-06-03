@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Linking} from 'react-native';
-import {Camera, useCameraDevices} from 'react-native-vision-camera';
+import {Camera, useCameraDevice} from 'react-native-vision-camera';
 
 import type {CapturedFaceImage} from '../types/CameraTypes';
 import {toFileUri} from '../utils/fileUtils';
@@ -8,8 +8,8 @@ import {toFileUri} from '../utils/fileUtils';
 type CameraPermissionStatus =
   | 'not-determined'
   | 'denied'
-  | 'never_ask_again'
-  | 'authorized';
+  | 'restricted'
+  | 'granted';
 
 type UseFaceCaptureParams = {
   onPhotoCaptured?: (image: CapturedFaceImage) => void;
@@ -20,12 +20,13 @@ export function useFaceCapture({
   onPhotoCaptured,
   onPhotoCleared,
 }: UseFaceCaptureParams = {}) {
-  const devices = useCameraDevices();
-  const device = devices.front ?? devices.back;
+  const frontDevice = useCameraDevice('front');
+  const backDevice = useCameraDevice('back');
+  const device = frontDevice ?? backDevice;
 
   const [status, setStatus] =
     useState<CameraPermissionStatus>('not-determined');
-  const hasPermission = status === 'authorized';
+  const hasPermission = status === 'granted';
   const canRequestPermission = status === 'not-determined';
 
   const [capturedImage, setCapturedImage] = useState<CapturedFaceImage | null>(
@@ -38,9 +39,7 @@ export function useFaceCapture({
   const hasRequestedPermission = useRef(false);
 
   useEffect(() => {
-    Camera.getCameraPermissionStatus().then(s =>
-      setStatus(s as CameraPermissionStatus),
-    );
+    setStatus(Camera.getCameraPermissionStatus() as CameraPermissionStatus);
   }, []);
 
   const requestCameraPermission = useCallback(async () => {
@@ -52,8 +51,8 @@ export function useFaceCapture({
     }
 
     const result = await Camera.requestCameraPermission();
-    const granted = result === 'authorized';
-    setStatus(result as CameraPermissionStatus);
+    const granted = result === 'granted';
+    setStatus(result);
 
     if (!granted) {
       setErrorMessage('Camera permission is required to capture a face image.');
