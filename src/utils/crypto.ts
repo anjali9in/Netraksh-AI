@@ -4,6 +4,16 @@ import CryptoJS from 'crypto-js';
 const KEY_SERVICE = 'netraksh-ai.biometric-key';
 const KEY_USERNAME = 'biometric';
 
+// Polyfill CryptoJS.lib.WordArray.random to avoid crashes in React Native's Hermes JS engine
+// where native cryptographically secure random number generators are not available.
+(CryptoJS.lib.WordArray as any).random = function (nBytes: number) {
+  const words: number[] = [];
+  for (let i = 0; i < nBytes; i += 4) {
+    words.push(Math.floor(Math.random() * 0x100000000));
+  }
+  return (CryptoJS.lib.WordArray as any).create(words, nBytes);
+};
+
 let cachedKey: string | null = null;
 
 /**
