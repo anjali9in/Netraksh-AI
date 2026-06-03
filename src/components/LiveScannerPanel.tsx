@@ -1,19 +1,16 @@
 import {useIsFocused} from '@react-navigation/native';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Animated, AppState, StyleSheet, Text, View} from 'react-native';
 import {
-  Camera,
-  CameraRef,
-  useCameraDevice,
-  useCameraPermission,
-  usePhotoOutput,
-} from 'react-native-vision-camera';
+  Animated,
+  AppState,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {Camera, useCameraDevice} from 'react-native-vision-camera';
 import Svg, {Circle, Defs, Mask, Path, Rect} from 'react-native-svg';
 
-import {
-  livenessService,
-  LivenessSessionState,
-} from '../services/liveness/livenessService';
+import {livenessService, LivenessSessionState} from '../services/liveness/livenessService';
 import {PrimaryButton} from './PrimaryButton';
 
 type LiveScannerPanelProps = {
@@ -29,30 +26,33 @@ export function LiveScannerPanel({
 }: LiveScannerPanelProps): React.JSX.Element {
   const isScreenFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
+  const [hasPermission, setHasPermission] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
 
   // Liveness session states
-  const [livenessState, setLivenessState] =
-    useState<LivenessSessionState | null>(null);
+  const [livenessState, setLivenessState] = useState<LivenessSessionState | null>(null);
   const [metrics, setMetrics] = useState({ear: 0.32, mar: 0.18, yawRatio: 1.0});
 
   const device = useCameraDevice('front') ?? useCameraDevice('back');
-  const {hasPermission, requestPermission} = useCameraPermission();
-  const photoOutput = usePhotoOutput();
 
-  const cameraRef = useRef<CameraRef>(null);
+  const cameraRef = useRef<Camera>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const isCameraActive = isScreenFocused && appState === 'active';
 
-  // Request permissions on mount if not determined
+  // Request permissions on mount
   useEffect(() => {
-    if (!hasPermission) {
-      requestPermission();
+    const status = Camera.getCameraPermissionStatus();
+    if (status === 'not-determined') {
+      Camera.requestCameraPermission().then(newStatus => {
+        setHasPermission(newStatus === 'granted');
+      });
+    } else {
+      setHasPermission(status === 'granted');
     }
-  }, [hasPermission, requestPermission]);
+  }, []);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', setAppState);
@@ -93,34 +93,22 @@ export function LiveScannerPanel({
     }
 
     try {
-      if (device) {
-        console.log(
-          '[LiveScannerPanel] Liveness succeeded. Capturing photo silently...',
-        );
-        const photo = await photoOutput.capturePhoto(
-          {
-            flashMode: 'off',
-          },
-          {},
-        );
-        const tempPath = await photo.saveToTemporaryFileAsync();
-        photo.dispose();
-        onLivenessComplete(tempPath);
+      if (device && cameraRef.current) {
+        console.log('[LiveScannerPanel] Liveness succeeded. Capturing photo silently...');
+        const photo = await cameraRef.current.takePhoto({
+          flash: 'off',
+        });
+        onLivenessComplete(photo.path);
       } else {
         // Fallback for emulator / mock mode
-        console.log(
-          '[LiveScannerPanel] Liveness succeeded. Simulating photo capture...',
-        );
+        console.log('[LiveScannerPanel] Liveness succeeded. Simulating photo capture...');
         onLivenessComplete('mock://captured-face.jpg');
       }
     } catch (err) {
-      console.error(
-        '[LiveScannerPanel] Silent capture failed, fallback to mock path:',
-        err,
-      );
+      console.error('[LiveScannerPanel] Silent capture failed, fallback to mock path:', err);
       onLivenessComplete('mock://captured-face.jpg');
     }
-  }, [device, onLivenessComplete, photoOutput]);
+  }, [device, onLivenessComplete]);
 
   // Liveness frame processing loop
   const startScanning = useCallback(() => {
@@ -193,16 +181,14 @@ export function LiveScannerPanel({
             ref={cameraRef}
             device={device}
             isActive={isCameraActive}
-            outputs={[photoOutput]}
-            onPreviewStarted={() => setCameraReady(true)}
+            photo={true}
+            onInitialized={() => setCameraReady(true)}
             style={StyleSheet.absoluteFill}
           />
         ) : (
           <View style={styles.fallbackPreview}>
             <Text style={styles.fallbackText}>
-              {hasPermission
-                ? 'Camera Hardware Offline'
-                : 'Awaiting Camera Permission'}
+              {hasPermission ? 'Camera Hardware Offline' : 'Awaiting Camera Permission'}
             </Text>
             <Text style={styles.fallbackSubtext}>
               {hasPermission
@@ -221,12 +207,7 @@ export function LiveScannerPanel({
               <Circle cx="50%" cy="48%" r="110" fill="#000000" />
             </Mask>
           </Defs>
-          <Rect
-            height="100%"
-            width="100%"
-            fill="rgba(15, 23, 42, 0.78)"
-            mask="url(#face-mask)"
-          />
+          <Rect height="100%" width="100%" fill="rgba(15, 23, 42, 0.78)" mask="url(#face-mask)" />
         </Svg>
 
         {/* Target Outline & Glowing pulsing scanner border */}
@@ -245,7 +226,7 @@ export function LiveScannerPanel({
               ]}
             />
             <View style={styles.targetBorder} />
-
+            
             {/* Silhouette outline helper */}
             <View style={styles.silhouetteWrapper}>
               <Svg height="120" width="120" viewBox="0 0 100 100">
@@ -264,13 +245,12 @@ export function LiveScannerPanel({
         <View style={styles.hudInstructionBox}>
           <Text style={styles.hudInstructionLabel}>VERIFYING LIVENESS</Text>
           <Text style={styles.hudInstructionText}>
-            {livenessState?.challenges[livenessState.currentChallengeIndex]
-              ?.instruction || 'Align your face inside the circle'}
+            {livenessState?.challenges[livenessState.currentChallengeIndex]?.instruction ||
+              'Align your face inside the circle'}
           </Text>
           {livenessState && (
             <Text style={styles.hudStepText}>
-              Step {livenessState.currentChallengeIndex + 1} of{' '}
-              {livenessState.challenges.length}
+              Step {livenessState.currentChallengeIndex + 1} of {livenessState.challenges.length}
             </Text>
           )}
         </View>
@@ -278,10 +258,8 @@ export function LiveScannerPanel({
 
       {/* Diagnostics HUD Panel */}
       <View style={styles.diagnosticsPanel}>
-        <Text style={styles.diagnosticsTitle}>
-          🤖 NETRAKSH-AI DIAGNOSTICS HUD
-        </Text>
-
+        <Text style={styles.diagnosticsTitle}>🤖 NETRAKSH-AI DIAGNOSTICS HUD</Text>
+        
         <View style={styles.metricRow}>
           <View style={styles.metricInfo}>
             <Text style={styles.metricLabel}>Eye Aspect Ratio (EAR)</Text>
@@ -332,9 +310,7 @@ export function LiveScannerPanel({
                 {
                   width: `${Math.min(100, metrics.yawRatio * 50)}%`,
                   backgroundColor:
-                    metrics.yawRatio < 0.6 || metrics.yawRatio > 1.6
-                      ? '#10b981'
-                      : '#8b5cf6',
+                    metrics.yawRatio < 0.6 || metrics.yawRatio > 1.6 ? '#10b981' : '#8b5cf6',
                 },
               ]}
             />
