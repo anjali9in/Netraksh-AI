@@ -12,10 +12,12 @@ export type ButtonIconName =
   | 'camera'
   | 'check'
   | 'chart'
+  | 'close'
   | 'logs'
   | 'refresh'
   | 'settings'
   | 'shield'
+  | 'user'
   | 'userPlus';
 
 type ButtonIconProps = {
@@ -70,6 +72,13 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
           <Rect height="9" width="3" x="16" y="9" {...lineProps} />
         </>
       );
+    case 'close':
+      return (
+        <>
+          <Line x1="18" x2="6" y1="6" y2="18" {...lineProps} />
+          <Line x1="6" x2="18" y1="6" y2="18" {...lineProps} />
+        </>
+      );
     case 'logs':
       return (
         <>
@@ -106,6 +115,13 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
             {...lineProps}
           />
           <Path d="m9 12 2 2 4-5" {...lineProps} />
+        </>
+      );
+    case 'user':
+      return (
+        <>
+          <Circle cx="12" cy="8" r="4" {...lineProps} />
+          <Path d="M4 21a8 8 0 0 1 16 0" {...lineProps} />
         </>
       );
     case 'userPlus':
