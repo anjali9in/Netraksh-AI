@@ -13,7 +13,8 @@
     "test": "jest",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "ios:pods": "cd ios && pod install && cd .."
   },
   "dependencies": {
     "@bam.tech/react-native-image-resizer": "^3.0.11",
