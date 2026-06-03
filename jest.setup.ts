@@ -262,8 +262,12 @@ jest.mock('react-native-keychain', () => ({
 }));
 
 jest.mock('react-native-vision-camera', () => {
+  const mockCamera = jest.fn().mockImplementation(() => null);
+  (mockCamera as any).getCameraPermissionStatus = jest.fn().mockReturnValue('granted');
+  (mockCamera as any).requestCameraPermission = jest.fn().mockResolvedValue('granted');
+
   return {
-    Camera: jest.fn().mockImplementation(() => null),
+    Camera: mockCamera,
     useCameraDevice: jest
       .fn()
       .mockReturnValue({id: 'front-camera', name: 'Front Camera'}),

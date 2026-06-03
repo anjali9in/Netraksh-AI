@@ -20,9 +20,6 @@ type AuthStep = 'ID_INPUT' | 'LIVE_SCANNING' | 'MATCHING' | 'RESULT';
 
 export function AuthenticationScreen(): React.JSX.Element {
   const [employeeId, setEmployeeId] = useState('');
-  const [capturedImagePath, setCapturedImagePath] = useState<string | null>(
-    null,
-  );
   const [step, setStep] = useState<AuthStep>('ID_INPUT');
   const [authResult, setAuthResult] = useState<{
     success: boolean;
@@ -42,7 +39,6 @@ export function AuthenticationScreen(): React.JSX.Element {
 
   const runFaceMatching = async (imagePath: string) => {
     setStep('MATCHING');
-    setCapturedImagePath(imagePath);
 
     const simulatedBrightness = 90 + Math.floor(Math.random() * 60);
     const simulatedQuality = 0.85 + Math.random() * 0.12;

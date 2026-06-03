@@ -33,7 +33,9 @@ export function LiveScannerPanel({
   const [livenessState, setLivenessState] = useState<LivenessSessionState | null>(null);
   const [metrics, setMetrics] = useState({ear: 0.32, mar: 0.18, yawRatio: 1.0});
 
-  const device = useCameraDevice('front') ?? useCameraDevice('back');
+  const frontDevice = useCameraDevice('front');
+  const backDevice = useCameraDevice('back');
+  const device = frontDevice ?? backDevice;
 
   const cameraRef = useRef<Camera>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
