@@ -1,127 +1,142 @@
 # Next Steps
 
-This list is updated against the current React Native, backend, development-flow, and architecture docs state.
+This file reflects the current repository state after reviewing the mobile app, backend scaffold, tests, and documentation.
 
-## Completed
+## Current State
 
-- React Native project foundation is in place with TypeScript, React Navigation, Android/iOS native projects, Jest, linting, and Metro config.
-- Core navigation routes are implemented: Home, Enrollment, Authentication, Offline Logs, and Benchmark.
-- Modern enterprise UI refresh is implemented with reusable theme and components:
-  - `AppHeader`
-  - `PrimaryButton`
-  - `StatusBadge`
-  - `InfoCard`
-  - `ProfileDrawer`
-  - `CameraCaptureCard`
-  - `AttendanceCalendar`
-  - `EmployeeInput`
-- Native stack header is disabled and custom in-app back navigation exists for non-home screens.
-- Camera capture flow is connected with VisionCamera permission handling, live preview, capture, retake, and simulator mock capture fallback.
-- Offline SQLite foundation is implemented with migrations for:
-  - `employee_face_templates`
-  - `auth_logs`
-  - `users`
-  - `schema_migrations`
-- Repository layer is implemented for users, face templates, and authentication logs.
-- Offline authentication logs include sync status and SHA-256 integrity hash verification.
-- Enrollment screen connects Employee ID input, camera capture, quality check simulation, embedding generation, and local template save.
-- Authentication screen connects Employee ID input, capture, liveness challenge state machine, face match, result display, and local auth logging.
-- ArcFace-MobileNetV2 model asset is present at `src/assets/models/arcface_mobilenet_v2.tflite`.
-- Face embedding and matching modules exist with 512-dimensional embedding support, cosine similarity, dynamic thresholds, and benchmark hooks.
-- Active liveness challenge service is implemented for blink, smile, and head-turn metrics.
-- Offline Logs screen is implemented with metrics, filters, search, sync status badges, purge action, and integrity checks.
-- Benchmark screen and benchmark docs exist for model speed and pipeline reporting.
-- AWS sync backend scaffold is implemented with SAM, API Gateway, Lambda handler, validation, and DynamoDB repository.
-- Mobile sync service exists for pending auth logs through `syncApi.syncOfflineAuthLogs`.
-- Network status helper exists through `@react-native-community/netinfo`.
-- Automated tests are passing for validation, routes, device info, AI module, liveness, and offline database behavior.
+- React Native 0.72 TypeScript app is in place with Android/iOS projects, React Navigation, Metro, Jest, linting, and reusable app UI.
+- Main app routes are implemented: Home, Enrollment, Authentication, Offline Logs, Benchmark, Profile, and Settings.
+- Camera capture uses VisionCamera with permission handling, front/back camera fallback, EXIF/orientation normalization, retake support, and development mock capture.
+- Enrollment collects employee details, gates capture with ML Kit face alignment, runs simulated brightness/sharpness quality checks, generates a face embedding, encrypts the embedding, and stores it locally.
+- Authentication runs ML Kit face alignment, ML Kit landmark/contour-driven liveness metrics, MiniFASNet anti-spoof verification, dynamic threshold selection, face matching, and local authentication logging.
+- Face embedding supports ArcFace-MobileNetV2 with 512-dimensional normalized vectors and `react-native-fast-tflite` integration, with fallback mock embeddings when native inference fails.
+- Anti-spoofing supports bundled MiniFASNet v1 TFLite inference, with permissive fallback when demo mode is enabled or native inference is unavailable.
+- Offline SQLite schema and migrations exist for face templates, auth logs, users, schema migrations, and device/location context.
+- Auth logs include tamper-evident hashes, sync status, device metadata, GPS/IP context, and local integrity verification.
+- Offline Logs screen now calls `offlineSyncService.syncPendingLogs()` for manual sync and purges only synchronized logs.
+- Automatic online sync is wired at app startup through `connectivitySyncService.startConnectivitySync()`, including startup sync, network-restore sync, and a configured periodic interval.
+- AWS backend scaffold exists with SAM, API Gateway/Lambda handler, request validation, DynamoDB repository, and CORS responses.
+- API client adds bearer token, device headers, cached location headers, offline detection, timeout handling, and normalized API errors.
+- `react-native-get-random-values` is imported first in `index.js`, so app startup can provide `global.crypto.getRandomValues`.
+- Automated tests currently cover validation, routes, device info, camera orientation, ML Kit alignment/metric adapters, AI utilities, liveness, sync helpers, notifications, and offline database behavior.
 
-## Partially Done / Needs Hardening
+## Critical Fixes
 
-- Face template "encryption" is currently serialized/base64 encoded in `faceMatcher.ts`; replace this with real authenticated encryption for production biometric data.
-- Keychain secure storage is available for auth tokens, but biometric template encryption keys are not yet managed through Keychain/Keystore.
-- Camera quality checks are currently simulated in the enrollment UI; replace with real image/face quality signals.
-- Liveness UI uses simulated EAR/MAR/yaw values during authentication; connect it to real face landmarks from an on-device face detector.
-- The architecture docs mention Google ML Kit face detection, but the current package list does not include a face detection/landmark dependency.
-- Face embedding preprocessing uses `@bam.tech/react-native-image-resizer`, `react-native-fs`, and `jpeg-js` (Nitro Image requires RN 0.75+ and is not used on RN 0.72).
-- Sync service exists, but automatic network-restore sync is not yet wired into the app lifecycle.
-- Offline Logs screen has manual sync/purge simulation paths; connect it fully to `OfflineSyncService` and production backend responses.
-- Backend sync API is scaffolded, but deployment, environment configuration, auth, and real API URL wiring still need final validation.
-- Raw temporary camera image purge is documented as a requirement; enforce cleanup after enrollment/authentication success/failure.
+1. Fix secure random generation in `src/utils/crypto.ts`.
+   - Remove the current `CryptoJS.lib.WordArray.random` override that uses `Math.random()`.
+   - Rely on `react-native-get-random-values` loaded from `index.js`.
+   - Add a crypto unit/integration test that verifies encrypt/decrypt works without replacing secure randomness.
+   - Rebuild native apps after dependency installation; run `pod install` for iOS.
 
-## Immediate Next Steps
+2. Upgrade biometric encryption from AES-CBC to authenticated encryption.
+   - Current embedding encryption uses AES-256-CBC with a random IV but no authentication tag.
+   - Move to AES-GCM or encrypt-then-MAC so template tampering is detected.
+   - Version the ciphertext format so existing local templates can be migrated or re-enrolled safely.
 
-1. Replace base64 embedding storage with authenticated encryption.
-   - Generate/store an encryption key through iOS Keychain and Android Keystore.
-   - Encrypt embeddings before SQLite write.
-   - Decrypt only in memory during matching.
+3. Remove the legacy simulated liveness timer from `LiveScannerPanel`.
+   - The frame loop now feeds real ML Kit metrics into `livenessService`.
+   - A second interval still calls `getSimulatedMetrics()` during authentication after face detection.
+   - This can advance challenges from simulated values and must be removed or guarded behind explicit demo mode.
 
-2. Add real on-device face detection and landmark extraction.
-   - Choose and install the face detector dependency.
-   - Detect one centered face before capture acceptance.
-   - Feed real landmarks into liveness EAR/MAR/yaw calculations.
-   - Show real validation states: face not centered, low light, multiple faces, no face, blink detected.
+4. Add backend authentication and tenant/device authorization.
+   - Backend sync currently validates payload shape but does not authenticate callers.
+   - Require bearer-token validation or signed device credentials before accepting logs.
+   - Reject logs from unknown devices/sites where applicable.
 
-3. Validate image preprocessing for TFLite inference on physical devices.
-   - `src/ai/imagePixelLoader.ts` resizes via `@bam.tech/react-native-image-resizer` and decodes with `jpeg-js`.
-   - Validate 112x112 RGB normalization on Android and iOS physical devices.
-   - Confirm the bundled TFLite model loads correctly with `react-native-fast-tflite`.
+5. Replace hardcoded production values with environment-specific config.
+   - `API_BASE_URL` is hardcoded in `src/config/env.ts`.
+   - `device-tablet-01` is still used in enrollment/authentication flows.
+   - Move API URL, demo mode, and device/site IDs into native build config or a runtime environment layer.
 
-4. Wire automatic offline-to-online sync.
-   - Subscribe to `networkService.subscribeToNetworkChanges` from app startup.
-   - On network restore, call `offlineSyncService.syncPendingLogs()`.
-   - Update local log statuses to `SYNCED` or `FAILED`.
-   - Surface last sync time and failed sync count in Home/Profile/Offline Logs.
+6. Validate authentication failure for unenrolled employees end to end.
+   - The current matching layer returns failure when no local template exists.
+   - Add screen/service tests so this behavior does not regress back to demo auto-registration.
 
-5. Replace manual sync simulation in Offline Logs with the real sync service.
-   - Use `offlineSyncService.syncPendingLogs()` for the Sync Pending Logs action.
-   - Keep purge restricted to synced logs.
-   - Show API errors in a user-friendly status card.
+## Production Hardening
 
-6. Complete AWS backend deployment validation.
-   - Build backend with `npm run backend:build`.
-   - Deploy SAM stack.
-   - Put the API Gateway URL in the mobile app environment config.
-   - Test auth log upload from a physical device.
-   - Add backend auth before production use.
+1. Tune and validate ML Kit liveness on real devices.
+   - Alignment and liveness now use `@react-native-ml-kit/face-detection`.
+   - Verify blink, smile, and head-turn thresholds across lighting, skin tones, eyewear, masks, camera positions, and Android/iOS devices.
+   - Require exactly one centered face before enrollment/authentication; current code uses the first detected face.
+   - Add handling for missing contours/probabilities instead of falling back to permissive metric defaults.
 
-7. Enforce temporary image purge.
-   - Delete local captured images after enrollment/authentication pipeline completion.
+2. Validate TFLite inference on physical devices.
+   - Confirm `react-native-fast-tflite` is linked in Android and iOS release builds.
+   - Validate bundled model loading from `src/assets/models/arcface_mobilenet_v2.tflite`.
+   - Validate bundled MiniFASNet loading from `src/assets/models/minifasnet_v1_80x80.tflite`.
+   - Verify resize, JPEG decode, RGBA/BGRA-to-RGB/BGR conversion, normalization, output shape, label mapping, thresholds, and latency on real devices.
+   - Keep mock embedding fallback available only in explicit demo/development mode.
+
+3. Replace simulated enrollment quality scoring.
+   - Enrollment face alignment is real, but brightness and sharpness are still generated with `Math.random()`.
+   - Calculate brightness/exposure/blur from captured pixels or image metadata.
+   - Block enrollment on real quality metrics and show actionable retry reasons.
+
+4. Finish temporary image cleanup.
+   - `imagePixelLoader` deletes resized intermediate files.
+   - `normalizeCapturedPhoto` deletes the original only when it creates a rotated replacement.
+   - Delete enrollment/authentication capture files after the embedding or matching pipeline completes.
    - Keep only encrypted embeddings and minimal audit metadata.
-   - Add tests for purge behavior where practical.
 
-8. Run native device QA.
-   - Android 8+ mid-range device.
-   - iOS device with notch/dynamic island.
-   - Camera permission denied/retry/settings flow.
-   - Small Android screen layout.
-   - Offline enrollment/authentication.
-   - Network restore sync.
+5. Strengthen database migration safety.
+   - Migration 3 uses plain `ALTER TABLE ... ADD COLUMN`; reruns can fail if columns already exist but migration state is inconsistent.
+   - Add column-existence checks or a safer migration helper.
+   - Add tests for partially migrated database repair.
 
-9. Update benchmark evidence after real-device testing.
-   - Record model load time, embedding time, liveness duration, SQLite lookup time, and full auth latency.
-   - Update `docs/BENCHMARKS.md` with measured device names and dates.
-   - Keep simulated/Jest benchmark numbers separate from physical-device results.
+6. Reconcile legacy service layers.
+   - `OfflineDatabaseService` wraps newer repositories but also keeps older raw SQL methods.
+   - Prefer repository methods for face templates, auth logs, and users.
+   - Remove duplicate paths once screen code is migrated.
 
-10. Final demo polish.
-   - Add final app icon and splash assets.
-   - Seed realistic demo employee/profile data.
-   - Prepare a clean demo script covering enrollment, offline auth, logs, sync, profile drawer, and benchmark report.
-   - Capture final screenshots for docs and presentation.
+7. Improve sync robustness.
+   - Add retry/backoff policy for failed sync attempts.
+   - Distinguish backend validation failures from transient network failures.
+   - Decide whether `FAILED` sync logs should be retried, reviewed manually, or moved to a dead-letter queue.
+   - Persist and display last sync time, failed sync count, and last sync error.
 
-## Documentation Updates Still Needed
+8. Expand backend validation and observability.
+   - Validate ISO timestamps, coordinate ranges, string lengths, and hash format.
+   - Store request/device metadata needed for audit.
+   - Add structured logs and alarms for failed sync batches.
+   - Add backend tests for valid batches, partial failures, malformed payloads, CORS, and auth failures.
 
-- Update `docs/ARCHITECTURE.md` to distinguish implemented modules from planned production hardening.
-- Update `docs/DEVELOPMENT_FLOW.md` suggested build order so completed phases are marked done.
-- Update `docs/BENCHMARKS.md` after physical device measurements.
-- Update `docs/README_SETUP.md` with final native setup, backend deployment, and app icon steps.
+9. Tighten local security posture.
+   - `DATABASE_ENCRYPTION_ENABLED` is currently false.
+   - Decide whether SQLite itself should be encrypted in addition to encrypted biometric templates.
+   - Define retention limits for auth logs, device context, IP address, and GPS coordinates.
+   - Add secure wipe/reset behavior for app uninstall, device reassignment, or employee offboarding.
 
-## Current Priority Order
+## Testing Gaps
 
-1. Real encryption for face templates.
-2. Real face detection and landmark-driven liveness.
-3. TFLite image preprocessing dependency/runtime validation.
-4. Automatic network-restore sync.
-5. Backend deployment and end-to-end sync test.
-6. Temporary image purge enforcement.
-7. Physical device QA and final demo assets.
+- Add tests for `encryptData`/`decryptData`, including invalid ciphertext and tamper detection after authenticated encryption is added.
+- Add tests proving `LiveScannerPanel` does not complete liveness from simulated metrics unless explicit demo mode is enabled.
+- Add tests for MiniFASNet input crop/preprocessing and spoof result handling.
+- Add tests for `offlineSyncService` success, partial failure, network failure, and retry behavior.
+- Add tests for `connectivitySyncService` triggering sync only on offline-to-online transitions.
+- Add tests for `AuthenticationScreen` behavior when an employee is not enrolled.
+- Add tests for real enrollment quality scoring after simulated brightness/sharpness is replaced.
+- Add tests for temporary image cleanup after enrollment/authentication.
+- Add backend unit tests around `parseSyncAuthLogsRequest` and `syncAuthLogs` handler behavior.
+- Add an end-to-end physical-device test script for enrollment, authentication, offline logging, network restore sync, and log purge.
+
+## Documentation Updates
+
+- Update `docs/ARCHITECTURE.md` to distinguish implemented behavior from planned production behavior.
+- Update `docs/MODEL_EXPLANATION.md` to reflect the implemented ML Kit alignment/liveness adapters and MiniFASNet anti-spoof model.
+- Update `docs/README_SETUP.md`; it still describes an early placeholder state and mentions React Native 0.84.x while the project uses RN 0.72.7.
+- Update `docs/BENCHMARKS.md` with real-device measurements, not only Jest/demo benchmarks.
+- Update `docs/TESTING_REPORT.md` after adding crypto, sync, backend, and screen-flow tests.
+- Update README claims after secure-random and authenticated-encryption fixes are complete.
+
+## Recommended Priority Order
+
+1. Remove insecure `Math.random()` crypto override and verify native secure randomness.
+2. Remove or demo-gate the legacy simulated liveness interval.
+3. Add authenticated encryption for stored face templates.
+4. Validate ML Kit liveness and MiniFASNet/ArcFace TFLite inference on Android/iOS physical devices.
+5. Replace simulated enrollment quality checks with real image metrics.
+6. Add backend auth and environment-specific API/device configuration.
+7. Harden sync retries, failed-log handling, and sync status visibility.
+8. Enforce temporary image cleanup and retention limits.
+9. Strengthen migrations and repository consistency.
+10. Expand automated tests and update docs with real-device evidence.

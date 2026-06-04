@@ -100,11 +100,12 @@ export function useFaceCapture({
 
       const image: CapturedFaceImage = {
         path: upright.path,
-        uri: upright.uri,
+        uri: `${upright.uri}?capturedAt=${Date.now()}`,
         capturedAt: new Date().toISOString(),
         source: 'camera',
         width: upright.width,
         height: upright.height,
+        displayRotationDegrees: upright.displayRotationDegrees,
         orientation: 'portrait',
         isMirrored: photo.isMirrored,
         metadata: {

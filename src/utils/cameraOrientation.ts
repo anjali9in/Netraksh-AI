@@ -4,19 +4,20 @@ import type {Orientation} from 'react-native-vision-camera';
 export type PhotoOrientationOptions = {
   /** Front/selfie camera (default for face capture). */
   isFrontCamera?: boolean;
+  height?: number;
+  width?: number;
 };
 
 /**
  * Maps Vision Camera photo orientation to degrees for @bam.tech/react-native-image-resizer.
- * Android front cameras (e.g. Realme) often need the opposite 90°/270° swap vs back camera.
+ * Front cameras often need the opposite 90°/270° swap vs back camera.
  */
 export function getImageResizerRotationDegrees(
   orientation?: Orientation | string,
   options: PhotoOrientationOptions = {},
 ): number {
-  const {isFrontCamera = true} = options;
-  const invertLandscape =
-    Platform.OS === 'android' && isFrontCamera;
+  const {height, isFrontCamera = true, width} = options;
+  const invertLandscape = isFrontCamera;
 
   switch (orientation) {
     case 'landscape-left':
@@ -25,8 +26,14 @@ export function getImageResizerRotationDegrees(
       return invertLandscape ? 90 : 270;
     case 'portrait-upside-down':
       return 180;
-    case 'portrait':
     default:
+      if (
+        typeof width === 'number' &&
+        typeof height === 'number' &&
+        width > height
+      ) {
+        return invertLandscape ? 270 : 90;
+      }
       return 0;
   }
 }

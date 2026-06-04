@@ -13,6 +13,7 @@ export interface NormalizedPhoto {
   uri: string;
   width: number;
   height: number;
+  displayRotationDegrees: number;
 }
 
 /**
@@ -25,7 +26,14 @@ export async function normalizeCapturedPhoto(
   orientation?: Orientation,
   options?: PhotoOrientationOptions,
 ): Promise<NormalizedPhoto> {
-  const rotation = getImageResizerRotationDegrees(orientation, options);
+  const rotation = getImageResizerRotationDegrees(orientation, {
+    ...options,
+    height,
+    width,
+  });
+  const willSwapDimensions = rotation === 90 || rotation === 270;
+  const outputWidth = willSwapDimensions ? height : width;
+  const outputHeight = willSwapDimensions ? width : height;
 
   if (rotation === 0) {
     return {
@@ -33,13 +41,14 @@ export async function normalizeCapturedPhoto(
       uri: toFileUri(path),
       width,
       height,
+      displayRotationDegrees: width > height ? 90 : 0,
     };
   }
 
   const result = await ImageResizer.createResizedImage(
     toFileUri(path),
-    width,
-    height,
+    outputWidth,
+    outputHeight,
     'JPEG',
     95,
     rotation,
@@ -55,12 +64,16 @@ export async function normalizeCapturedPhoto(
     RNFS.unlink(path).catch(() => undefined);
   }
 
+  const normalizedWidth = result.width ?? outputWidth;
+  const normalizedHeight = result.height ?? outputHeight;
+
   return {
     path: normalizedPath,
     uri: result.uri.startsWith('file://')
       ? result.uri
       : toFileUri(normalizedPath),
-    width: result.width,
-    height: result.height,
+    width: normalizedWidth,
+    height: normalizedHeight,
+    displayRotationDegrees: normalizedWidth > normalizedHeight ? 90 : 0,
   };
 }

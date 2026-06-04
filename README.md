@@ -1,30 +1,30 @@
-# 🛡️ Netraksh AI
+# Netraksh AI
 
 **Offline Facial Recognition & Liveness Detection System for Remote Locations**
 
-Netraksh AI is a robust, offline-first facial authentication and anti-spoofing solution built with **React Native (0.72.x)**, **TypeScript**, and **SQLite**. Designed specifically for remote environments with limited or no internet connectivity, it performs high-speed face embedding generation, matching, and liveness challenge flows completely on-device.
+Netraksh AI is an offline-first facial authentication and liveness workflow built with **React Native 0.72.7**, **TypeScript**, and **SQLite**. It is designed for remote environments where connectivity is unreliable, keeping enrollment, face matching, liveness challenge state, and local audit logging available on device.
 
 ---
 
-## ✨ Features
+## Features
 
-- **📷 Real-Time Camera Feed**: Powered by `react-native-vision-camera` with automated quality and alignment feedback.
-- **⚡ On-Device AI Embedding**: Upgraded to **ArcFace-MobileNetV2** (512-dimensional normalized embeddings) achieving high accuracy (>99.7% LFW target).
-- **🎭 Multi-Factor Liveness Verification**: Randomly generated challenge flows (Blink, Smile, Head Turn) to reject photo/screen-based spoofing attempts.
-- **🔒 AES-256-CBC Biometric Security**: Secure storage of face templates inside SQLite. Templates are encrypted on-device using a 256-bit key derived and secured within the hardware-backed **Keychain** (`react-native-keychain`).
-- **🔄 Auto-Registration Fallback**: Automatically registers new users on-the-spot during authentication if they do not yet have an enrolled template.
-- **📡 Automatic TFLite Fallback**: Includes a native module boundary. If the native TFLite module is missing or not linked (e.g. developing on Metro without rebuilding native code), the app **gracefully falls back** to simulated mock embedding mode instead of crashing.
-- **📝 Tamper-Proof SQLite Logs**: Comprehensive offline log storage protected by localized integrity hashes. Includes a live log viewer with instant focus updates and date-based filtering.
+- **Camera Capture**: Uses `react-native-vision-camera` for enrollment capture, authentication capture, permission handling, retake flow, and development mock capture.
+- **Face Embeddings**: Uses ArcFace-MobileNetV2-style 512-dimensional normalized embeddings with `react-native-fast-tflite` integration and deterministic mock fallback when native inference is unavailable.
+- **Liveness Challenge Flow**: Implements blink, smile, and head-turn challenge state logic. The current UI feeds simulated EAR/MAR/yaw metrics; real landmark detection is still a production hardening item.
+- **Encrypted Face Templates**: Stores encrypted embeddings in SQLite using AES-256-CBC and a Keychain-backed local key. Current encryption still needs authenticated encryption and secure-random cleanup before production use.
+- **Offline Audit Logs**: Stores authentication attempts locally with sync status, device/location context, and SHA-256 integrity hashes for tamper evidence.
+- **Offline-to-Online Sync**: Provides manual sync from the Offline Logs screen, automatic sync on network restore, and periodic scheduled sync using `AUTH_LOG_SYNC_INTERVAL_MS`.
+- **AWS Backend Scaffold**: Includes a SAM/API Gateway/Lambda/DynamoDB sync backend with request validation. Backend authentication and deployment validation are still required.
 
 ---
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
 ### Prerequisites
 
-* **Node.js**: `v18.0.0` or higher (Node `v24.16.0` recommended)
+* **Node.js**: `v18.0.0` or higher
 * **Java SDK**: **JDK 21**
-* **Android**: Android Studio with SDK Platform 36 and Command-line Tools
+* **Android**: Android Studio with Android SDK and command-line tools
 * **iOS**: macOS with Xcode and CocoaPods installed
 
 ### Installation
@@ -47,7 +47,7 @@ Netraksh AI is a robust, offline-first facial authentication and anti-spoofing s
 
 ---
 
-## 📱 Running the App
+## Running the App
 
 ### Running on Android
 
@@ -70,7 +70,7 @@ npm run ios
 
 ---
 
-## 🛠️ Developer Commands
+## Developer Commands
 
 ```sh
 # Run Jest Unit Tests
@@ -93,4 +93,6 @@ npm run lint
 * `src/services`: Database repositories, liveness state machines, geolocation, and network services.
 * `src/ai`: TFLite generator, preprocessing, similarity metrics, and benchmark scripts.
 * `src/utils`: Encryption helper, hash validation, and date functions.
-* `__tests__`: Comprehensive suite of Jest tests covering databases, cryptography, liveness detection, and AI modules.
+* `backend`: AWS SAM sync API scaffold.
+* `docs`: Architecture, setup, benchmark, testing, and next-step notes.
+* `__tests__`: Jest tests covering validation, routes, device info, camera orientation, liveness, offline database behavior, and AI utilities.

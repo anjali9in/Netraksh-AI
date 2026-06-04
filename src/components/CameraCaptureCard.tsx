@@ -89,7 +89,18 @@ export function CameraCaptureCard({
             <Image
               resizeMode="contain"
               source={{uri: capturedImage.uri}}
-              style={styles.preview}
+              style={[
+                styles.preview,
+                capturedImage.displayRotationDegrees
+                  ? {
+                      transform: [
+                        {
+                          rotate: `${capturedImage.displayRotationDegrees}deg`,
+                        },
+                      ],
+                    }
+                  : null,
+              ]}
             />
           ) : isCameraReady && device ? (
             <Camera

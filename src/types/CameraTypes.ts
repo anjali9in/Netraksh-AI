@@ -5,6 +5,7 @@ export type CapturedFaceImage = {
   source: 'camera' | 'mock';
   width?: number;
   height?: number;
+  displayRotationDegrees?: number;
   orientation?: string;
   isMirrored?: boolean;
   metadata?: {
