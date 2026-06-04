@@ -16,7 +16,9 @@ enum BackgroundSyncScheduler {
           task.setTaskCompleted(success: false)
           return
         }
-        handleAppRefresh(task: refreshTask)
+        if #available(iOS 13.0, *) {
+          handleAppRefresh(task: refreshTask)
+        }
       }
     }
   }
