@@ -5,6 +5,8 @@ import {
   StyleSheet,
   Text,
   View,
+  StyleProp,
+  ViewStyle,
 } from 'react-native';
 
 import {colors} from '../theme/colors';
@@ -18,6 +20,7 @@ type PrimaryButtonProps = {
   icon?: ButtonIconName;
   loading?: boolean;
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  style?: StyleProp<ViewStyle>;
 };
 
 export function PrimaryButton({
@@ -27,6 +30,7 @@ export function PrimaryButton({
   icon,
   loading = false,
   variant = 'primary',
+  style,
 }: PrimaryButtonProps): React.JSX.Element {
   const isDisabled = disabled || loading;
   const iconColor =
@@ -45,6 +49,7 @@ export function PrimaryButton({
         styles[variant],
         isDisabled && styles.disabled,
         pressed && !isDisabled && styles.pressed,
+        style,
       ]}
     >
       <View style={styles.content}>
