@@ -32,18 +32,18 @@ export interface ModelConfig {
  * Source    : https://github.com/deepinsight/insightface
  */
 export const FACE_RECOGNITION_MODEL: ModelConfig = {
-  modelName: 'MobileFaceNet',
-  modelPath: 'models/mobilefacenet.tflite', // lightweight model, ~5.2 MB (target under 20 MB)
+  modelName: 'ArcFace-MobileNetV2',
+  modelPath: require('../assets/models/arcface_mobilenet_v2.tflite'),
   modelFormat: 'tflite',
   inputWidth: 112,
   inputHeight: 112,
   inputChannels: 3,
-  embeddingDimension: 128,
-  threshold: 0.75, // matches src/config/thresholds.ts
+  embeddingDimension: 512, // upgraded from 128 → richer face representation
+  threshold: 0.68, // matches src/config/thresholds.ts FACE_MATCH_THRESHOLD
   mean: [127.5, 127.5, 127.5],
   std: [127.5, 127.5, 127.5],
-  quantized: false,
-  version: '1.0.0',
+  quantized: true,
+  version: '2.0.0',
 };
 
 /**

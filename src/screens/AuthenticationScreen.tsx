@@ -48,14 +48,11 @@ export function AuthenticationScreen(): React.JSX.Element {
 
     try {
       const startTime = Date.now();
-      // Bypass TFLite face matching; successful liveness completion guarantees authentication success
-      const matchResult = {
-        success: true,
-        score: 1.0,
-        matchTimeMs: Date.now() - startTime,
-        employeeId: employeeId.trim().toUpperCase(),
-        error: undefined as string | undefined,
-      };
+      const matchResult = await secureStorageService.verifyFace(
+        employeeId.trim().toUpperCase(),
+        imagePath || 'mock://captured-face.jpg',
+        dynamicResult.threshold,
+      );
       const elapsedMs = Date.now() - startTime;
 
       const logId = await offlineDatabaseService.logAuthAttempt({

@@ -19,7 +19,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 export function isFaceMatched(
   storedEmbedding: number[],
   currentEmbedding: number[],
-  threshold = 0.75, // MobileFaceNet baseline
+  threshold = 0.68, // ArcFace-MobileNetV2 baseline
 ): boolean {
   const score = cosineSimilarity(storedEmbedding, currentEmbedding);
   return score >= threshold;

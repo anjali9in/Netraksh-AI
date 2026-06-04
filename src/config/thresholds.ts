@@ -1,5 +1,5 @@
-// Updated for MobileFaceNet: 128-dim embeddings use 0.75 baseline
-export const FACE_MATCH_THRESHOLD = 0.75;
+// Updated for ArcFace-MobileNetV2: 512-dim embeddings use 0.68 baseline
+export const FACE_MATCH_THRESHOLD = 0.68;
 /** Classic 6-point EAR (unit tests / fallback). */
 export const BLINK_THRESHOLD = 0.25;
 /** ML Kit contour height/width — eye closed when below this. */
