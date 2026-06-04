@@ -17,7 +17,6 @@ type CameraCaptureCardProps = {
   validationMessages?: string[];
   onPhotoCaptured?: (image: CapturedFaceImage) => void;
   onPhotoCleared?: () => void;
-  faceDetected?: boolean;
 };
 
 const DEFAULT_MESSAGES = ['Center face in frame', 'Blink check ready'];
@@ -29,12 +28,9 @@ export function CameraCaptureCard({
   validationMessages = DEFAULT_MESSAGES,
   onPhotoCaptured,
   onPhotoCleared,
-  faceDetected,
 }: CameraCaptureCardProps): React.JSX.Element {
   const isScreenFocused = useIsFocused();
   const [appState, setAppState] = React.useState(AppState.currentState);
-  const [simulatedFaceDetected, setSimulatedFaceDetected] = React.useState(false);
-
   const {
     cameraRef,
     canRequestPermission,
@@ -60,21 +56,6 @@ export function CameraCaptureCard({
     return () => subscription.remove();
   }, []);
 
-  React.useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isCameraActive && isCameraReady && !capturedImage) {
-      setSimulatedFaceDetected(false);
-      timer = setTimeout(() => {
-        setSimulatedFaceDetected(true);
-      }, 1000);
-    } else {
-      setSimulatedFaceDetected(false);
-    }
-    return () => clearTimeout(timer);
-  }, [isCameraActive, isCameraReady, capturedImage]);
-
-  const isFaceDetected = faceDetected !== undefined ? faceDetected : simulatedFaceDetected;
-  const guideBorderColor = isFaceDetected ? '#10b981' : '#ef4444';
   const showCaptureButton = hasPermission && !capturedImage;
 
   return (
@@ -161,14 +142,14 @@ export function CameraCaptureCard({
           )}
 
           <View pointerEvents="none" style={styles.cameraOverlay}>
-            <View style={[styles.guideFrame, {borderColor: guideBorderColor}]}>
-              <View style={[styles.corner, styles.cornerTopLeft, {borderColor: guideBorderColor}]} />
-              <View style={[styles.corner, styles.cornerTopRight, {borderColor: guideBorderColor}]} />
-              <View style={[styles.corner, styles.cornerBottomLeft, {borderColor: guideBorderColor}]} />
-              <View style={[styles.corner, styles.cornerBottomRight, {borderColor: guideBorderColor}]} />
+            <View style={styles.guideFrame}>
+              <View style={[styles.corner, styles.cornerTopLeft]} />
+              <View style={[styles.corner, styles.cornerTopRight]} />
+              <View style={[styles.corner, styles.cornerBottomLeft]} />
+              <View style={[styles.corner, styles.cornerBottomRight]} />
             </View>
             <Text style={styles.overlayInstruction}>
-              {isFaceDetected ? 'Face aligned successfully' : 'Align face inside frame'}
+              Align face inside frame
             </Text>
           </View>
         </View>

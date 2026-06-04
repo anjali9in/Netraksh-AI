@@ -1,7 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {Alert, Linking, Platform, StyleSheet, Text, View} from 'react-native';
 
-import {AppHeader} from '../components/AppHeader';
 import {InfoCard} from '../components/InfoCard';
 import {PrimaryButton} from '../components/PrimaryButton';
 import {ScreenContainer} from '../components/ScreenContainer';
@@ -41,14 +40,7 @@ export function SettingsScreen(): React.JSX.Element {
 
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
-      <AppHeader
-        title="Settings"
-        subtitle="App configuration, device details, and system permissions."
-        statusLabel={isChecking ? 'Checking network...' : isOnline ? 'Online' : 'Offline'}
-        status={isChecking ? 'info' : isOnline ? 'success' : 'error'}
-      />
-
-      <InfoCard title="Application" style={styles.section}>
+      <InfoCard title="Application" style={styles.firstSection}>
         <SettingRow label="App name" value={APP_NAME} />
         <SettingRow label="Model version" value={MODEL_VERSION} />
         <SettingRow
@@ -134,6 +126,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     minHeight: '100%',
     paddingBottom: spacing.xxxl,
+  },
+  firstSection: {
+    marginTop: 0,
   },
   hint: {
     color: colors.textSubtle,
