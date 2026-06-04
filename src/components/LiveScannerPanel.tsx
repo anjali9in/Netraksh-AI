@@ -44,6 +44,7 @@ export function LiveScannerPanel({
   const cameraRef = useRef<Camera>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
+  const faceDetectionTimeRef = useRef<number | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const isCameraActive = isScreenFocused && appState === 'active';
@@ -122,6 +123,7 @@ export function LiveScannerPanel({
     const initialState = livenessService.resetSession();
     setLivenessState(initialState);
     startTimeRef.current = Date.now();
+    faceDetectionTimeRef.current = null;
     setFaceDetected(false);
 
     if (timerRef.current) {
@@ -131,22 +133,43 @@ export function LiveScannerPanel({
     timerRef.current = setInterval(() => {
       if (!isCameraActive) return;
 
-      const elapsed = Date.now() - startTimeRef.current;
+      const now = Date.now();
 
-      // Simulate face detection state: red for the first 1s, then green
-      if (elapsed >= 1000 && elapsed <= 15000) {
-        setFaceDetected(true);
+      // If face has not been detected yet (PHASE 1: Align Face - RED Outline)
+      if (!faceDetectionTimeRef.current) {
+        const alignmentElapsed = now - startTimeRef.current;
+
+        // Auto-detect face after 2 seconds
+        if (alignmentElapsed >= 2000) {
+          console.log('[LiveScannerPanel] Face detected in frame. Turning green and starting liveness checks.');
+          setFaceDetected(true);
+          faceDetectionTimeRef.current = now;
+        }
+
+        // Timeout after 10 seconds if no face detected
+        if (alignmentElapsed > 10000) {
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          console.log('[LiveScannerPanel] Face alignment timed out.');
+          onLivenessFailed?.('Live face is not showing');
+        }
+        return;
       }
 
-      // 15-second timeout check
-      if (elapsed > 15000) {
+      // Face is detected (PHASE 2: Liveness Verification - GREEN Outline)
+      const challengeElapsed = now - faceDetectionTimeRef.current;
+
+      // 15-second timeout check for liveness verification
+      if (challengeElapsed > 15000) {
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
         setFaceDetected(false);
         console.log('[LiveScannerPanel] Liveness check timed out. Rejecting.');
-        onLivenessFailed?.('Live face is not showing');
+        onLivenessFailed?.('Liveness check timed out');
         return;
       }
 
@@ -158,10 +181,10 @@ export function LiveScannerPanel({
         return;
       }
 
-      // Simulate metrics dynamically according to current challenge type
+      // Simulate metrics dynamically according to current challenge type based on challengeElapsed time
       const sim = livenessService.getSimulatedMetrics(
         currentChallenge.type,
-        elapsed,
+        challengeElapsed,
       );
       setMetrics(sim);
 
@@ -269,14 +292,22 @@ export function LiveScannerPanel({
 
         {/* Live HUD instructions badge */}
         <View style={styles.hudInstructionBox}>
-          <Text style={styles.hudInstructionLabel}>VERIFYING LIVENESS</Text>
-          <Text style={styles.hudInstructionText}>
-            {livenessState?.challenges[livenessState.currentChallengeIndex]?.instruction ||
-              'Align your face inside the circle'}
+          <Text style={[styles.hudInstructionLabel, {color: faceDetected ? '#10b981' : '#ef4444'}]}>
+            {faceDetected ? 'VERIFYING LIVENESS' : 'ALIGN FACE'}
           </Text>
-          {livenessState && (
+          <Text style={styles.hudInstructionText}>
+            {faceDetected
+              ? (livenessState?.challenges[livenessState.currentChallengeIndex]?.instruction || 'Perform the challenge')
+              : 'Keep your face inside the circle'}
+          </Text>
+          {faceDetected && livenessState && (
             <Text style={styles.hudStepText}>
               Step {livenessState.currentChallengeIndex + 1} of {livenessState.challenges.length}
+            </Text>
+          )}
+          {!faceDetected && (
+            <Text style={[styles.hudStepText, {color: '#ef4444'}]}>
+              Waiting for face detection...
             </Text>
           )}
         </View>
@@ -346,6 +377,19 @@ export function LiveScannerPanel({
       </View>
 
       <View style={styles.actionRow}>
+        {!faceDetected && (
+          <View style={{marginBottom: 8}}>
+            <PrimaryButton
+              title="Simulate Face Alignment"
+              variant="secondary"
+              onPress={() => {
+                console.log('[LiveScannerPanel] Manual face alignment triggered.');
+                setFaceDetected(true);
+                faceDetectionTimeRef.current = Date.now();
+              }}
+            />
+          </View>
+        )}
         <PrimaryButton title="Cancel Scan" onPress={onCancel} />
       </View>
     </View>
