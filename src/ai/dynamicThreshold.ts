@@ -48,37 +48,37 @@ export function getDynamicThreshold(
   imageQualityScore: number = 1.0,
 ): ThresholdResult {
   const condition = detectEnvironmentCondition(brightnessScore);
-  let threshold = FACE_MATCH_THRESHOLD; // Baseline: 0.68 (ArcFace-MobileNetV2)
+  let threshold = FACE_MATCH_THRESHOLD; // Baseline: 0.75 (MobileFaceNet)
   let reason = '';
 
   switch (condition) {
     case 'OPTIMAL':
-      threshold = FACE_MATCH_THRESHOLD; // 0.68
+      threshold = FACE_MATCH_THRESHOLD; // 0.75
       reason =
-        'Optimal lighting detected. Using standard ArcFace baseline threshold.';
+        'Optimal lighting detected. Using standard baseline threshold.';
       break;
 
     case 'SHADOW':
-      threshold = FACE_MATCH_THRESHOLD + 0.03; // 0.71
+      threshold = FACE_MATCH_THRESHOLD + 0.03; // 0.78
       reason =
         'Shadow/partial shade detected. Threshold raised slightly for safety.';
       break;
 
     case 'LOW_LIGHT':
-      threshold = FACE_MATCH_THRESHOLD + 0.07; // 0.75
+      threshold = FACE_MATCH_THRESHOLD + 0.07; // 0.82
       reason =
         'Low light detected. Threshold raised significantly to prevent false positives.';
       break;
 
     case 'HARSH_LIGHT':
-      threshold = FACE_MATCH_THRESHOLD + 0.05; // 0.73
+      threshold = FACE_MATCH_THRESHOLD + 0.05; // 0.80
       reason =
         'Harsh/glare lighting detected. Threshold raised to compensate for over-exposed face regions.';
       break;
 
     case 'UNKNOWN':
     default:
-      threshold = FACE_MATCH_THRESHOLD + 0.05; // 0.73 (conservative fallback)
+      threshold = FACE_MATCH_THRESHOLD + 0.05; // 0.80 (conservative fallback)
       reason =
         'Unknown lighting condition. Using conservative threshold as a safety fallback.';
       break;
