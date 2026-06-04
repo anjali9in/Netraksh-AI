@@ -31,6 +31,7 @@ export function CameraCaptureCard({
   onPhotoCleared,
 }: CameraCaptureCardProps): React.JSX.Element {
   const isScreenFocused = useIsFocused();
+  const [appState, setAppState] = React.useState(AppState.currentState);
   const {
     cameraRef,
     canRequestPermission,

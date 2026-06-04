@@ -137,6 +137,7 @@ export function extractLivenessMetrics(face: Face): {
   yawRatio: number;
   avgEyeOpen?: number;
   smilingProbability?: number;
+  rotationY?: number;
 } {
   const leftEyeContour = face.contours?.leftEye?.points ?? [];
   const rightEyeContour = face.contours?.rightEye?.points ?? [];

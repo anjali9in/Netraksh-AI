@@ -42,8 +42,9 @@ export class FaceEmbeddingGenerator {
       if (!loadTensorflowModel) {
         throw new Error('loadTensorflowModel is undefined in react-native-fast-tflite');
       }
-      this.model = await loadTensorflowModel(FACE_RECOGNITION_MODEL.modelPath);
-      const inputTensor = this.model.inputs[0];
+      const modelInstance = await loadTensorflowModel(FACE_RECOGNITION_MODEL.modelPath);
+      this.model = modelInstance;
+      const inputTensor = modelInstance.inputs[0];
       console.log(
         `[FaceEmbeddingGenerator] Model loaded. Input tensor: ${JSON.stringify(inputTensor)}`,
       );
