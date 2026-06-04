@@ -6,8 +6,8 @@ export const BLINK_THRESHOLD = 0.25;
 export const BLINK_EAR_ASPECT_CLOSED = 0.2;
 export const BLINK_EAR_ASPECT_OPEN = 0.24;
 /** ML Kit classificationMode eye-open probability (0–1). */
-export const BLINK_EYE_OPEN_CLOSED = 0.6;
-export const BLINK_EYE_OPEN_OPEN = 0.65;
+export const BLINK_EYE_OPEN_CLOSED = 0.5;
+export const BLINK_EYE_OPEN_OPEN = 0.55;
 export const SMILE_PROBABILITY_DETECTED = 0.75;
 export const SMILE_MAR_DETECTED = 0.35;
 export const MAX_AUTH_TIME_MS = 1000;

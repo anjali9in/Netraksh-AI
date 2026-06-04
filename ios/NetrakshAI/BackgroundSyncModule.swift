@@ -29,6 +29,7 @@ class BackgroundSyncModule: RCTEventEmitter {
     resolver resolve: @escaping RCTPromiseResolveBlock,
     rejecter reject: @escaping RCTPromiseRejectBlock
   ) {
+    BackgroundSyncScheduler.register()
     BackgroundSyncScheduler.scheduleRefresh(afterMs: intervalMs.intValue)
     resolve(nil)
   }

@@ -327,23 +327,21 @@ export class LivenessService {
 
     const isOpen =
       (usesEyeProbability && avgEyeOpenProbability > BLINK_EYE_OPEN_OPEN) ||
-      (earVal > BLINK_EAR_ASPECT_OPEN && earVal >= BLINK_THRESHOLD);
+      earVal > BLINK_EAR_ASPECT_OPEN ||
+      earVal >= BLINK_THRESHOLD;
 
     if (isClosed) {
-      this.blinkEyePhase = 'closed';
       this.blinkFramesCount++;
+      this.blinkEyePhase = 'closed';
     } else if (isOpen) {
-      if (
-        this.blinkEyePhase === 'closed' ||
-        (this.blinkFramesCount >= 1 && this.blinkFramesCount < 30)
-      ) {
+      if (this.blinkEyePhase === 'closed' || (this.blinkFramesCount >= 1 && this.blinkFramesCount < 20)) {
         challenge.currentCount++;
         console.log(
           `[LivenessService] Blink registered! Count: ${challenge.currentCount}/${challenge.targetCount}`,
         );
       }
-      this.blinkEyePhase = 'open';
       this.blinkFramesCount = 0;
+      this.blinkEyePhase = 'open';
     }
 
     if (challenge.currentCount >= challenge.targetCount) {
