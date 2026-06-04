@@ -75,6 +75,8 @@ export function LiveScannerPanel({
   const isDetectingFrameRef = useRef(false);
   const sessionStartedRef = useRef(false);
   const isCapturingRef = useRef(false);
+  const lastChallengeIndexRef = useRef<number>(0);
+  const challengeTickCountRef = useRef<number>(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const hasRequestedPermission = useRef(false);
 
@@ -213,6 +215,8 @@ export function LiveScannerPanel({
     startTimeRef.current = Date.now();
     faceDetectionTimeRef.current = null;
     consecutiveAlignedRef.current = 0;
+    lastChallengeIndexRef.current = 0;
+    challengeTickCountRef.current = 0;
     setFaceDetected(false);
     setAlignmentMessage('Position your face in the circle');
     setLivenessState(isEnrollmentMode ? null : livenessService.resetSession());
@@ -390,9 +394,21 @@ export function LiveScannerPanel({
         return;
       }
 
+      // Track challenge ticks and reset on transition
+      if (state.currentChallengeIndex !== lastChallengeIndexRef.current) {
+        lastChallengeIndexRef.current = state.currentChallengeIndex;
+        challengeTickCountRef.current = 0;
+      } else {
+        challengeTickCountRef.current++;
+      }
+
+      // 1 tick = 100ms, so tick count * 100 simulates milliseconds elapsed for the current challenge
+      const currentChallengeTimeMs = challengeTickCountRef.current * 100;
+
+      // Simulate metrics dynamically according to current challenge type based on currentChallengeTimeMs
       const sim = livenessService.getSimulatedMetrics(
         currentChallenge.type,
-        challengeElapsed,
+        currentChallengeTimeMs,
       );
       setMetrics(sim);
 

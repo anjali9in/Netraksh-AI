@@ -1,4 +1,9 @@
-import {BLINK_THRESHOLD} from '../../config/thresholds';
+import {
+  BLINK_THRESHOLD,
+  SMILE_THRESHOLD,
+  HEAD_TURN_LEFT_THRESHOLD,
+  HEAD_TURN_RIGHT_THRESHOLD,
+} from '../../config/thresholds';
 
 export type LivenessChallengeType = 'BLINK' | 'SMILE' | 'HEAD_TURN';
 
@@ -230,7 +235,7 @@ export class LivenessService {
           this.blinkFramesCount++;
         } else {
           // If we had a closed eye for at least 1-2 frames and now it is open again, register a blink
-          if (this.blinkFramesCount >= 1 && this.blinkFramesCount < 10) {
+          if (this.blinkFramesCount >= 1 && this.blinkFramesCount < 30) {
             currentChallenge.currentCount++;
             console.log(
               `[LivenessService] Blink registered! Count: ${currentChallenge.currentCount}/${currentChallenge.targetCount}`,
@@ -245,8 +250,8 @@ export class LivenessService {
         break;
 
       case 'SMILE':
-        // Check for smile: MAR goes above 0.50 (wide mouth stretching)
-        if (marVal > 0.5) {
+        // Check for smile: MAR goes above threshold (wide mouth stretching)
+        if (marVal > SMILE_THRESHOLD) {
           this.smileFramesCount++;
           if (this.smileFramesCount >= 3) {
             // held for 3 frames
@@ -259,8 +264,8 @@ export class LivenessService {
         break;
 
       case 'HEAD_TURN':
-        // Check for head turn: Yaw ratio < 0.60 (turn right) or > 1.60 (turn left)
-        if (yawRatioVal < 0.6 || yawRatioVal > 1.6) {
+        // Check for head turn: Yaw ratio < right turn threshold or > left turn threshold
+        if (yawRatioVal < HEAD_TURN_RIGHT_THRESHOLD || yawRatioVal > HEAD_TURN_LEFT_THRESHOLD) {
           this.headTurnFramesCount++;
           if (this.headTurnFramesCount >= 3) {
             // held head turn for 3 frames
@@ -304,35 +309,36 @@ export class LivenessService {
     challengeType: LivenessChallengeType,
     timeMs: number,
   ): {ear: number; mar: number; yawRatio: number} {
-    let ear = 0.32 + Math.sin(timeMs / 100) * 0.02; // Baseline eye open
-    let mar = 0.18 + Math.cos(timeMs / 150) * 0.02; // Baseline neutral mouth
-    let yawRatio = 1.0 + Math.sin(timeMs / 200) * 0.05; // Centered face
+    const tick = Math.round(timeMs / 100);
+    let ear = 0.32; // Default open
+    let mar = 0.18; // Default neutral
+    let yawRatio = 1.0; // Default centered
 
-    // Introduce movements corresponding to the active challenge
     switch (challengeType) {
       case 'BLINK':
-        // Simulate a blink every 1.5 seconds
-        const blinkCycle = timeMs % 1500;
-        if (blinkCycle > 800 && blinkCycle < 1000) {
+        // We want to simulate a blink twice.
+        // First blink: eyes close at ticks 8-9 (800ms-900ms), open at tick 10 (1000ms)
+        // Second blink: eyes close at ticks 18-19 (1800ms-1900ms), open at tick 20 (2000ms)
+        if ((tick >= 8 && tick <= 9) || (tick >= 18 && tick <= 19)) {
           ear = 0.14; // Closed eye
         }
         break;
 
       case 'SMILE':
-        // Simulate a smile building up over time
-        const smileIntensity = Math.min(1.0, (timeMs % 3000) / 2000);
-        if (smileIntensity > 0.4) {
-          mar = 0.18 + (smileIntensity - 0.4) * 0.6; // Expands up to ~0.54
+        // Smile builds up: reach wide smile (>SMILE_THRESHOLD) by tick 10 (1000ms) and hold it
+        if (tick >= 10) {
+          mar = SMILE_THRESHOLD + 0.05; // 0.55
+        } else {
+          mar = 0.18 + (tick / 10) * (SMILE_THRESHOLD - 0.18 + 0.05);
         }
         break;
 
       case 'HEAD_TURN':
-        // Simulate head turning left then right
-        const turnIntensity = Math.sin(timeMs / 800); // oscillates between -1 and 1
-        if (turnIntensity > 0.5) {
-          yawRatio = 1.0 + (turnIntensity - 0.5) * 1.5; // Yaw goes up to 1.75 (left turn)
-        } else if (turnIntensity < -0.5) {
-          yawRatio = 1.0 + (turnIntensity + 0.5) * 0.9; // Yaw goes down to 0.55 (right turn)
+        // Turn head: reach turn (>HEAD_TURN_LEFT_THRESHOLD) by tick 10 (1000ms) and hold it
+        if (tick >= 10) {
+          yawRatio = HEAD_TURN_LEFT_THRESHOLD + 0.1; // 1.7
+        } else {
+          yawRatio = 1.0 + (tick / 10) * (HEAD_TURN_LEFT_THRESHOLD - 1.0 + 0.1);
         }
         break;
     }
