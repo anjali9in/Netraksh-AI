@@ -22,6 +22,7 @@ export interface NormalizedPhoto {
 export type NormalizeCapturedPhotoOptions = PhotoOrientationOptions & {
   /** Keep the camera JPEG after writing a rotated copy (e.g. per-frame ML Kit). */
   keepSourceFile?: boolean;
+  maxDimension?: number;
 };
 
 export async function normalizeCapturedPhoto(
@@ -37,10 +38,23 @@ export async function normalizeCapturedPhoto(
     width,
   });
   const willSwapDimensions = rotation === 90 || rotation === 270;
-  const outputWidth = willSwapDimensions ? height : width;
-  const outputHeight = willSwapDimensions ? width : height;
+  let outputWidth = willSwapDimensions ? height : width;
+  let outputHeight = willSwapDimensions ? width : height;
 
-  if (rotation === 0) {
+  let shouldResize = rotation !== 0;
+
+  if (options?.maxDimension) {
+    const maxDim = options.maxDimension;
+    const currentMax = Math.max(outputWidth, outputHeight);
+    if (currentMax > maxDim) {
+      const scale = maxDim / currentMax;
+      outputWidth = Math.round(outputWidth * scale);
+      outputHeight = Math.round(outputHeight * scale);
+      shouldResize = true;
+    }
+  }
+
+  if (!shouldResize) {
     return {
       path,
       uri: toFileUri(path),

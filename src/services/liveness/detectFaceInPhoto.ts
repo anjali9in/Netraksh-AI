@@ -59,6 +59,7 @@ export async function detectFacesInPhoto(
   const upright = await normalizeCapturedPhoto(path, width, height, orientation, {
     isFrontCamera,
     keepSourceFile: true,
+    maxDimension: 480, // Downscale significantly for fast real-time frame processing
   });
 
   try {

@@ -320,36 +320,30 @@ export class LivenessService {
       avgEyeOpenProbability !== undefined &&
       !Number.isNaN(avgEyeOpenProbability);
 
-    if (usesEyeProbability) {
-      if (avgEyeOpenProbability < BLINK_EYE_OPEN_CLOSED) {
-        this.blinkEyePhase = 'closed';
-      } else if (
-        this.blinkEyePhase === 'closed' &&
-        avgEyeOpenProbability > BLINK_EYE_OPEN_OPEN
+    const isClosed =
+      (usesEyeProbability && avgEyeOpenProbability < BLINK_EYE_OPEN_CLOSED) ||
+      earVal < BLINK_EAR_ASPECT_CLOSED ||
+      earVal < BLINK_THRESHOLD;
+
+    const isOpen =
+      (usesEyeProbability && avgEyeOpenProbability > BLINK_EYE_OPEN_OPEN) ||
+      (earVal > BLINK_EAR_ASPECT_OPEN && earVal >= BLINK_THRESHOLD);
+
+    if (isClosed) {
+      this.blinkEyePhase = 'closed';
+      this.blinkFramesCount++;
+    } else if (isOpen) {
+      if (
+        this.blinkEyePhase === 'closed' ||
+        (this.blinkFramesCount >= 1 && this.blinkFramesCount < 30)
       ) {
-        this.blinkEyePhase = 'open';
         challenge.currentCount++;
         console.log(
           `[LivenessService] Blink registered! Count: ${challenge.currentCount}/${challenge.targetCount}`,
         );
       }
-    } else {
-      const eyesClosed =
-        earVal < BLINK_EAR_ASPECT_CLOSED || earVal < BLINK_THRESHOLD;
-      const eyesOpen =
-        earVal > BLINK_EAR_ASPECT_OPEN || earVal >= BLINK_THRESHOLD;
-
-      if (eyesClosed) {
-        this.blinkFramesCount++;
-      } else if (eyesOpen) {
-        if (this.blinkFramesCount >= 1 && this.blinkFramesCount < 20) {
-          challenge.currentCount++;
-          console.log(
-            `[LivenessService] Blink registered! Count: ${challenge.currentCount}/${challenge.targetCount}`,
-          );
-        }
-        this.blinkFramesCount = 0;
-      }
+      this.blinkEyePhase = 'open';
+      this.blinkFramesCount = 0;
     }
 
     if (challenge.currentCount >= challenge.targetCount) {
