@@ -6,6 +6,7 @@ import {
   Linking,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import RNFS from 'react-native-fs';
@@ -21,7 +22,12 @@ import {
   getMlKitFaceDiagnostics,
   ML_KIT_FACE_DETECT_OPTIONS,
 } from '../services/liveness/detectFaceInPhoto';
-import {livenessService, LivenessSessionState} from '../services/liveness/livenessService';
+import {
+  ENROLLMENT_CHALLENGE_ORDER,
+  ENROLLMENT_COMBINED_INSTRUCTION,
+  livenessService,
+  LivenessSessionState,
+} from '../services/liveness/livenessService';
 import {
   buildChallengeRows,
   detectChallengePulse,
@@ -30,8 +36,13 @@ import {
 import {evaluateMlKitFaceAlignment} from '../services/liveness/mlKitFaceAlignment';
 import {extractLivenessMetrics} from '../services/liveness/mlKitLivenessMetrics';
 import {normalizeCapturedPhoto} from '../utils/normalizeCapturedPhoto';
-import {toFileUri} from '../utils/fileUtils';
+import {
+  getWritableAppDirectory,
+  joinFilePath,
+  stripFileScheme,
+} from '../utils/fileUtils';
 import {PrimaryButton} from './PrimaryButton';
+import {ButtonIcon} from './icons/ButtonIcon';
 
 export type LiveScannerMode = 'liveness' | 'enrollment';
 
@@ -44,12 +55,13 @@ type LiveScannerPanelProps = {
   onCancel: () => void;
 };
 
-const FACE_POLL_INTERVAL_MS = 500;
+const FACE_POLL_INTERVAL_MS = 600;
 const REQUIRED_ALIGNED_FRAMES = 1;
 /** Auth only — enrollment has no alignment/liveness time limit. */
 const FACE_ALIGNMENT_TIMEOUT_MS = 30000;
 const LIVENESS_CHALLENGE_TIMEOUT_MS = 15000;
-const LIVENESS_FRAME_INTERVAL_MS = 400;
+const LIVENESS_FRAME_INTERVAL_MS = 100;
+const CAPTURE_TIMEOUT_BACKOFF_MS = 1200;
 
 type CameraPermissionStatus =
   | 'not-determined'
@@ -92,7 +104,11 @@ export function LiveScannerPanel({
 
   const frontDevice = useCameraDevice('front');
   const backDevice = useCameraDevice('back');
-  const device = frontDevice ?? backDevice;
+  const [devicePosition, setDevicePosition] = useState<'front' | 'back'>('front');
+  const device =
+    devicePosition === 'front'
+      ? frontDevice ?? backDevice
+      : backDevice ?? frontDevice;
 
   const cameraRef = useRef<Camera>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -102,7 +118,10 @@ export function LiveScannerPanel({
   const isDetectingFrameRef = useRef(false);
   const sessionStartedRef = useRef(false);
   const isCapturingRef = useRef(false);
+  const postLivenessRunningRef = useRef(false);
+  const sessionCompleteRef = useRef(false);
   const challengeTickCountRef = useRef<number>(0);
+  const captureBackoffUntilRef = useRef<number>(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const hasRequestedPermission = useRef(false);
   const lastLivenessCaptureRef = useRef<{
@@ -131,6 +150,10 @@ export function LiveScannerPanel({
 
   const openCameraSettings = useCallback(async () => {
     await Linking.openSettings();
+  }, []);
+
+  const switchCamera = useCallback(() => {
+    setDevicePosition(current => (current === 'front' ? 'back' : 'front'));
   }, []);
 
   // Prompt for camera on first visit (Android often reports "denied" before first ask)
@@ -207,7 +230,7 @@ export function LiveScannerPanel({
           photo.width,
           photo.height,
           photo.orientation,
-          {isFrontCamera: device.position === 'front'},
+          {isFrontCamera: devicePosition === 'front'},
         );
         onLivenessComplete(upright.path);
       } else {
@@ -230,24 +253,66 @@ export function LiveScannerPanel({
     }
   }, []);
 
+  const resetScanSession = useCallback(() => {
+    sessionStartedRef.current = false;
+    sessionCompleteRef.current = false;
+    postLivenessRunningRef.current = false;
+    faceDetectionTimeRef.current = null;
+    consecutiveAlignedRef.current = 0;
+    challengeTickCountRef.current = 0;
+    setFaceDetected(false);
+    setLivenessState(null);
+    prevLivenessStateRef.current = null;
+    setChallengePulse(null);
+    setLiveChallengeHint(null);
+    setAlignmentMessage('Position your face in the circle');
+  }, []);
+
   // ML Kit challenges → MiniFASNet spoof check → ArcFace image handoff
   const handleLivenessSuccess = useCallback(async () => {
+    if (postLivenessRunningRef.current || sessionCompleteRef.current) {
+      return;
+    }
+    postLivenessRunningRef.current = true;
+    sessionCompleteRef.current = true;
+
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
 
     const capture = lastLivenessCaptureRef.current;
-    await clearLastLivenessCapture();
+    lastLivenessCaptureRef.current = null;
 
     if (!capture?.path || !capture.face) {
+      sessionCompleteRef.current = false;
+      postLivenessRunningRef.current = false;
       await capturePhoto();
       return;
     }
 
+    const capturePath = stripFileScheme(capture.path);
+    const persistedPath = joinFilePath(
+      getWritableAppDirectory(),
+      `liveness-final-${Date.now()}.jpg`,
+    );
+
     try {
+      const sourceExists = await RNFS.exists(capturePath);
+      if (!sourceExists) {
+        console.warn(
+          '[LiveScannerPanel] Liveness capture file missing, taking a fresh photo.',
+        );
+        sessionCompleteRef.current = false;
+        postLivenessRunningRef.current = false;
+        await capturePhoto();
+        return;
+      }
+
+      await RNFS.copyFile(capturePath, persistedPath);
+
       const spoof = await miniFasAntiSpoofing.verify(
-        capture.path,
+        persistedPath,
         capture.face,
         capture.width,
         capture.height,
@@ -255,40 +320,42 @@ export function LiveScannerPanel({
 
       if (!spoof.isLive) {
         console.log('[LiveScannerPanel] Anti-spoof check failed.');
-        setFaceDetected(false);
-        faceDetectionTimeRef.current = null;
-        setLivenessState(
-          livenessService.resetSession(undefined, {relaxed: isEnrollmentMode}),
-        );
+        resetScanSession();
         onLivenessFailed?.(
           'Presentation attack detected. Use your live face, not a photo or screen.',
         );
-        await RNFS.unlink(capture.path).catch(() => undefined);
+        await RNFS.unlink(persistedPath).catch(() => undefined);
+        await RNFS.unlink(capturePath).catch(() => undefined);
         return;
       }
 
       const upright = await normalizeCapturedPhoto(
-        capture.path,
+        persistedPath,
         capture.width,
         capture.height,
         capture.orientation,
-        {isFrontCamera: device?.position === 'front'},
+          {isFrontCamera: devicePosition === 'front'},
       );
       onLivenessComplete(upright.path);
-      if (upright.path !== capture.path) {
-        await RNFS.unlink(capture.path).catch(() => undefined);
+      if (upright.path !== persistedPath) {
+        await RNFS.unlink(persistedPath).catch(() => undefined);
       }
+      await RNFS.unlink(capturePath).catch(() => undefined);
     } catch (error) {
       console.error('[LiveScannerPanel] Post-liveness pipeline failed:', error);
+      resetScanSession();
       onLivenessFailed?.('Verification failed. Please try again.');
-      await RNFS.unlink(capture.path).catch(() => undefined);
+      await RNFS.unlink(persistedPath).catch(() => undefined);
+      await RNFS.unlink(capturePath).catch(() => undefined);
+    } finally {
+      postLivenessRunningRef.current = false;
     }
   }, [
     capturePhoto,
-    clearLastLivenessCapture,
-    device?.position,
+    devicePosition,
     onLivenessComplete,
     onLivenessFailed,
+    resetScanSession,
   ]);
 
   // Begin a single scan session when the camera is ready
@@ -306,6 +373,9 @@ export function LiveScannerPanel({
     }
 
     sessionStartedRef.current = true;
+    sessionCompleteRef.current = false;
+    postLivenessRunningRef.current = false;
+    captureBackoffUntilRef.current = 0;
     console.log(
       `[LiveScannerPanel] Starting ${isEnrollmentMode ? 'enrollment' : 'liveness'} session...`,
     );
@@ -315,9 +385,10 @@ export function LiveScannerPanel({
     challengeTickCountRef.current = 0;
     setFaceDetected(false);
     setAlignmentMessage('Position your face in the circle');
-    const initialSession = livenessService.resetSession(undefined, {
-      relaxed: isEnrollmentMode,
-    });
+    const initialSession = livenessService.resetSession(
+      isEnrollmentMode ? ENROLLMENT_CHALLENGE_ORDER : undefined,
+      {relaxed: isEnrollmentMode, parallel: isEnrollmentMode},
+    );
     setLivenessState(initialSession);
     prevLivenessStateRef.current = initialSession;
     setChallengePulse(null);
@@ -340,7 +411,14 @@ export function LiveScannerPanel({
     let pollTimeout: NodeJS.Timeout | null = null;
 
     const scheduleNextPoll = () => {
-      if (cancelled) {
+      if (cancelled || sessionCompleteRef.current) {
+        return;
+      }
+      const now = Date.now();
+      if (now < captureBackoffUntilRef.current) {
+        pollTimeout = setTimeout(() => {
+          void runScannerFrame().finally(scheduleNextPoll);
+        }, captureBackoffUntilRef.current - now);
         return;
       }
       const delay = faceDetectionTimeRef.current
@@ -352,7 +430,13 @@ export function LiveScannerPanel({
     };
 
     const runScannerFrame = async () => {
-      if (cancelled || isDetectingFrameRef.current || !cameraRef.current) {
+      if (
+        cancelled ||
+        sessionCompleteRef.current ||
+        postLivenessRunningRef.current ||
+        isDetectingFrameRef.current ||
+        !cameraRef.current
+      ) {
         return;
       }
 
@@ -366,6 +450,7 @@ export function LiveScannerPanel({
           setFaceDetected(false);
           faceDetectionTimeRef.current = null;
           void clearLastLivenessCapture();
+          resetScanSession();
           console.log('[LiveScannerPanel] Liveness check timed out. Rejecting.');
           onLivenessFailed?.('Liveness check timed out');
           return;
@@ -389,7 +474,7 @@ export function LiveScannerPanel({
           photo.height,
           photo.orientation,
           ML_KIT_FACE_DETECT_OPTIONS,
-          device?.position === 'front',
+          devicePosition === 'front',
         );
 
         if (cancelled) {
@@ -423,9 +508,10 @@ export function LiveScannerPanel({
               setFaceDetected(true);
               faceDetectionTimeRef.current = Date.now();
               inLivenessPhase = true;
-              const session = livenessService.resetSession(undefined, {
-                relaxed: isEnrollmentMode,
-              });
+              const session = livenessService.resetSession(
+                isEnrollmentMode ? ENROLLMENT_CHALLENGE_ORDER : undefined,
+                {relaxed: isEnrollmentMode, parallel: isEnrollmentMode},
+              );
               setLivenessState(session);
               prevLivenessStateRef.current = session;
               setChallengePulse(null);
@@ -466,6 +552,7 @@ export function LiveScannerPanel({
           metricsValues.yawRatio,
           metricsValues.avgEyeOpen,
           metricsValues.smilingProbability,
+          metricsValues.rotationY,
         );
 
         const pulse = detectChallengePulse(
@@ -476,7 +563,11 @@ export function LiveScannerPanel({
           setChallengePulse(pulse);
         }
         prevLivenessStateRef.current = updatedState;
-        setLiveChallengeHint(getLiveChallengeHint(updatedState, metricsValues));
+        setLiveChallengeHint(
+          getLiveChallengeHint(updatedState, metricsValues, {
+            relaxed: isEnrollmentMode,
+          }),
+        );
         setLivenessState(updatedState);
 
         const previous = lastLivenessCaptureRef.current;
@@ -498,6 +589,15 @@ export function LiveScannerPanel({
         }
       } catch (error) {
         console.warn('[LiveScannerPanel] Scanner frame failed:', error);
+        const message = String(error);
+        if (
+          message.includes('timed-out') ||
+          message.includes('timed out') ||
+          message.includes('capture/timed-out')
+        ) {
+          captureBackoffUntilRef.current =
+            Date.now() + CAPTURE_TIMEOUT_BACKOFF_MS;
+        }
         if (!faceDetectionTimeRef.current) {
           setAlignmentMessage('Scanning for your face...');
         }
@@ -525,11 +625,11 @@ export function LiveScannerPanel({
           if (alignmentTimeout) {
             clearInterval(alignmentTimeout);
           }
+          resetScanSession();
           console.log('[LiveScannerPanel] Face alignment timed out.');
           onLivenessFailed?.(
             'No face detected. Center your face in the circle and try again.',
           );
-          sessionStartedRef.current = false;
         }
       }, 1000);
     }
@@ -552,6 +652,7 @@ export function LiveScannerPanel({
     cameraReady,
     isEnrollmentMode,
     onLivenessFailed,
+    resetScanSession,
   ]);
 
   useEffect(() => {
@@ -573,14 +674,27 @@ export function LiveScannerPanel({
 
       <View style={styles.previewContainer}>
         {hasPermission && device ? (
-          <Camera
-            ref={cameraRef}
-            device={device}
-            isActive={isCameraActive}
-            photo={true}
-            onInitialized={() => setCameraReady(true)}
-            style={StyleSheet.absoluteFill}
-          />
+          <>
+            <Camera
+              ref={cameraRef}
+              device={device}
+              isActive={isCameraActive}
+              photo={true}
+              onInitialized={() => setCameraReady(true)}
+              style={StyleSheet.absoluteFill}
+            />
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`Switch to ${devicePosition === 'front' ? 'back' : 'front'} camera`}
+              onPress={switchCamera}
+              style={styles.switchCameraButton}
+            >
+              <ButtonIcon name="cameraSwitch" color="#ffffff" size={20} />
+              <Text style={styles.switchCameraLabel}>
+                {devicePosition === 'front' ? 'Back' : 'Front'}
+              </Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <View style={styles.fallbackPreview}>
             <Text style={styles.fallbackText}>
@@ -668,14 +782,17 @@ export function LiveScannerPanel({
           </Text>
           <Text style={styles.hudInstructionText}>
             {faceDetected
-              ? livenessState?.challenges[livenessState.currentChallengeIndex]
-                  ?.instruction || 'Perform the liveness challenge'
+              ? isEnrollmentMode
+                ? ENROLLMENT_COMBINED_INSTRUCTION
+                : livenessState?.challenges[livenessState.currentChallengeIndex]
+                    ?.instruction || 'Perform the liveness challenge'
               : alignmentMessage}
           </Text>
           {faceDetected && livenessState ? (
             <Text style={styles.hudStepText}>
-              Step {livenessState.currentChallengeIndex + 1} of{' '}
-              {livenessState.challenges.length}
+              {isEnrollmentMode
+                ? `${livenessState.challenges.filter(c => c.status === 'PASSED').length}/${livenessState.challenges.length} complete`
+                : `Step ${livenessState.currentChallengeIndex + 1} of ${livenessState.challenges.length}`}
             </Text>
           ) : null}
           {faceDetected && challengePulse ? (
@@ -784,12 +901,12 @@ export function LiveScannerPanel({
                 styles.barFill,
                 {
                   width: `${Math.min(100, metrics.ear * 250)}%`,
-                  backgroundColor: metrics.ear < 0.22 ? '#10b981' : '#3b82f6',
+                  backgroundColor: metrics.ear < 0.25 ? '#10b981' : '#3b82f6',
                 },
               ]}
             />
           </View>
-          <Text style={styles.metricThreshold}>Threshold &lt; 0.22</Text>
+          <Text style={styles.metricThreshold}>Threshold &lt; 0.25</Text>
         </View>
 
         <View style={styles.metricRow}>
@@ -1083,5 +1200,22 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     marginTop: 14,
+  },
+  switchCameraButton: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  switchCameraLabel: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 4,
   },
 });

@@ -41,6 +41,6 @@ describe('livenessChallengeFeedback', () => {
   it('returns live head-turn hint when yaw exceeds threshold', () => {
     const state = livenessService.resetSession(['HEAD_TURN']);
     const hint = getLiveChallengeHint(state, {ear: 0.3, mar: 0.2, yawRatio: 0.5});
-    expect(hint).toContain('Head turn right detected');
+    expect(hint?.toLowerCase()).toContain('head turn detected');
   });
 });

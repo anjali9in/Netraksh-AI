@@ -1,4 +1,5 @@
 import {
+  ENROLLMENT_CHALLENGE_ORDER,
   LivenessService,
   Landmark,
 } from '../src/services/liveness/livenessService';
@@ -113,8 +114,8 @@ describe('Liveness Service Unit Tests', () => {
     it('should register smile from ML Kit smiling probability', () => {
       service.resetSession(['SMILE'], {relaxed: true});
 
-      service.processFrame(0.3, 0.2, 1.0, 0.8, 0.5);
-      const state = service.processFrame(0.3, 0.2, 1.0, 0.8, 0.5);
+      service.processFrame(0.3, 0.2, 1.0, 0.8, 0.8);
+      const state = service.processFrame(0.3, 0.2, 1.0, 0.8, 0.8);
 
       expect(state.isComplete).toBe(true);
       expect(state.isPassed).toBe(true);
@@ -172,6 +173,33 @@ describe('Liveness Service Unit Tests', () => {
       service.processFrame(0.35, 0.2, 0.4);
       const state = service.processFrame(0.35, 0.2, 0.4);
 
+      expect(state.isComplete).toBe(true);
+      expect(state.isPassed).toBe(true);
+    });
+
+    it('should detect enrollment challenges in parallel on each frame', () => {
+      service.resetSession(ENROLLMENT_CHALLENGE_ORDER, {
+        relaxed: true,
+        parallel: true,
+      });
+
+      expect(service.getSessionState().challenges.every(c => c.status === 'ACTIVE')).toBe(
+        true,
+      );
+
+      service.processFrame(0.35, 0.2, 0.4);
+      service.processFrame(0.35, 0.2, 0.4);
+      let state = service.getSessionState();
+      expect(state.challenges.find(c => c.type === 'HEAD_TURN')?.status).toBe(
+        'PASSED',
+      );
+
+      service.processFrame(0.15, 0.2, 1.0);
+      state = service.processFrame(0.35, 0.2, 1.0);
+      expect(state.challenges.find(c => c.type === 'BLINK')?.status).toBe('PASSED');
+
+      service.processFrame(0.35, 0.2, 1.0, 0.8, 0.8);
+      state = service.processFrame(0.35, 0.2, 1.0, 0.8, 0.8);
       expect(state.isComplete).toBe(true);
       expect(state.isPassed).toBe(true);
     });

@@ -167,6 +167,7 @@ export function extractLivenessMetrics(face: Face): {
     ]);
   }
 
+  const rotationY = face.rotationY ?? 0;
   let yawRatio = 1.0;
   if (
     landmarks?.leftCheek?.position &&
@@ -178,9 +179,16 @@ export function extractLivenessMetrics(face: Face): {
       toLandmark(landmarks.noseBase.position),
       toLandmark(landmarks.rightCheek.position),
     ]);
-  } else if (Math.abs(face.rotationY) > 8) {
-    // Fallback when cheek landmarks missing (common on some devices)
-    yawRatio = face.rotationY < 0 ? 1.75 : 0.45;
+  }
+
+  // Front-camera cheek ratios often stay near 1.0–1.3 even when the head turns.
+  if (Math.abs(rotationY) >= 10) {
+    yawRatio = rotationY < 0 ? 0.5 : 1.8;
+  } else if (
+    yawRatio === 1.0 &&
+    Math.abs(rotationY) > 8
+  ) {
+    yawRatio = rotationY < 0 ? 1.75 : 0.45;
   }
 
   return {
@@ -189,6 +197,7 @@ export function extractLivenessMetrics(face: Face): {
     yawRatio,
     avgEyeOpen,
     smilingProbability: face.smilingProbability,
+    rotationY,
   };
 }
 

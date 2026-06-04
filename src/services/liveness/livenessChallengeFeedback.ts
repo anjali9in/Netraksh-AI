@@ -1,4 +1,5 @@
 import {
+  ENROLLMENT_CHALLENGE_ORDER,
   type LivenessChallenge,
   type LivenessChallengeType,
   type LivenessSessionState,
@@ -8,13 +9,17 @@ import {
   BLINK_EYE_OPEN_CLOSED,
   BLINK_EYE_OPEN_OPEN,
   BLINK_THRESHOLD,
+  HEAD_TURN_LEFT_THRESHOLD,
+  HEAD_TURN_LEFT_THRESHOLD_RELAXED,
+  HEAD_TURN_RIGHT_THRESHOLD,
+  HEAD_TURN_RIGHT_THRESHOLD_RELAXED,
+  HEAD_TURN_ROTATION_DEGREES,
+  HEAD_TURN_ROTATION_DEGREES_RELAXED,
   SMILE_MAR_DETECTED,
   SMILE_PROBABILITY_DETECTED,
 } from '../../config/thresholds';
 
 const SMILE_MAR_HINT = 0.3;
-const HEAD_TURN_LOW = 0.6;
-const HEAD_TURN_HIGH = 1.6;
 
 function passedMessage(type: LivenessChallengeType): string {
   switch (type) {
@@ -74,7 +79,7 @@ export function buildChallengeRows(
 
     return {
       title: challengeTitle(challenge.type),
-      detail: 'Waiting',
+      detail: 'Up next',
       status: 'pending',
     };
   });
@@ -91,16 +96,63 @@ export function getLiveChallengeHint(
     yawRatio: number;
     avgEyeOpen?: number;
     smilingProbability?: number;
+    rotationY?: number;
   },
+  options?: {relaxed?: boolean},
 ): string | null {
   if (!state || state.isComplete) {
     return null;
   }
 
-  const active = state.challenges[state.currentChallengeIndex];
-  if (!active || active.status !== 'ACTIVE') {
+  const activeChallenges = state.challenges.filter(c => c.status === 'ACTIVE');
+  if (activeChallenges.length === 0) {
     return null;
   }
+
+  const active =
+    activeChallenges.length === 1
+      ? activeChallenges[0]
+      : activeChallenges.find(
+          c =>
+            c.type ===
+            ENROLLMENT_CHALLENGE_ORDER.find(
+              type => !state.challenges.some(ch => ch.type === type && ch.status === 'PASSED'),
+            ),
+        ) ?? activeChallenges[0];
+
+  const relaxed = options?.relaxed ?? false;
+  if (activeChallenges.length > 1) {
+    const passed = state.challenges.filter(c => c.status === 'PASSED').length;
+    const total = state.challenges.length;
+    const specific = hintForActiveChallenge(active, metrics, relaxed);
+    return `${passed}/${total} done — ${specific ?? 'turn, blink, or smile'}`;
+  }
+
+  return hintForActiveChallenge(active, metrics, relaxed);
+}
+
+function hintForActiveChallenge(
+  active: LivenessChallenge,
+  metrics: {
+    ear: number;
+    mar: number;
+    yawRatio: number;
+    avgEyeOpen?: number;
+    smilingProbability?: number;
+    rotationY?: number;
+  },
+  relaxed: boolean,
+): string | null {
+  const headLow = relaxed
+    ? HEAD_TURN_RIGHT_THRESHOLD_RELAXED
+    : HEAD_TURN_RIGHT_THRESHOLD;
+  const headHigh = relaxed
+    ? HEAD_TURN_LEFT_THRESHOLD_RELAXED
+    : HEAD_TURN_LEFT_THRESHOLD;
+  const minRotation = relaxed
+    ? HEAD_TURN_ROTATION_DEGREES_RELAXED
+    : HEAD_TURN_ROTATION_DEGREES;
+  const smileThreshold = SMILE_PROBABILITY_DETECTED;
 
   switch (active.type) {
     case 'BLINK': {
@@ -110,35 +162,39 @@ export function getLiveChallengeHint(
           : metrics.ear < BLINK_EAR_ASPECT_CLOSED ||
             metrics.ear < BLINK_THRESHOLD;
       if (eyesClosed) {
-        return 'Eyes closed detected — open your eyes to register the blink';
+        return 'blink: close then open your eyes';
       }
-      if (active.currentCount > 0) {
-        return `Blink ${active.currentCount}/${active.targetCount} registered — blink again`;
+      if (active.currentCount > 0 && active.targetCount > 1) {
+        return `blink again (${active.currentCount}/${active.targetCount})`;
       }
-      return 'Close both eyes briefly, then open (repeat twice)';
+      return 'blink once';
     }
-      case 'SMILE':
-        if (
-          metrics.smilingProbability !== undefined &&
-          metrics.smilingProbability >= SMILE_PROBABILITY_DETECTED
-        ) {
-          return 'Smile detected — hold it';
-        }
-        if (metrics.mar >= SMILE_MAR_DETECTED) {
-          return 'Smile detected — hold it';
-        }
-        if (metrics.mar >= SMILE_MAR_HINT) {
-          return 'Smile forming — keep smiling';
-        }
-        return null;
-    case 'HEAD_TURN':
-      if (metrics.yawRatio < HEAD_TURN_LOW) {
-        return 'Head turn right detected — hold it';
+    case 'SMILE':
+      if (
+        metrics.smilingProbability !== undefined &&
+        metrics.smilingProbability >= smileThreshold
+      ) {
+        return 'smile detected — hold it';
       }
-      if (metrics.yawRatio > HEAD_TURN_HIGH) {
-        return 'Head turn left detected — hold it';
+      if (metrics.mar >= (relaxed ? 0.3 : SMILE_MAR_DETECTED)) {
+        return 'smile detected — hold it';
       }
-      return null;
+      if (metrics.mar >= SMILE_MAR_HINT) {
+        return 'smile forming — keep smiling';
+      }
+      return 'smile and hold';
+    case 'HEAD_TURN': {
+      const turnedByRotation =
+        metrics.rotationY !== undefined &&
+        Math.abs(metrics.rotationY) >= minRotation;
+      if (metrics.yawRatio < headLow || turnedByRotation) {
+        return 'head turn detected — hold it';
+      }
+      if (metrics.yawRatio > headHigh) {
+        return 'head turn detected — hold it';
+      }
+      return 'turn head left or right';
+    }
     default:
       return null;
   }

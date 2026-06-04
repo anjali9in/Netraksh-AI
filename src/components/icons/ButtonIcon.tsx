@@ -11,6 +11,7 @@ import Svg, {
 export type ButtonIconName =
   | 'arrowLeft'
   | 'camera'
+  | 'cameraSwitch'
   | 'chat'
   | 'check'
   | 'chart'
@@ -72,6 +73,12 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
             {...lineProps}
           />
           <Circle cx="12" cy="13" r="3.5" {...lineProps} />
+        </>
+      );
+    case 'cameraSwitch':
+      return (
+        <>
+          <Path d="M2 8V5a2 2 0 0 1 2-2h4M22 8a6 6 0 0 0-6-6H8M22 16v3a2 2 0 0 1-2 2h-4M2 16a6 6 0 0 1 6-6h8" {...lineProps} />
         </>
       );
     case 'chat':

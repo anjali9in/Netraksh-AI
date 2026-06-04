@@ -1,6 +1,6 @@
 import {useIsFocused} from '@react-navigation/native';
 import React from 'react';
-import {AppState, Image, StyleSheet, Text, View} from 'react-native';
+import {AppState, Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {Camera} from 'react-native-vision-camera';
 
 import {useFaceCapture} from '../hooks/useFaceCapture';
@@ -9,6 +9,7 @@ import {radius, spacing} from '../theme/spacing';
 import type {CapturedFaceImage} from '../types/CameraTypes';
 import {PrimaryButton} from './PrimaryButton';
 import {StatusBadge} from './StatusBadge';
+import {ButtonIcon} from './icons/ButtonIcon';
 
 type CameraCaptureCardProps = {
   title: string;
@@ -30,7 +31,6 @@ export function CameraCaptureCard({
   onPhotoCleared,
 }: CameraCaptureCardProps): React.JSX.Element {
   const isScreenFocused = useIsFocused();
-  const [appState, setAppState] = React.useState(AppState.currentState);
   const {
     cameraRef,
     canRequestPermission,
@@ -38,6 +38,7 @@ export function CameraCaptureCard({
     capturedImage,
     captureFaceImage,
     device,
+    devicePosition,
     errorMessage,
     hasPermission,
     isCameraReady,
@@ -46,6 +47,7 @@ export function CameraCaptureCard({
     requestCameraPermission,
     retake,
     useMockCapture,
+    switchCamera,
   } = useFaceCapture({onPhotoCaptured, onPhotoCleared});
   const isCameraActive =
     isScreenFocused && appState === 'active' && !controlsDisabled;
@@ -78,6 +80,21 @@ export function CameraCaptureCard({
         <Text style={styles.description}>{description}</Text>
 
         <View style={styles.previewFrame}>
+          {!capturedImage && hasPermission && device ? (
+            <View style={styles.cameraSwitchContainer}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Switch camera"
+                onPress={switchCamera}
+                style={styles.cameraSwitchButton}
+              >
+                <ButtonIcon name="cameraSwitch" color="#ffffff" size={22} />
+              </Pressable>
+              <Text style={styles.cameraSwitchLabel}>
+                Tap to switch to {devicePosition === 'front' ? 'back' : 'front'} camera
+              </Text>
+            </View>
+          ) : null}
           {capturedImage?.source === 'mock' ? (
             <View style={styles.emptyPreview}>
               <Text style={styles.emptyTitle}>Mock face image captured</Text>
@@ -397,5 +414,22 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: '700',
+  },
+  cameraSwitchContainer: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+  },
+  cameraSwitchButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderRadius: 20,
+    padding: 8,
+  },
+  cameraSwitchLabel: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

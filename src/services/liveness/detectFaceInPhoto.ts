@@ -58,6 +58,7 @@ export async function detectFacesInPhoto(
 ): Promise<Face[]> {
   const upright = await normalizeCapturedPhoto(path, width, height, orientation, {
     isFrontCamera,
+    keepSourceFile: true,
   });
 
   try {

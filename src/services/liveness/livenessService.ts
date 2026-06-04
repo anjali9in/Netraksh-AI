@@ -4,11 +4,24 @@ import {
   BLINK_EYE_OPEN_CLOSED,
   BLINK_EYE_OPEN_OPEN,
   BLINK_THRESHOLD,
+  HEAD_TURN_LEFT_THRESHOLD,
+  HEAD_TURN_LEFT_THRESHOLD_RELAXED,
+  HEAD_TURN_RIGHT_THRESHOLD,
+  HEAD_TURN_RIGHT_THRESHOLD_RELAXED,
+  HEAD_TURN_ROTATION_DEGREES,
+  HEAD_TURN_ROTATION_DEGREES_RELAXED,
   SMILE_MAR_DETECTED,
   SMILE_PROBABILITY_DETECTED,
 } from '../../config/thresholds';
 
 export type LivenessChallengeType = 'BLINK' | 'SMILE' | 'HEAD_TURN';
+
+/** Predictable enrollment flow: turn → blink → smile. */
+export const ENROLLMENT_CHALLENGE_ORDER: LivenessChallengeType[] = [
+  'HEAD_TURN',
+  'BLINK',
+  'SMILE',
+];
 
 export type Landmark = {
   x: number;
@@ -35,7 +48,13 @@ export type LivenessSessionState = {
 export type LivenessSessionOptions = {
   /** Easier thresholds and fewer blinks (enrollment). */
   relaxed?: boolean;
+  /** Evaluate every challenge each frame (enrollment — any gesture order). */
+  parallel?: boolean;
 };
+
+/** Shown when all enrollment challenges are active at once. */
+export const ENROLLMENT_COMBINED_INSTRUCTION =
+  'Turn your head, blink once, and smile (any order)';
 
 export class LivenessService {
   private activeChallenges: LivenessChallenge[] = [];
@@ -45,6 +64,7 @@ export class LivenessService {
   private headTurnFramesCount: number = 0;
   private smileFramesCount: number = 0;
   private relaxedMode: boolean = false;
+  private parallelMode: boolean = false;
 
   // Track state of challenges
   private earHistory: number[] = [];
@@ -64,17 +84,18 @@ export class LivenessService {
     options?: LivenessSessionOptions,
   ): LivenessSessionState {
     this.relaxedMode = options?.relaxed ?? false;
+    this.parallelMode = options?.parallel ?? false;
     const pool: LivenessChallengeType[] = challengesToInclude || [
       'BLINK',
       'SMILE',
       'HEAD_TURN',
     ];
 
-    // Randomize the challenges
-    const randomized = [...pool].sort(() => 0.5 - Math.random());
-
-    // Take at least 2 challenges for a solid flow
-    const selectedTypes = randomized.slice(0, Math.max(2, randomized.length));
+    const selectedTypes = challengesToInclude
+      ? [...challengesToInclude]
+      : [...pool]
+          .sort(() => 0.5 - Math.random())
+          .slice(0, Math.max(2, pool.length));
 
     this.activeChallenges = selectedTypes.map(type => {
       let instruction = '';
@@ -107,10 +128,17 @@ export class LivenessService {
     });
 
     if (this.activeChallenges.length > 0) {
-      this.activeChallenges[0].status = 'ACTIVE';
+      if (this.parallelMode) {
+        for (const challenge of this.activeChallenges) {
+          challenge.status = 'ACTIVE';
+        }
+      } else {
+        this.activeChallenges[0].status = 'ACTIVE';
+      }
     }
 
     this.currentIndex = 0;
+    this.syncCurrentIndex();
     this.blinkFramesCount = 0;
     this.blinkEyePhase = 'open';
     this.headTurnFramesCount = 0;
@@ -225,18 +253,24 @@ export class LivenessService {
     yawRatioVal: number,
     avgEyeOpenProbability?: number,
     smilingProbability?: number,
+    rotationY?: number,
   ): LivenessSessionState {
     const state = this.getSessionState();
     if (state.isComplete) {
       return state;
     }
 
-    const currentChallenge = this.activeChallenges[this.currentIndex];
-    if (!currentChallenge || currentChallenge.status !== 'ACTIVE') {
+    const challengesToEvaluate = this.parallelMode
+      ? this.activeChallenges.filter(c => c.status === 'ACTIVE')
+      : (() => {
+          const current = this.activeChallenges[this.currentIndex];
+          return current?.status === 'ACTIVE' ? [current] : [];
+        })();
+
+    if (challengesToEvaluate.length === 0) {
       return state;
     }
 
-    // Keep metrics histories
     this.earHistory.push(earVal);
     this.marHistory.push(marVal);
     this.yawHistory.push(yawRatioVal);
@@ -244,89 +278,182 @@ export class LivenessService {
     if (this.marHistory.length > 50) this.marHistory.shift();
     if (this.yawHistory.length > 50) this.yawHistory.shift();
 
-    switch (currentChallenge.type) {
-      case 'BLINK': {
-        const usesEyeProbability =
-          avgEyeOpenProbability !== undefined &&
-          !Number.isNaN(avgEyeOpenProbability);
-
-        if (usesEyeProbability) {
-          if (avgEyeOpenProbability < BLINK_EYE_OPEN_CLOSED) {
-            this.blinkEyePhase = 'closed';
-          } else if (
-            this.blinkEyePhase === 'closed' &&
-            avgEyeOpenProbability > BLINK_EYE_OPEN_OPEN
-          ) {
-            this.blinkEyePhase = 'open';
-            currentChallenge.currentCount++;
-            console.log(
-              `[LivenessService] Blink registered! Count: ${currentChallenge.currentCount}/${currentChallenge.targetCount}`,
-            );
-          }
-        } else {
-          const eyesClosed =
-            earVal < BLINK_EAR_ASPECT_CLOSED || earVal < BLINK_THRESHOLD;
-          const eyesOpen =
-            earVal > BLINK_EAR_ASPECT_OPEN || earVal >= BLINK_THRESHOLD;
-
-          if (eyesClosed) {
-            this.blinkFramesCount++;
-          } else if (eyesOpen) {
-            if (this.blinkFramesCount >= 1 && this.blinkFramesCount < 20) {
-              currentChallenge.currentCount++;
-              console.log(
-                `[LivenessService] Blink registered! Count: ${currentChallenge.currentCount}/${currentChallenge.targetCount}`,
-              );
-            }
-            this.blinkFramesCount = 0;
-          }
-        }
-
-        if (currentChallenge.currentCount >= currentChallenge.targetCount) {
-          this.passCurrentChallenge();
-        }
-        break;
-      }
-
-      case 'SMILE': {
-        const usesSmileProbability =
-          smilingProbability !== undefined &&
-          !Number.isNaN(smilingProbability);
-        const isSmiling = usesSmileProbability
-          ? smilingProbability >
-            (this.relaxedMode ? 0.35 : SMILE_PROBABILITY_DETECTED)
-          : marVal > (this.relaxedMode ? 0.3 : SMILE_MAR_DETECTED);
-        const framesRequired = this.relaxedMode ? 2 : 3;
-
-        if (isSmiling) {
-          this.smileFramesCount++;
-          if (this.smileFramesCount >= framesRequired) {
-            currentChallenge.currentCount++;
-            console.log('[LivenessService] Smile registered!');
-            this.passCurrentChallenge();
-          }
-        } else {
-          this.smileFramesCount = 0;
-        }
-        break;
-      }
-
-      case 'HEAD_TURN': {
-        const framesRequired = this.relaxedMode ? 1 : 2;
-        if (yawRatioVal < 0.6 || yawRatioVal > 1.6) {
-          this.headTurnFramesCount++;
-          if (this.headTurnFramesCount >= framesRequired) {
-            currentChallenge.currentCount++;
-            this.passCurrentChallenge();
-          }
-        } else {
-          this.headTurnFramesCount = 0;
-        }
-        break;
+    for (const challenge of challengesToEvaluate) {
+      switch (challenge.type) {
+        case 'BLINK':
+          this.evaluateBlinkChallenge(
+            challenge,
+            earVal,
+            avgEyeOpenProbability,
+          );
+          break;
+        case 'SMILE':
+          this.evaluateSmileChallenge(
+            challenge,
+            marVal,
+            smilingProbability,
+          );
+          break;
+        case 'HEAD_TURN':
+          this.evaluateHeadTurnChallenge(
+            challenge,
+            yawRatioVal,
+            rotationY,
+          );
+          break;
       }
     }
 
     return this.getSessionState();
+  }
+
+  private evaluateBlinkChallenge(
+    challenge: LivenessChallenge,
+    earVal: number,
+    avgEyeOpenProbability?: number,
+  ): void {
+    if (challenge.status !== 'ACTIVE') {
+      return;
+    }
+
+    const usesEyeProbability =
+      avgEyeOpenProbability !== undefined &&
+      !Number.isNaN(avgEyeOpenProbability);
+
+    if (usesEyeProbability) {
+      if (avgEyeOpenProbability < BLINK_EYE_OPEN_CLOSED) {
+        this.blinkEyePhase = 'closed';
+      } else if (
+        this.blinkEyePhase === 'closed' &&
+        avgEyeOpenProbability > BLINK_EYE_OPEN_OPEN
+      ) {
+        this.blinkEyePhase = 'open';
+        challenge.currentCount++;
+        console.log(
+          `[LivenessService] Blink registered! Count: ${challenge.currentCount}/${challenge.targetCount}`,
+        );
+      }
+    } else {
+      const eyesClosed =
+        earVal < BLINK_EAR_ASPECT_CLOSED || earVal < BLINK_THRESHOLD;
+      const eyesOpen =
+        earVal > BLINK_EAR_ASPECT_OPEN || earVal >= BLINK_THRESHOLD;
+
+      if (eyesClosed) {
+        this.blinkFramesCount++;
+      } else if (eyesOpen) {
+        if (this.blinkFramesCount >= 1 && this.blinkFramesCount < 20) {
+          challenge.currentCount++;
+          console.log(
+            `[LivenessService] Blink registered! Count: ${challenge.currentCount}/${challenge.targetCount}`,
+          );
+        }
+        this.blinkFramesCount = 0;
+      }
+    }
+
+    if (challenge.currentCount >= challenge.targetCount) {
+      this.passChallenge(challenge);
+    }
+  }
+
+  private evaluateSmileChallenge(
+    challenge: LivenessChallenge,
+    marVal: number,
+    smilingProbability?: number,
+  ): void {
+    if (challenge.status !== 'ACTIVE') {
+      return;
+    }
+
+    const usesSmileProbability =
+      smilingProbability !== undefined && !Number.isNaN(smilingProbability);
+    const isSmiling = usesSmileProbability
+      ? smilingProbability > SMILE_PROBABILITY_DETECTED
+      : marVal > (this.relaxedMode ? 0.3 : SMILE_MAR_DETECTED);
+    const framesRequired = this.relaxedMode ? 2 : 3;
+
+    if (isSmiling) {
+      this.smileFramesCount++;
+      if (this.smileFramesCount >= framesRequired) {
+        challenge.currentCount++;
+        console.log('[LivenessService] Smile registered!');
+        this.passChallenge(challenge);
+      }
+    } else {
+      this.smileFramesCount = 0;
+    }
+  }
+
+  private evaluateHeadTurnChallenge(
+    challenge: LivenessChallenge,
+    yawRatioVal: number,
+    rotationY?: number,
+  ): void {
+    if (challenge.status !== 'ACTIVE') {
+      return;
+    }
+
+    const low = this.relaxedMode
+      ? HEAD_TURN_RIGHT_THRESHOLD_RELAXED
+      : HEAD_TURN_RIGHT_THRESHOLD;
+    const high = this.relaxedMode
+      ? HEAD_TURN_LEFT_THRESHOLD_RELAXED
+      : HEAD_TURN_LEFT_THRESHOLD;
+    const framesRequired = this.relaxedMode ? 1 : 2;
+    const minRotation = this.relaxedMode
+      ? HEAD_TURN_ROTATION_DEGREES_RELAXED
+      : HEAD_TURN_ROTATION_DEGREES;
+    const turnedByRotation =
+      rotationY !== undefined &&
+      !Number.isNaN(rotationY) &&
+      Math.abs(rotationY) >= minRotation;
+    const turnedByRatio = yawRatioVal < low || yawRatioVal > high;
+
+    if (turnedByRotation || turnedByRatio) {
+      this.headTurnFramesCount++;
+      if (this.headTurnFramesCount >= framesRequired) {
+        challenge.currentCount++;
+        this.passChallenge(challenge);
+      }
+    } else {
+      this.headTurnFramesCount = 0;
+    }
+  }
+
+  private passChallenge(challenge: LivenessChallenge): void {
+    if (challenge.status === 'PASSED') {
+      return;
+    }
+
+    challenge.status = 'PASSED';
+    challenge.currentCount = challenge.targetCount;
+
+    if (this.parallelMode) {
+      this.syncCurrentIndex();
+    } else if (
+      this.currentIndex < this.activeChallenges.length &&
+      this.activeChallenges[this.currentIndex] === challenge
+    ) {
+      this.currentIndex++;
+      if (this.currentIndex < this.activeChallenges.length) {
+        this.activeChallenges[this.currentIndex].status = 'ACTIVE';
+      }
+    }
+
+    console.log(
+      `[LivenessService] Challenge ${challenge.type} PASSED. Progressed to index ${this.currentIndex}`,
+    );
+  }
+
+  private syncCurrentIndex(): void {
+    const nextIncomplete = this.activeChallenges.findIndex(
+      c => c.status !== 'PASSED',
+    );
+    this.currentIndex =
+      nextIncomplete === -1
+        ? this.activeChallenges.length
+        : nextIncomplete;
   }
 
   /**
@@ -334,18 +461,7 @@ export class LivenessService {
    */
   public passCurrentChallenge(): void {
     if (this.currentIndex < this.activeChallenges.length) {
-      const current = this.activeChallenges[this.currentIndex];
-      current.status = 'PASSED';
-      current.currentCount = current.targetCount;
-
-      this.currentIndex++;
-      if (this.currentIndex < this.activeChallenges.length) {
-        this.activeChallenges[this.currentIndex].status = 'ACTIVE';
-      }
-
-      console.log(
-        `[LivenessService] Challenge ${current.type} PASSED. Progressed to index ${this.currentIndex}`,
-      );
+      this.passChallenge(this.activeChallenges[this.currentIndex]);
     }
   }
 

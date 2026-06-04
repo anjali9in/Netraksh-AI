@@ -5,6 +5,8 @@ import {Camera, useCameraDevice} from 'react-native-vision-camera';
 import type {CapturedFaceImage} from '../types/CameraTypes';
 import {normalizeCapturedPhoto} from '../utils/normalizeCapturedPhoto';
 
+type CameraPosition = 'front' | 'back';
+
 type CameraPermissionStatus =
   | 'not-determined'
   | 'denied'
@@ -22,7 +24,8 @@ export function useFaceCapture({
 }: UseFaceCaptureParams = {}) {
   const frontDevice = useCameraDevice('front');
   const backDevice = useCameraDevice('back');
-  const device = frontDevice ?? backDevice;
+  const [devicePosition, setDevicePosition] = useState<CameraPosition>(frontDevice ? 'front' : backDevice ? 'back' : 'front');
+  const device = devicePosition === 'front' ? frontDevice : backDevice;
 
   const [status, setStatus] =
     useState<CameraPermissionStatus>('not-determined');
@@ -60,6 +63,10 @@ export function useFaceCapture({
     await Linking.openSettings();
   }, []);
 
+  const switchCamera = useCallback(() => {
+    setDevicePosition(current => (current === 'front' ? 'back' : 'front'));
+  }, []);
+
   const captureFaceImage = useCallback(async () => {
     setErrorMessage(null);
 
@@ -90,13 +97,13 @@ export function useFaceCapture({
         enablePrecapture: true,
       });
 
-      const upright = await normalizeCapturedPhoto(
-        photo.path,
-        photo.width,
-        photo.height,
-        photo.orientation,
-        {isFrontCamera: device.position === 'front'},
-      );
+        const upright = await normalizeCapturedPhoto(
+          photo.path,
+          photo.width,
+          photo.height,
+          photo.orientation,
+          {isFrontCamera: devicePosition === 'front'},
+        );
 
       const image: CapturedFaceImage = {
         path: upright.path,
@@ -166,6 +173,7 @@ export function useFaceCapture({
     captureFaceImage,
     canUseMockCapture: __DEV__ && hasPermission && !device,
     device,
+    devicePosition,
     errorMessage,
     hasPermission,
     isCameraReady: hasPermission && Boolean(device),
@@ -175,5 +183,6 @@ export function useFaceCapture({
     requestCameraPermission,
     retake,
     useMockCapture,
+    switchCamera,
   };
 }

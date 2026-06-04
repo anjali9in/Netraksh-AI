@@ -19,12 +19,17 @@ export interface NormalizedPhoto {
 /**
  * Bakes EXIF orientation into the JPEG so previews and TFLite see an upright portrait image.
  */
+export type NormalizeCapturedPhotoOptions = PhotoOrientationOptions & {
+  /** Keep the camera JPEG after writing a rotated copy (e.g. per-frame ML Kit). */
+  keepSourceFile?: boolean;
+};
+
 export async function normalizeCapturedPhoto(
   path: string,
   width: number,
   height: number,
   orientation?: Orientation,
-  options?: PhotoOrientationOptions,
+  options?: NormalizeCapturedPhotoOptions,
 ): Promise<NormalizedPhoto> {
   const rotation = getImageResizerRotationDegrees(orientation, {
     ...options,
@@ -60,7 +65,7 @@ export async function normalizeCapturedPhoto(
   const normalizedPath =
     result.path ?? result.uri.replace(/^file:\/\//, '');
 
-  if (normalizedPath !== path) {
+  if (normalizedPath !== path && !options?.keepSourceFile) {
     RNFS.unlink(path).catch(() => undefined);
   }
 
