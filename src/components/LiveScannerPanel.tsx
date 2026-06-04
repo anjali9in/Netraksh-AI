@@ -8,9 +8,11 @@ import {
   Text,
   View,
 } from 'react-native';
+import RNFS from 'react-native-fs';
 import {Camera, useCameraDevice} from 'react-native-vision-camera';
 import Svg, {Circle, Defs, Mask, Path, Rect} from 'react-native-svg';
 
+import {analyzeFaceAlignment} from '../ai/faceAlignment';
 import {livenessService, LivenessSessionState} from '../services/liveness/livenessService';
 import {normalizeCapturedPhoto} from '../utils/normalizeCapturedPhoto';
 import {PrimaryButton} from './PrimaryButton';
@@ -27,6 +29,9 @@ type LiveScannerPanelProps = {
 };
 
 const ENROLLMENT_CAPTURE_DELAY_MS = 1500;
+const FACE_POLL_INTERVAL_MS = 900;
+const REQUIRED_ALIGNED_FRAMES = 2;
+const FACE_ALIGNMENT_TIMEOUT_MS = 30000;
 
 type CameraPermissionStatus =
   | 'not-determined'
@@ -50,7 +55,9 @@ export function LiveScannerPanel({
   const canRequestPermission = permissionStatus === 'not-determined';
   const [cameraReady, setCameraReady] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
-
+  const [alignmentMessage, setAlignmentMessage] = useState(
+    'Position your face in the circle',
+  );
 
   // Liveness session states
   const [livenessState, setLivenessState] = useState<LivenessSessionState | null>(null);
@@ -64,6 +71,10 @@ export function LiveScannerPanel({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
   const faceDetectionTimeRef = useRef<number | null>(null);
+  const consecutiveAlignedRef = useRef(0);
+  const isDetectingFrameRef = useRef(false);
+  const sessionStartedRef = useRef(false);
+  const isCapturingRef = useRef(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const hasRequestedPermission = useRef(false);
 
@@ -138,6 +149,11 @@ export function LiveScannerPanel({
   }, [isCameraActive, pulseAnim]);
 
   const capturePhoto = useCallback(async () => {
+    if (isCapturingRef.current) {
+      return;
+    }
+    isCapturingRef.current = true;
+
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -166,6 +182,8 @@ export function LiveScannerPanel({
     } catch (err) {
       console.error('[LiveScannerPanel] Capture failed, fallback to mock path:', err);
       onLivenessComplete('mock://captured-face.jpg');
+    } finally {
+      isCapturingRef.current = false;
     }
   }, [device, onLivenessComplete]);
 
@@ -174,68 +192,191 @@ export function LiveScannerPanel({
     await capturePhoto();
   }, [capturePhoto]);
 
-  // Liveness frame processing loop
-  const startScanning = useCallback(() => {
+  // Begin a single scan session when the camera is ready
+  useEffect(() => {
+    if (!hasPermission || !isCameraActive || !device || !cameraReady) {
+      if (!isCameraActive || !hasPermission) {
+        sessionStartedRef.current = false;
+        setFaceDetected(false);
+      }
+      return;
+    }
+
+    if (sessionStartedRef.current) {
+      return;
+    }
+
+    sessionStartedRef.current = true;
     console.log(
       `[LiveScannerPanel] Starting ${isEnrollmentMode ? 'enrollment' : 'liveness'} session...`,
     );
-    const initialState = isEnrollmentMode ? null : livenessService.resetSession();
-    setLivenessState(initialState);
     startTimeRef.current = Date.now();
     faceDetectionTimeRef.current = null;
+    consecutiveAlignedRef.current = 0;
     setFaceDetected(false);
+    setAlignmentMessage('Position your face in the circle');
+    setLivenessState(isEnrollmentMode ? null : livenessService.resetSession());
+  }, [hasPermission, isCameraActive, device, cameraReady, isEnrollmentMode]);
+
+  // Alignment check via src/ai (pixels only — ArcFace runs at capture/enroll)
+  useEffect(() => {
+    if (
+      !sessionStartedRef.current ||
+      !hasPermission ||
+      !isCameraActive ||
+      !device ||
+      !cameraReady
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    let pollTimeout: NodeJS.Timeout | null = null;
+
+    const scheduleNextPoll = () => {
+      if (cancelled || faceDetectionTimeRef.current) {
+        return;
+      }
+      pollTimeout = setTimeout(() => {
+        void runFacePoll().finally(scheduleNextPoll);
+      }, FACE_POLL_INTERVAL_MS);
+    };
+
+    const runFacePoll = async () => {
+      if (
+        cancelled ||
+        faceDetectionTimeRef.current ||
+        isDetectingFrameRef.current ||
+        !cameraRef.current
+      ) {
+        return;
+      }
+
+      isDetectingFrameRef.current = true;
+      let capturePath: string | undefined;
+
+      try {
+        const photo = await cameraRef.current.takePhoto({
+          flash: 'off',
+          qualityPrioritization: 'speed',
+          enableAutoStabilization: false,
+        });
+        capturePath = photo.path;
+
+        const analysis = await analyzeFaceAlignment(photo.path);
+        if (cancelled || faceDetectionTimeRef.current) {
+          return;
+        }
+
+        if (analysis.hint === 'aligned') {
+          consecutiveAlignedRef.current += 1;
+          setAlignmentMessage(analysis.message);
+
+          if (consecutiveAlignedRef.current >= REQUIRED_ALIGNED_FRAMES) {
+            console.log(
+              '[LiveScannerPanel] Face detected in frame. Outline turned green.',
+            );
+            setFaceDetected(true);
+            faceDetectionTimeRef.current = Date.now();
+            if (!isEnrollmentMode) {
+              setLivenessState(livenessService.resetSession());
+            }
+          }
+        } else {
+          consecutiveAlignedRef.current = 0;
+          setFaceDetected(false);
+          setAlignmentMessage(analysis.message);
+        }
+      } catch (error) {
+        console.warn('[LiveScannerPanel] Face detection frame failed:', error);
+        consecutiveAlignedRef.current = 0;
+        setAlignmentMessage('Scanning for your face...');
+      } finally {
+        if (capturePath) {
+          RNFS.unlink(capturePath).catch(() => undefined);
+        }
+        isDetectingFrameRef.current = false;
+      }
+    };
+
+    void runFacePoll().finally(scheduleNextPoll);
+
+    const alignmentTimeout = setInterval(() => {
+      if (faceDetectionTimeRef.current) {
+        return;
+      }
+      if (Date.now() - startTimeRef.current > FACE_ALIGNMENT_TIMEOUT_MS) {
+        cancelled = true;
+        if (pollTimeout) {
+          clearTimeout(pollTimeout);
+        }
+        clearInterval(alignmentTimeout);
+        console.log('[LiveScannerPanel] Face alignment timed out.');
+        onLivenessFailed?.(
+          'No face detected. Center your face in the circle and try again.',
+        );
+        sessionStartedRef.current = false;
+      }
+    }, 1000);
+
+    return () => {
+      cancelled = true;
+      if (pollTimeout) {
+        clearTimeout(pollTimeout);
+      }
+      clearInterval(alignmentTimeout);
+    };
+  }, [
+    hasPermission,
+    isCameraActive,
+    device,
+    cameraReady,
+    isEnrollmentMode,
+    onLivenessFailed,
+  ]);
+
+  // Enrollment: capture after the face stays aligned
+  useEffect(() => {
+    if (!faceDetected || !isEnrollmentMode || !faceDetectionTimeRef.current) {
+      return;
+    }
+
+    const detectedAt = faceDetectionTimeRef.current;
+    const delay = Math.max(
+      0,
+      ENROLLMENT_CAPTURE_DELAY_MS - (Date.now() - detectedAt),
+    );
+    const captureTimer = setTimeout(() => {
+      void capturePhoto();
+    }, delay);
+
+    return () => clearTimeout(captureTimer);
+  }, [capturePhoto, faceDetected, isEnrollmentMode]);
+
+  // Authentication: liveness challenges after a real face is detected
+  useEffect(() => {
+    if (!faceDetected || isEnrollmentMode || !faceDetectionTimeRef.current) {
+      return;
+    }
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
 
     timerRef.current = setInterval(() => {
-      if (!isCameraActive) return;
-
-      const now = Date.now();
-
-      // If face has not been detected yet (PHASE 1: Align Face - RED Outline)
-      if (!faceDetectionTimeRef.current) {
-        const alignmentElapsed = now - startTimeRef.current;
-
-        // Auto-detect face after 2 seconds
-        if (alignmentElapsed >= 2000) {
-          console.log(
-            '[LiveScannerPanel] Face detected in frame. Outline turned green.',
-          );
-          setFaceDetected(true);
-          faceDetectionTimeRef.current = now;
-        }
-
-        // Timeout after 10 seconds if no face detected
-        if (alignmentElapsed > 10000) {
-          if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-          }
-          console.log('[LiveScannerPanel] Face alignment timed out.');
-          onLivenessFailed?.('Live face is not showing');
-        }
+      if (!isCameraActive || !faceDetectionTimeRef.current) {
         return;
       }
 
-      // Face is detected (PHASE 2: GREEN Outline)
-      const challengeElapsed = now - faceDetectionTimeRef.current;
+      const challengeElapsed = Date.now() - faceDetectionTimeRef.current;
 
-      if (isEnrollmentMode) {
-        if (challengeElapsed >= ENROLLMENT_CAPTURE_DELAY_MS) {
-          void capturePhoto();
-        }
-        return;
-      }
-
-      // 15-second timeout check for liveness verification
       if (challengeElapsed > 15000) {
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
         setFaceDetected(false);
+        faceDetectionTimeRef.current = null;
         console.log('[LiveScannerPanel] Liveness check timed out. Rejecting.');
         onLivenessFailed?.('Liveness check timed out');
         return;
@@ -245,18 +386,16 @@ export function LiveScannerPanel({
       const currentChallenge = state.challenges[state.currentChallengeIndex];
 
       if (!currentChallenge) {
-        handleLivenessSuccess();
+        void handleLivenessSuccess();
         return;
       }
 
-      // Simulate metrics dynamically according to current challenge type based on challengeElapsed time
       const sim = livenessService.getSimulatedMetrics(
         currentChallenge.type,
         challengeElapsed,
       );
       setMetrics(sim);
 
-      // Feed into state machine
       const updatedState = livenessService.processFrame(
         sim.ear,
         sim.mar,
@@ -265,34 +404,9 @@ export function LiveScannerPanel({
       setLivenessState(updatedState);
 
       if (updatedState.isComplete && updatedState.isPassed) {
-        handleLivenessSuccess();
+        void handleLivenessSuccess();
       }
     }, 100);
-  }, [
-    capturePhoto,
-    handleLivenessSuccess,
-    isCameraActive,
-    isEnrollmentMode,
-    onLivenessFailed,
-  ]);
-
-  // Control scanner loop — only after camera permission is granted
-  useEffect(() => {
-    if (!hasPermission) {
-      setFaceDetected(false);
-      return () => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-      };
-    }
-
-    if (isCameraActive && (device ? cameraReady : true)) {
-      startScanning();
-    } else {
-      setFaceDetected(false);
-    }
 
     return () => {
       if (timerRef.current) {
@@ -300,7 +414,21 @@ export function LiveScannerPanel({
         timerRef.current = null;
       }
     };
-  }, [hasPermission, isCameraActive, cameraReady, device, startScanning]);
+  }, [
+    faceDetected,
+    handleLivenessSuccess,
+    isCameraActive,
+    isEnrollmentMode,
+    onLivenessFailed,
+  ]);
+
+  useEffect(() => {
+    if (!hasPermission || !isCameraActive) {
+      setFaceDetected(false);
+      faceDetectionTimeRef.current = null;
+      consecutiveAlignedRef.current = 0;
+    }
+  }, [hasPermission, isCameraActive]);
 
   return (
     <View style={styles.container}>
@@ -416,16 +544,11 @@ export function LiveScannerPanel({
                 ? 'Hold still — capturing your photo...'
                 : livenessState?.challenges[livenessState.currentChallengeIndex]
                     ?.instruction || 'Perform the challenge'
-              : 'Keep your face inside the circle'}
+              : alignmentMessage}
           </Text>
           {faceDetected && livenessState && !isEnrollmentMode && (
             <Text style={styles.hudStepText}>
               Step {livenessState.currentChallengeIndex + 1} of {livenessState.challenges.length}
-            </Text>
-          )}
-          {!faceDetected && (
-            <Text style={[styles.hudStepText, {color: '#ef4444'}]}>
-              Waiting for face detection...
             </Text>
           )}
         </View>
@@ -503,9 +626,13 @@ export function LiveScannerPanel({
               title="Simulate Face Alignment"
               variant="secondary"
               onPress={() => {
-                console.log('[LiveScannerPanel] Manual face alignment triggered.');
+                console.log('[LiveScannerPanel] Manual face alignment triggered (dev only).');
+                consecutiveAlignedRef.current = REQUIRED_ALIGNED_FRAMES;
                 setFaceDetected(true);
                 faceDetectionTimeRef.current = Date.now();
+                if (!isEnrollmentMode) {
+                  setLivenessState(livenessService.resetSession());
+                }
               }}
             />
           </View>

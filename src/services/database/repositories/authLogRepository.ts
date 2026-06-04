@@ -60,6 +60,20 @@ export class AuthLogRepository {
     return result.rows.map(mapAuthLogRow);
   }
 
+  async countPendingSync(): Promise<number> {
+    const database = await getLocalDatabase();
+    const result = await database.execute(
+      `SELECT COUNT(*) AS pending_count
+        FROM auth_logs
+        WHERE sync_status = ?`,
+      ['PENDING'],
+    );
+
+    const row = result.rows[0];
+    const value = row?.pending_count ?? row?.['COUNT(*)'];
+    return typeof value === 'number' ? value : Number(value) || 0;
+  }
+
   async getPendingSync(): Promise<AuthLog[]> {
     const database = await getLocalDatabase();
     const result = await database.execute(

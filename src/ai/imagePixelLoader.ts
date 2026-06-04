@@ -2,6 +2,7 @@ import ImageResizer from '@bam.tech/react-native-image-resizer';
 import {decode} from 'jpeg-js';
 import RNFS from 'react-native-fs';
 
+import {decodeBase64ToUint8Array} from '../utils/base64';
 import {toFileUri} from '../utils/fileUtils';
 
 export type RawPixelFormat = 'RGBA';
@@ -11,20 +12,6 @@ export interface RawPixelData {
   width: number;
   height: number;
   pixelFormat: RawPixelFormat;
-}
-
-function base64ToUint8Array(base64: string): Uint8Array {
-  const atobFn = global.atob;
-  if (!atobFn) {
-    throw new Error('base64 decoding is not available in this runtime');
-  }
-
-  const binary = atobFn(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
 }
 
 function stripFileScheme(uriOrPath: string): string {
@@ -53,24 +40,20 @@ export async function loadRawPixelsFromImagePath(
     'JPEG',
     90,
     0,
+    undefined,
+    false,
+    {
+      // Camera frames are 4:3; default resize keeps aspect ratio (e.g. 160×120).
+      mode: targetWidth === targetHeight ? 'cover' : 'contain',
+    },
   );
 
   const filePath = resized.path ?? stripFileScheme(resized.uri);
 
   try {
     const base64 = await RNFS.readFile(filePath, 'base64');
-    const jpegBytes = base64ToUint8Array(base64);
+    const jpegBytes = decodeBase64ToUint8Array(base64);
     const decoded = decode(jpegBytes, {useTArray: true});
-
-    if (
-      decoded.width !== targetWidth ||
-      decoded.height !== targetHeight
-    ) {
-      throw new Error(
-        `Resized image dimensions ${decoded.width}x${decoded.height} do not match expected ${targetWidth}x${targetHeight}`,
-      );
-    }
-
     const pixels = new Uint8Array(decoded.data);
 
     return {

@@ -1,10 +1,20 @@
 import {FACE_RECOGNITION_MODEL} from './modelConfig';
-import {loadRawPixelsFromImagePath} from './imagePixelLoader';
+import {loadRawPixelsFromImagePath, type RawPixelData} from './imagePixelLoader';
 import {DEMO_MODE} from '../config/appConfig';
+
+type TfliteTensor = {
+  dataType: string;
+  shape: number[];
+};
+
+type TfliteModel = {
+  run: (input: ArrayBufferView[]) => Promise<ArrayBufferView[]>;
+  inputs: TfliteTensor[];
+};
 
 export class FaceEmbeddingGenerator {
   private isLoaded: boolean = false;
-  private model: any = null;
+  private model: TfliteModel | null = null;
   private useFallback: boolean = false;
 
   constructor() {
@@ -33,6 +43,10 @@ export class FaceEmbeddingGenerator {
         throw new Error('loadTensorflowModel is undefined in react-native-fast-tflite');
       }
       this.model = await loadTensorflowModel(FACE_RECOGNITION_MODEL.modelPath);
+      const inputTensor = this.model.inputs[0];
+      console.log(
+        `[FaceEmbeddingGenerator] Model loaded. Input tensor: ${JSON.stringify(inputTensor)}`,
+      );
 
       this.isLoaded = true;
       this.useFallback = false;
@@ -77,22 +91,18 @@ export class FaceEmbeddingGenerator {
         FACE_RECOGNITION_MODEL.inputHeight,
       );
 
-      // 4. Preprocess pixels (convert format to RGB and scale to [-1.0, 1.0])
-      const floatData = this.preprocessPixels(pixelData);
-
-      // 5. Run inference
       if (!this.model) {
         throw new Error('Tensorflow model is not initialized');
       }
 
-      const output = await this.model.run([floatData.buffer]);
+      // react-native-fast-tflite expects TypedArray inputs, not raw ArrayBuffer.
+      const modelInput = this.buildModelInput(pixelData, this.model.inputs[0]);
+      const output = await this.model.run([modelInput]);
       if (!output || output.length === 0) {
         throw new Error('Model inference returned no outputs');
       }
 
-      // output[0] is a Float32Array (or Uint8Array if quantized output) containing the 512-dim embedding.
-      const rawVector = new Float32Array(output[0]);
-      const embedding = Array.from(rawVector) as number[];
+      const embedding = this.parseModelOutput(output[0]);
 
       // 6. L2-Normalize the output vector to ensure accurate cosine similarity matching
       return this.l2Normalize(embedding);
@@ -105,10 +115,42 @@ export class FaceEmbeddingGenerator {
     }
   }
 
+  private buildModelInput(
+    pixelData: RawPixelData,
+    inputTensor?: TfliteTensor,
+  ): Float32Array | Uint8Array {
+    const floatData = this.preprocessPixels(pixelData);
+
+    if (inputTensor?.dataType === 'uint8') {
+      const uint8 = new Uint8Array(floatData.length);
+      for (let i = 0; i < floatData.length; i++) {
+        uint8[i] = Math.max(
+          0,
+          Math.min(255, Math.round((floatData[i] + 1) * 127.5)),
+        );
+      }
+      return uint8;
+    }
+
+    return floatData;
+  }
+
+  private parseModelOutput(outputTensor: ArrayBufferView): number[] {
+    if (outputTensor instanceof Float32Array) {
+      return Array.from(outputTensor);
+    }
+
+    if (outputTensor instanceof Uint8Array) {
+      return Array.from(outputTensor).map(value => (value - 128) / 128);
+    }
+
+    return Array.from(new Float32Array(outputTensor.buffer));
+  }
+
   /**
    * Preprocesses raw pixel data into a normalized Float32Array scaled to [-1.0, 1.0] in RGB format.
    */
-  private preprocessPixels(pixelData: any): Float32Array {
+  private preprocessPixels(pixelData: RawPixelData): Float32Array {
     const {buffer, pixelFormat, width, height} = pixelData;
     const data = new Uint8Array(buffer);
     const totalPixels = width * height;
@@ -119,7 +161,7 @@ export class FaceEmbeddingGenerator {
     let gOffset = 1;
     let bOffset = 2;
 
-    switch (pixelFormat) {
+    switch (pixelFormat as string) {
       case 'RGBA':
       case 'RGBX':
         stride = 4;

@@ -5,6 +5,8 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import {offlineDatabaseService} from '../services/OfflineDatabaseService';
 import {connectivitySyncService} from '../services/network/connectivitySyncService';
+import {backgroundSyncService} from '../services/sync/backgroundSyncService';
+import {pendingSyncNotificationService} from '../services/sync/pendingSyncNotificationService';
 import {appPermissionsService} from '../services/permissions/appPermissionsService';
 import {deviceContextService} from '../services/location/deviceContextService';
 import {logger} from '../utils/logger';
@@ -21,6 +23,8 @@ export default function App(): React.JSX.Element {
       .then(async () => {
         await appPermissionsService.requestAppPermissions();
         connectivitySyncService.startConnectivitySync();
+        await backgroundSyncService.initializeBackgroundSync();
+        await pendingSyncNotificationService.initializePendingSyncNotifications();
 
         InteractionManager.runAfterInteractions(() => {
           void deviceContextService.refreshDeviceLocationContext().catch(
@@ -44,6 +48,8 @@ export default function App(): React.JSX.Element {
 
     return () => {
       mounted = false;
+      pendingSyncNotificationService.stopPendingSyncNotificationWatcher();
+      backgroundSyncService.stopBackgroundSync();
       connectivitySyncService.stopConnectivitySync();
     };
   }, []);

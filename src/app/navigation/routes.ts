@@ -7,6 +7,7 @@ export const ROUTES = {
   BENCHMARK: 'Benchmark',
   PROFILE: 'Profile',
   SETTINGS: 'Settings',
+  SUPPORT: 'Support',
 } as const;
 
 export type RouteName = (typeof ROUTES)[keyof typeof ROUTES];
@@ -25,4 +26,5 @@ export type RootStackParamList = {
   [ROUTES.BENCHMARK]: undefined;
   [ROUTES.PROFILE]: undefined;
   [ROUTES.SETTINGS]: undefined;
+  [ROUTES.SUPPORT]: undefined;
 };

@@ -17,6 +17,7 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
 
 export const FOOTER_NAV_ITEMS: NavItem[] = [
   {route: ROUTES.PROFILE, label: 'Profile', icon: 'user'},
+  {route: ROUTES.SUPPORT, label: 'Support', icon: 'support'},
   {route: ROUTES.SETTINGS, label: 'Settings', icon: 'settings'},
 ];
 
@@ -29,4 +30,5 @@ export const ROUTE_TITLES: Record<RouteName, string> = {
   [ROUTES.BENCHMARK]: 'Benchmark',
   [ROUTES.PROFILE]: 'Profile',
   [ROUTES.SETTINGS]: 'Settings',
+  [ROUTES.SUPPORT]: 'Support',
 };

@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">NetrakshAI</string>
+    <string name="pending_sync_channel_name">Offline log sync</string>
+    <string name="pending_sync_channel_desc">Shows when authentication logs are waiting to upload</string>
+    <string name="pending_sync_notification_title">Logs waiting to sync</string>
+    <string name="pending_sync_notification_text">%1$d offline authentication log(s) not synced yet</string>
+    <string name="pending_sync_foreground_title">Syncing offline logs</string>
 </resources>

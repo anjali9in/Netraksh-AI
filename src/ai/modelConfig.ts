@@ -1,3 +1,6 @@
+/** Maximum combined on-device AI model size (ArcFace only today). */
+export const TOTAL_AI_MODEL_BUDGET_MB = 20;
+
 export type ModelFormat = 'tflite' | 'onnx' | 'coreml';
 
 export interface ModelConfig {

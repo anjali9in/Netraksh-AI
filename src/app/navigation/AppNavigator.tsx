@@ -9,6 +9,7 @@ import {HomeScreen} from '../../screens/HomeScreen';
 import {OfflineLogsScreen} from '../../screens/OfflineLogsScreen';
 import {ProfileScreen} from '../../screens/ProfileScreen';
 import {SettingsScreen} from '../../screens/SettingsScreen';
+import {SupportScreen} from '../../screens/SupportScreen';
 import {ROOT_SCREEN_OPTIONS} from '../../config/appConfig';
 import {AppShell} from './AppShell';
 import {NavigationMenuProvider} from './NavigationMenuContext';
@@ -63,6 +64,11 @@ export function AppNavigator(): React.JSX.Element {
           name={ROUTES.SETTINGS}
           component={SettingsScreen}
           options={{title: 'Settings'}}
+        />
+        <Stack.Screen
+          name={ROUTES.SUPPORT}
+          component={SupportScreen}
+          options={{title: 'Support'}}
         />
         </Stack.Navigator>
       </AppShell>

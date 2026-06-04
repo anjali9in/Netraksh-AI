@@ -2,6 +2,7 @@ import type {NetInfoSubscription} from '@react-native-community/netinfo';
 
 import {deviceContextService} from '../location/deviceContextService';
 import {offlineSyncService} from '../OfflineSyncService';
+import {refreshPendingSyncNotification} from '../sync/pendingSyncNotificationService';
 import {logger} from '../../utils/logger';
 import {networkService} from './networkService';
 import {AUTH_LOG_SYNC_INTERVAL_MS} from '../../config/env';
@@ -31,6 +32,7 @@ async function runOnlineSync(): Promise<void> {
     logger.warn('[ConnectivitySync] Online sync failed', error);
   } finally {
     syncInFlight = false;
+    await refreshPendingSyncNotification();
   }
 }
 

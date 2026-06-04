@@ -5,6 +5,7 @@ import type {User} from '../types/UserTypes';
 import {authLogRepository} from './database/repositories/authLogRepository';
 import {userRepository} from './database/repositories/userRepository';
 import {deviceContextService} from './location/deviceContextService';
+import {refreshPendingSyncNotification} from './sync/pendingSyncNotificationService';
 import {generateAuthLogHash} from '../utils/authLogHash';
 import type {DeviceLocationContext} from '../types/LocationTypes';
 
@@ -273,6 +274,7 @@ export class OfflineDatabaseService {
 
   async saveAuthLog(authLog: AuthLog): Promise<void> {
     await authLogRepository.save(authLog);
+    await refreshPendingSyncNotification();
   }
 
   async saveUser(user: User): Promise<void> {

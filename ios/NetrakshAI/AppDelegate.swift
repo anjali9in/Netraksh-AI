@@ -12,6 +12,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RCTBridgeDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    BackgroundSyncScheduler.register()
+    PendingSyncNotificationHelper.requestAuthorizationIfNeeded()
+    PendingSyncNotificationHelper.refreshFromStoredCount()
+
     if #unavailable(iOS 13.0) {
       window = UIWindow(frame: UIScreen.main.bounds)
 
@@ -21,6 +25,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RCTBridgeDelegate {
     }
 
     return true
+  }
+
+  func application(
+    _ application: UIApplication,
+    performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    BackgroundSyncScheduler.handleBackgroundFetch(completionHandler: completionHandler)
   }
 
   func startReactNative(

@@ -11,6 +11,10 @@
 		4E1F25503EDB62E56341E2F3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		761780EF2CA45674006654EE /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EE2CA45674006654EE /* SceneDelegate.swift */; };
+		B001001124A45674006654EE /* BackgroundSyncModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001001024A45674006654EE /* BackgroundSyncModule.swift */; };
+		B001001324A45674006654EE /* BackgroundSyncScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001001224A45674006654EE /* BackgroundSyncScheduler.swift */; };
+		B001001524A45674006654EE /* BackgroundSyncModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B001001424A45674006654EE /* BackgroundSyncModule.m */; };
+		B001001724A45674006654EE /* PendingSyncNotificationHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001001624A45674006654EE /* PendingSyncNotificationHelper.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		BAB78C3F9D0E3D230A0866C3 /* libPods-NetrakshAI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F828E98B5069D467BF7FD2B /* libPods-NetrakshAI.a */; };
 /* End PBXBuildFile section */
@@ -24,6 +28,10 @@
 		6B3F1B71F83F33C6EAAED2A9 /* Pods-NetrakshAI.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NetrakshAI.release.xcconfig"; path = "Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI.release.xcconfig"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = NetrakshAI/AppDelegate.swift; sourceTree = "<group>"; };
 		761780EE2CA45674006654EE /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = NetrakshAI/SceneDelegate.swift; sourceTree = "<group>"; };
+		B001001024A45674006654EE /* BackgroundSyncModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundSyncModule.swift; path = NetrakshAI/BackgroundSyncModule.swift; sourceTree = "<group>"; };
+		B001001224A45674006654EE /* BackgroundSyncScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundSyncScheduler.swift; path = NetrakshAI/BackgroundSyncScheduler.swift; sourceTree = "<group>"; };
+		B001001424A45674006654EE /* BackgroundSyncModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackgroundSyncModule.m; path = NetrakshAI/BackgroundSyncModule.m; sourceTree = "<group>"; };
+		B001001624A45674006654EE /* PendingSyncNotificationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PendingSyncNotificationHelper.swift; path = NetrakshAI/PendingSyncNotificationHelper.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = NetrakshAI/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		B5DF61578D56F133870E98E5 /* Pods-NetrakshAI.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NetrakshAI.debug.xcconfig"; path = "Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -46,6 +54,10 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				B001001024A45674006654EE /* BackgroundSyncModule.swift */,
+				B001001224A45674006654EE /* BackgroundSyncScheduler.swift */,
+				B001001424A45674006654EE /* BackgroundSyncModule.m */,
+				B001001624A45674006654EE /* PendingSyncNotificationHelper.swift */,
 				761780EE2CA45674006654EE /* SceneDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -251,6 +263,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				B001001124A45674006654EE /* BackgroundSyncModule.swift in Sources */,
+				B001001324A45674006654EE /* BackgroundSyncScheduler.swift in Sources */,
+				B001001524A45674006654EE /* BackgroundSyncModule.m in Sources */,
+				B001001724A45674006654EE /* PendingSyncNotificationHelper.swift in Sources */,
 				761780EF2CA45674006654EE /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

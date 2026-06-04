@@ -11,15 +11,18 @@ import Svg, {
 export type ButtonIconName =
   | 'arrowLeft'
   | 'camera'
+  | 'chat'
   | 'check'
   | 'chart'
   | 'close'
   | 'home'
   | 'logs'
+  | 'mail'
   | 'menu'
   | 'refresh'
   | 'settings'
   | 'shield'
+  | 'support'
   | 'user'
   | 'userPlus';
 
@@ -71,6 +74,15 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
           <Circle cx="12" cy="13" r="3.5" {...lineProps} />
         </>
       );
+    case 'chat':
+      return (
+        <>
+          <Path
+            d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z"
+            {...lineProps}
+          />
+        </>
+      );
     case 'check':
       return <Polyline points="20 6 9 17 4 12" {...lineProps} />;
     case 'chart':
@@ -95,16 +107,23 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
           <Path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" {...lineProps} />
         </>
       );
-    case 'logs':
-      return (
-        <>
-          <Path d="M6 3h9l3 3v18H6z" {...lineProps} />
-          <Path d="M15 3v6h6" {...lineProps} />
-          <Line x1="9" x2="17" y1="12" y2="12" {...lineProps} />
-          <Line x1="9" x2="17" y1="16" y2="16" {...lineProps} />
-        </>
-      );
-    case 'menu':
+      case 'logs':
+        return (
+          <>
+            <Path d="M6 3h9l3 3v18H6z" {...lineProps} />
+            <Path d="M15 3v6h6" {...lineProps} />
+            <Line x1="9" x2="17" y1="12" y2="12" {...lineProps} />
+            <Line x1="9" x2="17" y1="16" y2="16" {...lineProps} />
+          </>
+        );
+      case 'mail':
+        return (
+          <>
+            <Rect height="14" rx="2" ry="2" width="20" x="2" y="4" {...lineProps} />
+            <Path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" {...lineProps} />
+          </>
+        );
+      case 'menu':
       return (
         <>
           <Line x1="4" x2="20" y1="6" y2="6" {...lineProps} />
@@ -131,31 +150,39 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
           />
         </>
       );
-    case 'shield':
-      return (
-        <>
-          <Path
-            d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"
-            {...lineProps}
-          />
-          <Path d="m9 12 2 2 4-5" {...lineProps} />
-        </>
-      );
-    case 'user':
-      return (
-        <>
-          <Circle cx="12" cy="8" r="4" {...lineProps} />
-          <Path d="M4 21a8 8 0 0 1 16 0" {...lineProps} />
-        </>
-      );
-    case 'userPlus':
-      return (
-        <>
-          <Circle cx="9" cy="8" r="4" {...lineProps} />
-          <Path d="M3 21a6 6 0 0 1 12 0" {...lineProps} />
-          <Line x1="19" x2="19" y1="8" y2="16" {...lineProps} />
-          <Line x1="15" x2="23" y1="12" y2="12" {...lineProps} />
-        </>
-      );
+      case 'shield':
+        return (
+          <>
+            <Path
+              d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"
+              {...lineProps}
+            />
+            <Path d="m9 12 2 2 4-5" {...lineProps} />
+          </>
+        );
+      case 'support':
+        return (
+          <>
+            <Circle cx="12" cy="12" r="10" {...lineProps} />
+            <Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" {...lineProps} />
+            <Line x1="12" x2="12.01" y1="17" y2="17" {...lineProps} />
+          </>
+        );
+      case 'user':
+        return (
+          <>
+            <Circle cx="12" cy="8" r="4" {...lineProps} />
+            <Path d="M4 21a8 8 0 0 1 16 0" {...lineProps} />
+          </>
+        );
+      case 'userPlus':
+        return (
+          <>
+            <Circle cx="9" cy="8" r="4" {...lineProps} />
+            <Path d="M3 21a6 6 0 0 1 12 0" {...lineProps} />
+            <Line x1="19" x2="19" y1="8" y2="16" {...lineProps} />
+            <Line x1="15" x2="23" y1="12" y2="12" {...lineProps} />
+          </>
+        );
   }
 }
