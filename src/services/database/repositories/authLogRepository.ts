@@ -1,4 +1,5 @@
 import type {AuthLog} from '../../../types/LogTypes';
+import {generateAuthLogHash} from '../../../utils/authLogHash';
 import type {DatabaseRow} from '../databaseTypes';
 import {getLocalDatabase} from '../localDatabase';
 
@@ -18,8 +19,14 @@ export class AuthLogRepository {
         model_version,
         created_at,
         sync_status,
-        log_hash
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        log_hash,
+        latitude,
+        longitude,
+        location_accuracy,
+        altitude,
+        ip_address,
+        location_captured_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         authLog.employeeId,
         authLog.authStatus,
@@ -32,6 +39,12 @@ export class AuthLogRepository {
         authLog.createdAt,
         authLog.syncStatus,
         authLog.logHash ?? null,
+        authLog.latitude ?? null,
+        authLog.longitude ?? null,
+        authLog.locationAccuracy ?? null,
+        authLog.altitude ?? null,
+        authLog.ipAddress ?? null,
+        authLog.locationCapturedAt ?? null,
       ],
     );
   }
@@ -65,12 +78,30 @@ export class AuthLogRepository {
     syncStatus: AuthLog['syncStatus'],
   ): Promise<void> {
     const database = await getLocalDatabase();
+    const result = await database.execute(
+      `SELECT *
+        FROM auth_logs
+        WHERE id = ?
+        LIMIT 1`,
+      [id],
+    );
+    const existing = result.rows[0] ? mapAuthLogRow(result.rows[0]) : null;
+
+    if (!existing) {
+      return;
+    }
+
+    const nextLog = {
+      ...existing,
+      syncStatus,
+    };
+    const logHash = generateAuthLogHash(nextLog);
 
     await database.execute(
       `UPDATE auth_logs
-        SET sync_status = ?
+        SET sync_status = ?, log_hash = ?
         WHERE id = ?`,
-      [syncStatus, id],
+      [syncStatus, logHash, id],
     );
   }
 }
@@ -89,6 +120,12 @@ function mapAuthLogRow(row: DatabaseRow): AuthLog {
     createdAt: String(row.created_at),
     syncStatus: row.sync_status as AuthLog['syncStatus'],
     logHash: toOptionalString(row.log_hash),
+    latitude: toOptionalNumber(row.latitude),
+    longitude: toOptionalNumber(row.longitude),
+    locationAccuracy: toOptionalNumber(row.location_accuracy),
+    altitude: toOptionalNumber(row.altitude),
+    ipAddress: toOptionalString(row.ip_address),
+    locationCapturedAt: toOptionalString(row.location_captured_at),
   };
 }
 

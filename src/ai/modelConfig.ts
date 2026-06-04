@@ -2,7 +2,7 @@ export type ModelFormat = 'tflite' | 'onnx' | 'coreml';
 
 export interface ModelConfig {
   modelName: string;
-  modelPath: string;      // path to the local model file (.tflite or .onnx)
+  modelPath: any; // path to the local model file (.tflite or .onnx or require asset)
   modelFormat: ModelFormat;
   inputWidth: number;
   inputHeight: number;
@@ -11,8 +11,8 @@ export interface ModelConfig {
   threshold: number;
   mean: number[];
   std: number[];
-  quantized: boolean;    // INT8 quantized for faster mobile inference
-  version: string;       // for DB migration tracking (model_version column)
+  quantized: boolean; // INT8 quantized for faster mobile inference
+  version: string; // for DB migration tracking (model_version column)
 }
 
 /**
@@ -26,16 +26,16 @@ export interface ModelConfig {
  * Source    : https://github.com/deepinsight/insightface
  */
 export const FACE_RECOGNITION_MODEL: ModelConfig = {
-  modelName: "ArcFace-MobileNetV2",
-  modelPath: "models/arcface_mobilenet_v2.tflite",
+  modelName: 'ArcFace-MobileNetV2',
+  modelPath: require('../assets/models/arcface_mobilenet_v2.tflite'),
   modelFormat: 'tflite',
   inputWidth: 112,
   inputHeight: 112,
   inputChannels: 3,
-  embeddingDimension: 512,   // upgraded from 128 → richer face representation
-  threshold: 0.68,           // matches src/config/thresholds.ts FACE_MATCH_THRESHOLD
+  embeddingDimension: 512, // upgraded from 128 → richer face representation
+  threshold: 0.68, // matches src/config/thresholds.ts FACE_MATCH_THRESHOLD
   mean: [127.5, 127.5, 127.5],
   std: [127.5, 127.5, 127.5],
   quantized: true,
-  version: "2.0.0",
+  version: '2.0.0',
 };

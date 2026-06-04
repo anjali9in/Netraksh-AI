@@ -1,5 +1,7 @@
-export const API_BASE_URL = 'https://api.example.com';
+export const API_BASE_URL =
+  'https://iy86kge7h4.execute-api.ap-south-1.amazonaws.com';
 export const API_TIMEOUT_MS = 15000;
+export const AUTH_LOG_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 export const DATABASE_PROVIDER = 'sqlite';
 export const DATABASE_NAME = 'netraksh_ai.sqlite';
 export const DATABASE_LOCATION = 'default';
@@ -11,6 +13,7 @@ export const DATABASE_ENCRYPTION_ENABLED = false;
 export const ENV = {
   API_BASE_URL,
   API_TIMEOUT_MS,
+  AUTH_LOG_SYNC_INTERVAL_MS,
   DATABASE_PROVIDER,
   DATABASE_NAME,
   DATABASE_LOCATION,

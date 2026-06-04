@@ -9,13 +9,18 @@ import Svg, {
 } from 'react-native-svg';
 
 export type ButtonIconName =
+  | 'arrowLeft'
   | 'camera'
   | 'check'
   | 'chart'
+  | 'close'
+  | 'home'
   | 'logs'
+  | 'menu'
   | 'refresh'
   | 'settings'
   | 'shield'
+  | 'user'
   | 'userPlus';
 
 type ButtonIconProps = {
@@ -49,6 +54,13 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
   };
 
   switch (name) {
+    case 'arrowLeft':
+      return (
+        <>
+          <Line x1="19" x2="5" y1="12" y2="12" {...lineProps} />
+          <Polyline points="12 19 5 12 12 5" {...lineProps} />
+        </>
+      );
     case 'camera':
       return (
         <>
@@ -70,6 +82,19 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
           <Rect height="9" width="3" x="16" y="9" {...lineProps} />
         </>
       );
+    case 'close':
+      return (
+        <>
+          <Line x1="18" x2="6" y1="6" y2="18" {...lineProps} />
+          <Line x1="6" x2="18" y1="6" y2="18" {...lineProps} />
+        </>
+      );
+    case 'home':
+      return (
+        <>
+          <Path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" {...lineProps} />
+        </>
+      );
     case 'logs':
       return (
         <>
@@ -77,6 +102,14 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
           <Path d="M15 3v6h6" {...lineProps} />
           <Line x1="9" x2="17" y1="12" y2="12" {...lineProps} />
           <Line x1="9" x2="17" y1="16" y2="16" {...lineProps} />
+        </>
+      );
+    case 'menu':
+      return (
+        <>
+          <Line x1="4" x2="20" y1="6" y2="6" {...lineProps} />
+          <Line x1="4" x2="20" y1="12" y2="12" {...lineProps} />
+          <Line x1="4" x2="20" y1="18" y2="18" {...lineProps} />
         </>
       );
     case 'refresh':
@@ -106,6 +139,13 @@ function renderIcon(name: ButtonIconName, props: IconShapeProps) {
             {...lineProps}
           />
           <Path d="m9 12 2 2 4-5" {...lineProps} />
+        </>
+      );
+    case 'user':
+      return (
+        <>
+          <Circle cx="12" cy="8" r="4" {...lineProps} />
+          <Path d="M4 21a8 8 0 0 1 16 0" {...lineProps} />
         </>
       );
     case 'userPlus':

@@ -21,6 +21,11 @@ export class OfflineSyncService {
     }
 
     const response = await syncApi.syncOfflineAuthLogs(pendingLogs);
+
+    if (!response.success) {
+      throw new Error(response.message || 'Unable to sync pending logs.');
+    }
+
     const failedLogIds = new Set(response.data.failedLogIds ?? []);
 
     await Promise.all(

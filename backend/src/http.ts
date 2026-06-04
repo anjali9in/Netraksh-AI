@@ -4,10 +4,7 @@ export type ApiResponse<T> = {
   message?: string;
 };
 
-export function jsonResponse<T>(
-  statusCode: number,
-  body: ApiResponse<T>,
-) {
+export function jsonResponse<T>(statusCode: number, body: ApiResponse<T>) {
   return {
     statusCode,
     headers: {

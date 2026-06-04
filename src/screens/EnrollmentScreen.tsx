@@ -1,20 +1,18 @@
 import React, {useState} from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Alert, StyleSheet, Text, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 
-import {FaceCapturePanel} from '../components/FaceCapturePanel';
+import {AppHeader} from '../components/AppHeader';
+import {CameraCaptureCard} from '../components/CameraCaptureCard';
+import {EmployeeInput} from '../components/EmployeeInput';
+import {InfoCard} from '../components/InfoCard';
 import {PrimaryButton} from '../components/PrimaryButton';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
-import {secureStorageService} from '../services/SecureStorageService';
 import {getDynamicThreshold} from '../ai/dynamicThreshold';
+import {secureStorageService} from '../services/SecureStorageService';
+import {colors} from '../theme/colors';
+import {radius, spacing} from '../theme/spacing';
 
 export function EnrollmentScreen(): React.JSX.Element {
   const navigation = useNavigation();
@@ -33,10 +31,8 @@ export function EnrollmentScreen(): React.JSX.Element {
   const handlePhotoCaptured = (image: {path: string}) => {
     setCapturedImagePath(image.path);
 
-    // Simulate frame/image quality inspection (typical for edge AI)
-    const simulatedBrightness = 80 + Math.floor(Math.random() * 80); // 80 - 160 (optimal)
-    const simulatedQuality = 0.7 + Math.random() * 0.28; // 0.70 - 0.98 (sharp)
-
+    const simulatedBrightness = 80 + Math.floor(Math.random() * 80);
+    const simulatedQuality = 0.7 + Math.random() * 0.28;
     const checkResult = getDynamicThreshold(
       simulatedBrightness,
       simulatedQuality,
@@ -74,7 +70,6 @@ export function EnrollmentScreen(): React.JSX.Element {
 
     setIsProcessing(true);
     try {
-      // Small simulated delay for local embedding calculation (ArcFace is fast, but we show spinner)
       await new Promise(resolve => setTimeout(resolve, 800));
 
       const success = await secureStorageService.registerFace(
@@ -116,82 +111,84 @@ export function EnrollmentScreen(): React.JSX.Element {
 
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Employee Enrollment</Text>
-        <Text style={styles.placeholder}>
-          Register a new face template by entering the Employee ID and capturing
-          a high-quality face photo.
-        </Text>
+      <AppHeader
+        title="Employee Enrollment"
+        subtitle="Register a local encrypted face template for offline access control."
+        statusLabel="Template stored on device"
+        status="info"
+      />
 
-        <TextInput
-          autoCapitalize="characters"
-          onChangeText={setEmployeeId}
-          placeholder="ENTER EMPLOYEE ID (e.g. EMP042)"
-          placeholderTextColor="#94a3b8"
-          style={[styles.input, isProcessing && styles.inputDisabled]}
-          value={employeeId}
+      <InfoCard
+        title="Employee Details"
+        subtitle="Use the official employee code issued by the organization."
+        style={styles.section}
+      >
+        <EmployeeInput
           editable={!isProcessing}
+          helperText="This ID is used for offline template lookup and audit logs."
+          onChangeText={setEmployeeId}
+          value={employeeId}
+        />
+      </InfoCard>
+
+      <View style={styles.section}>
+        <CameraCaptureCard
+          title="Enrollment Capture"
+          description="Capture a clear frontal image. Keep the face centered and evenly lit."
+          controlsDisabled={isProcessing}
+          validationMessages={[
+            'Face not centered',
+            'Low light',
+            'Blink detected',
+          ]}
+          faceDetected={qualityCheck ? qualityCheck.passed : undefined}
+          onPhotoCaptured={handlePhotoCaptured}
+          onPhotoCleared={() => {
+            setCapturedImagePath(null);
+            setQualityCheck(null);
+          }}
         />
       </View>
 
-      <FaceCapturePanel
-        title="Enrollment Photo Capture"
-        description="Align face within the frame. Ensure eyes are open and face is well-lit."
-        controlsDisabled={isProcessing}
-        onPhotoCaptured={handlePhotoCaptured}
-        onPhotoCleared={() => {
-          setCapturedImagePath(null);
-          setQualityCheck(null);
-        }}
-      />
-
       {capturedImagePath && qualityCheck ? (
-        <View style={[styles.card, styles.qualityCard]}>
-          <Text style={styles.qualityTitle}>Quality Inspection Results</Text>
-          <View style={styles.qualityMetricRow}>
-            <Text style={styles.qualityLabel}>Brightness Score:</Text>
-            <Text
-              style={[
-                styles.qualityValue,
-                {color: qualityCheck.brightness >= 80 ? '#10b981' : '#f59e0b'},
-              ]}
-            >
-              {qualityCheck.brightness} (Optimal: 80-210)
+        <InfoCard
+          title="Quality Inspection"
+          subtitle={qualityCheck.reason}
+          style={styles.section}
+        >
+          <View style={styles.metricRow}>
+            <Text style={styles.metricLabel}>Brightness</Text>
+            <Text style={styles.metricValue}>
+              {qualityCheck.brightness} / 210
             </Text>
           </View>
-          <View style={styles.qualityMetricRow}>
-            <Text style={styles.qualityLabel}>Image Sharpness:</Text>
-            <Text
-              style={[
-                styles.qualityValue,
-                {color: qualityCheck.quality >= 0.7 ? '#10b981' : '#f43f5e'},
-              ]}
-            >
-              {(qualityCheck.quality * 100).toFixed(0)}% (Required: &gt;50%)
+          <View style={styles.metricRow}>
+            <Text style={styles.metricLabel}>Sharpness</Text>
+            <Text style={styles.metricValue}>
+              {(qualityCheck.quality * 100).toFixed(0)}%
             </Text>
           </View>
-          <View style={styles.qualityMetricRow}>
-            <Text style={styles.qualityLabel}>Frame Centering:</Text>
-            <Text style={[styles.qualityValue, {color: '#10b981'}]}>VALID</Text>
+          <View style={styles.metricRow}>
+            <Text style={styles.metricLabel}>Frame Centering</Text>
+            <Text style={styles.metricValue}>VALID</Text>
           </View>
-
           <View style={styles.qualityStatus}>
             <StatusBadge
               label={
                 qualityCheck.passed
-                  ? 'Image passed quality checks.'
-                  : 'Image quality is too low.'
+                  ? 'Image passed quality checks'
+                  : 'Image quality is too low'
               }
               status={qualityCheck.passed ? 'success' : 'error'}
             />
           </View>
-        </View>
+        </InfoCard>
       ) : null}
 
       <View style={styles.actionBlock}>
         {isProcessing ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator color="#6366f1" size="large" />
+            <ActivityIndicator color={colors.primary} size="large" />
             <Text style={styles.loadingText}>
               Generating 512-dim ArcFace embedding...
             </Text>
@@ -209,92 +206,50 @@ export function EnrollmentScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingBottom: 32,
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
-    padding: 16,
-    shadowColor: '#0f172a',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  sectionTitle: {
-    color: '#0f172a',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  placeholder: {
-    color: '#475569',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
-  },
-  input: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    borderWidth: 1,
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '600',
-    minHeight: 48,
-    paddingHorizontal: 14,
-    marginTop: 6,
-  },
-  qualityCard: {
-    borderColor: '#cbd5e1',
-    marginTop: 16,
-  },
-  qualityTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1e293b',
-    borderBottomColor: '#f1f5f9',
-    borderBottomWidth: 1,
-    marginBottom: 4,
-    paddingBottom: 6,
-  },
-  qualityMetricRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    paddingVertical: 2,
-  },
-  qualityStatus: {
-    marginTop: 12,
-  },
   actionBlock: {
-    marginTop: 16,
+    marginTop: spacing.lg,
   },
-  qualityLabel: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  qualityValue: {
-    fontSize: 13,
-    fontWeight: '700',
+  container: {
+    backgroundColor: colors.background,
+    paddingBottom: spacing.xxxl,
   },
   loadingContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    padding: spacing.xl,
   },
   loadingText: {
-    color: '#475569',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: spacing.md,
+    textAlign: 'center',
   },
-  inputDisabled: {
-    backgroundColor: '#e2e8f0',
-    color: '#64748b',
+  metricLabel: {
+    color: colors.textSubtle,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  metricRow: {
+    alignItems: 'center',
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+  },
+  metricValue: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  qualityStatus: {
+    marginTop: spacing.md,
+  },
+  section: {
+    marginTop: spacing.xl,
   },
 });

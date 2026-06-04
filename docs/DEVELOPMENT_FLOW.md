@@ -57,17 +57,17 @@ flowchart LR
 
 ## Phase Checklist
 
-| Phase | Goal | Main Tasks | Output |
-| --- | --- | --- | --- |
-| 1. App foundation | Stable React Native base | Navigation, screens, reusable components, app config | Working Android/iOS shell |
-| 2. Camera capture | Capture face image | VisionCamera setup, permission handling, capture, preview, retake | Temporary image path and preview |
-| 3. Local DB and security | Offline-first storage | SQLite tables, repositories, secure storage, encryption service | Local encrypted templates/logs |
-| 4. Enrollment | Register employee face | Employee ID, face capture, face detection, quality check, embedding generation | Encrypted local face template |
-| 5. Authentication | Verify employee offline | Capture live face, load local template, compare embeddings, threshold result | Success/failed auth decision |
-| 6. Liveness | Stop photo/screen spoofing | Blink/smile/head-turn challenge, liveness score, retry handling | Offline liveness pass/fail |
-| 7. Sync and purge | Restore server consistency | Pending sync queue, AWS API, DynamoDB table, purge synced temporary data | Offline-to-online sync |
-| 8. Benchmarking | Prove constraints | Measure model size, inference time, accuracy, memory, lighting cases | Benchmark report |
-| 9. Documentation | Final deliverables | Architecture, integration steps, setup guide, PPT/PDF | Submission-ready package |
+| Phase                    | Goal                       | Main Tasks                                                                     | Output                           |
+| ------------------------ | -------------------------- | ------------------------------------------------------------------------------ | -------------------------------- |
+| 1. App foundation        | Stable React Native base   | Navigation, screens, reusable components, app config                           | Working Android/iOS shell        |
+| 2. Camera capture        | Capture face image         | VisionCamera setup, permission handling, capture, preview, retake              | Temporary image path and preview |
+| 3. Local DB and security | Offline-first storage      | SQLite tables, repositories, secure storage, encryption service                | Local encrypted templates/logs   |
+| 4. Enrollment            | Register employee face     | Employee ID, face capture, face detection, quality check, embedding generation | Encrypted local face template    |
+| 5. Authentication        | Verify employee offline    | Capture live face, load local template, compare embeddings, threshold result   | Success/failed auth decision     |
+| 6. Liveness              | Stop photo/screen spoofing | Blink/smile/head-turn challenge, liveness score, retry handling                | Offline liveness pass/fail       |
+| 7. Sync and purge        | Restore server consistency | Pending sync queue, AWS API, DynamoDB table, purge synced temporary data       | Offline-to-online sync           |
+| 8. Benchmarking          | Prove constraints          | Measure model size, inference time, accuracy, memory, lighting cases           | Benchmark report                 |
+| 9. Documentation         | Final deliverables         | Architecture, integration steps, setup guide, PPT/PDF                          | Submission-ready package         |
 
 ## Enrollment Flow
 
@@ -159,16 +159,16 @@ flowchart LR
 
 ## Acceptance Targets From PDF
 
-| Requirement | Target |
-| --- | --- |
-| Platforms | Android and iOS with React Native |
-| Network | Must authenticate offline |
-| Model size | Around 20 MB or smaller |
-| Speed | Face recognition plus liveness under 1 second |
-| Hardware | Mid-range devices, 3 GB RAM, no high-end GPU |
-| OS | Android 8.0+ and iOS 12+ |
-| Accuracy | Greater than 95% target |
-| Liveness | Blink, smile, or head turn |
-| Sync | AWS sync after network restore |
-| Purge | Purge synced temporary local data |
+| Requirement  | Target                                                   |
+| ------------ | -------------------------------------------------------- |
+| Platforms    | Android and iOS with React Native                        |
+| Network      | Must authenticate offline                                |
+| Model size   | Around 20 MB or smaller                                  |
+| Speed        | Face recognition plus liveness under 1 second            |
+| Hardware     | Mid-range devices, 3 GB RAM, no high-end GPU             |
+| OS           | Android 8.0+ and iOS 12+                                 |
+| Accuracy     | Greater than 95% target                                  |
+| Liveness     | Blink, smile, or head turn                               |
+| Sync         | AWS sync after network restore                           |
+| Purge        | Purge synced temporary local data                        |
 | Deliverables | Source code, prototype, PPT/PDF, technical documentation |

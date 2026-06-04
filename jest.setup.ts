@@ -212,48 +212,43 @@ const mockExecute = async (sql: string, params: any[] = []) => {
   };
 };
 
-const toResultSet = (result: any) => ({
-  insertId: result.insertId,
-  rowsAffected: result.rowsAffected,
-  rows: {
-    length: result.rows.length,
-    item: (index: number) => result.rows[index],
-    raw: () => result.rows,
-  },
-});
-
-jest.mock('react-native-sqlite-storage', () => {
-  const sqlite = {
-    enablePromise: jest.fn(),
-    openDatabase: jest.fn().mockImplementation(async () => {
+jest.mock('@op-engineering/op-sqlite', () => {
+  const createConnection = () => ({
+    execute: jest.fn().mockImplementation(async (sql: string, params: any[] = []) => {
+      const result = await mockExecute(sql, params);
       return {
-        executeSql: jest
-          .fn()
-          .mockImplementation(async (sql: string, params: any[] = []) => {
-            const result = await mockExecute(sql, params);
-            return [toResultSet(result)];
-          }),
-        transaction: jest.fn().mockImplementation(async (callback: any) => {
-          return callback({
-            executeSql: jest
-              .fn()
-              .mockImplementation(async (sql: string, params: any[] = []) => {
-                const result = await mockExecute(sql, params);
-                return [undefined, toResultSet(result)];
-              }),
-          });
-        }),
-        close: jest.fn().mockResolvedValue(undefined),
+        insertId: result.insertId,
+        rowsAffected: result.rowsAffected,
+        rows: {_array: result.rows},
       };
     }),
-  };
+    executeAsync: jest.fn().mockImplementation(async (sql: string, params: any[] = []) => {
+      const result = await mockExecute(sql, params);
+      return {
+        insertId: result.insertId,
+        rowsAffected: result.rowsAffected,
+        rows: {_array: result.rows},
+      };
+    }),
+    transaction: jest.fn().mockImplementation(async (callback: any) => {
+      return callback({
+        execute: jest.fn().mockImplementation(async (sql: string, params: any[] = []) => {
+          const result = await mockExecute(sql, params);
+          return {
+            insertId: result.insertId,
+            rowsAffected: result.rowsAffected,
+            rows: {_array: result.rows},
+          };
+        }),
+      });
+    }),
+    close: jest.fn(),
+  });
 
   return {
-    __esModule: true,
-    default: sqlite,
-    ...sqlite,
+    open: jest.fn().mockImplementation(() => createConnection()),
   };
-});
+}, { virtual: true });
 
 // ============================================================================
 // OTHER NATIVE MODULE MOCKS
@@ -267,8 +262,12 @@ jest.mock('react-native-keychain', () => ({
 }));
 
 jest.mock('react-native-vision-camera', () => {
+  const mockCamera = jest.fn().mockImplementation(() => null);
+  (mockCamera as any).getCameraPermissionStatus = jest.fn().mockReturnValue('granted');
+  (mockCamera as any).requestCameraPermission = jest.fn().mockResolvedValue('granted');
+
   return {
-    Camera: jest.fn().mockImplementation(() => null),
+    Camera: mockCamera,
     useCameraDevice: jest
       .fn()
       .mockReturnValue({id: 'front-camera', name: 'Front Camera'}),
@@ -287,10 +286,56 @@ jest.mock('react-native-vision-camera', () => {
 });
 
 jest.mock('@react-native-community/netinfo', () => ({
-  addEventListener: jest.fn(),
+  addEventListener: jest.fn((callback: (state: {isConnected: boolean; isInternetReachable: boolean}) => void) => {
+    callback({isConnected: true, isInternetReachable: true});
+    return jest.fn();
+  }),
   fetch: jest.fn().mockResolvedValue({
     isConnected: true,
     isInternetReachable: true,
+  }),
+}));
+
+jest.mock('react-native-permissions', () => ({
+  PERMISSIONS: {
+    ANDROID: {
+      ACCESS_FINE_LOCATION: 'android.permission.ACCESS_FINE_LOCATION',
+    },
+    IOS: {
+      LOCATION_WHEN_IN_USE: 'ios.permission.LOCATION_WHEN_IN_USE',
+    },
+  },
+  RESULTS: {
+    GRANTED: 'granted',
+    DENIED: 'denied',
+    BLOCKED: 'blocked',
+    UNAVAILABLE: 'unavailable',
+    LIMITED: 'limited',
+  },
+  check: jest.fn().mockResolvedValue('granted'),
+  request: jest.fn().mockResolvedValue('granted'),
+  checkNotifications: jest.fn().mockResolvedValue({status: 'granted'}),
+  requestNotifications: jest.fn().mockResolvedValue({status: 'granted'}),
+}));
+
+jest.mock('./src/services/location/deviceContextService', () => ({
+  deviceContextService: {
+    refreshDeviceLocationContext: jest.fn().mockResolvedValue({}),
+    getCachedDeviceLocationContext: jest.fn().mockResolvedValue({}),
+    markDeviceContextSynced: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
+jest.mock('@react-native-community/geolocation', () => ({
+  getCurrentPosition: jest.fn((success: (position: unknown) => void) => {
+    success({
+      coords: {
+        latitude: 28.6139,
+        longitude: 77.209,
+        accuracy: 12,
+        altitude: 200,
+      },
+    });
   }),
 }));
 
@@ -303,3 +348,91 @@ jest.mock('react-native', () => {
   };
   return RN;
 });
+
+jest.mock('react-native-fs', () => ({
+  readFile: jest.fn().mockResolvedValue(''),
+  unlink: jest.fn().mockResolvedValue(undefined),
+  DocumentDirectoryPath: '/mock-documents',
+  CachesDirectoryPath: '/mock-caches',
+}), {virtual: true});
+
+jest.mock('@bam.tech/react-native-image-resizer', () => ({
+  createResizedImage: jest.fn().mockResolvedValue({
+    path: '/mock-resized-path.jpg',
+    uri: 'file:///mock-resized-path.jpg',
+    name: 'mock-resized-path.jpg',
+    size: 1024,
+    width: 112,
+    height: 112,
+  }),
+}), {virtual: true});
+
+jest.mock('jpeg-js', () => ({
+  decode: jest.fn().mockReturnValue({
+    width: 112,
+    height: 112,
+    data: new ArrayBuffer(112 * 112 * 4),
+  }),
+}), {virtual: true});
+
+// ============================================================================
+// AI MODEL & IMAGE PROCESSING MOCKS
+// ============================================================================
+jest.mock('react-native-fast-tflite', () => {
+  return {
+    loadTensorflowModel: jest.fn().mockImplementation(async () => {
+      return {
+        run: jest.fn().mockImplementation(async (inputs: any[]) => {
+          const inputBuffer = inputs[0];
+          const inputView = new Float32Array(inputBuffer);
+
+          // Generate a sum hash based on input buffer values (first 100 values to avoid overflow/NaN)
+          let sum = 0;
+          const len = Math.min(inputView.length, 100);
+          for (let i = 0; i < len; i++) {
+            if (!isNaN(inputView[i])) {
+              sum += inputView[i] * (i + 1);
+            }
+          }
+
+          // Return a mock output array buffer of size 512 floats
+          const buffer = new ArrayBuffer(512 * 4);
+          const view = new Float32Array(buffer);
+
+          let sumSq = 0;
+          for (let i = 0; i < 512; i++) {
+            const val = Math.sin(sum + i) * Math.cos(sum * i);
+            view[i] = val;
+            sumSq += val * val;
+          }
+
+          const norm = Math.sqrt(sumSq);
+          for (let i = 0; i < 512; i++) {
+            view[i] = norm === 0 ? 0 : view[i] / norm;
+          }
+          return [view];
+        }),
+      };
+    }),
+  };
+});
+
+jest.mock('./src/ai/imagePixelLoader', () => ({
+  loadRawPixelsFromImagePath: jest.fn(
+    async (imagePath: string, width: number, height: number) => {
+      const buffer = new ArrayBuffer(width * height * 4);
+      const view = new Uint8Array(buffer);
+      for (let i = 0; i < view.length; i++) {
+        const charIndex =
+          (Math.floor(i / 4) + (i % 4)) % Math.max(imagePath.length, 1);
+        view[i] = (i + imagePath.charCodeAt(charIndex || 0)) % 256;
+      }
+      return {
+        buffer,
+        width,
+        height,
+        pixelFormat: 'RGBA',
+      };
+    },
+  ),
+}));

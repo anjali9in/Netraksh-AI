@@ -1,15 +1,15 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Linking} from 'react-native';
-import {Camera, useCameraDevices} from 'react-native-vision-camera';
+import {Camera, useCameraDevice} from 'react-native-vision-camera';
 
 import type {CapturedFaceImage} from '../types/CameraTypes';
-import {toFileUri} from '../utils/fileUtils';
+import {normalizeCapturedPhoto} from '../utils/normalizeCapturedPhoto';
 
 type CameraPermissionStatus =
   | 'not-determined'
   | 'denied'
-  | 'never_ask_again'
-  | 'authorized';
+  | 'restricted'
+  | 'granted';
 
 type UseFaceCaptureParams = {
   onPhotoCaptured?: (image: CapturedFaceImage) => void;
@@ -20,12 +20,13 @@ export function useFaceCapture({
   onPhotoCaptured,
   onPhotoCleared,
 }: UseFaceCaptureParams = {}) {
-  const devices = useCameraDevices();
-  const device = devices.front ?? devices.back;
+  const frontDevice = useCameraDevice('front');
+  const backDevice = useCameraDevice('back');
+  const device = frontDevice ?? backDevice;
 
   const [status, setStatus] =
     useState<CameraPermissionStatus>('not-determined');
-  const hasPermission = status === 'authorized';
+  const hasPermission = status === 'granted';
   const canRequestPermission = status === 'not-determined';
 
   const [capturedImage, setCapturedImage] = useState<CapturedFaceImage | null>(
@@ -38,9 +39,7 @@ export function useFaceCapture({
   const hasRequestedPermission = useRef(false);
 
   useEffect(() => {
-    Camera.getCameraPermissionStatus().then(s =>
-      setStatus(s as CameraPermissionStatus),
-    );
+    setStatus(Camera.getCameraPermissionStatus() as CameraPermissionStatus);
   }, []);
 
   const requestCameraPermission = useCallback(async () => {
@@ -52,7 +51,7 @@ export function useFaceCapture({
     }
 
     const result = await Camera.requestCameraPermission();
-    const granted = result === 'authorized';
+    const granted = result === 'granted';
     setStatus(result as CameraPermissionStatus);
 
     if (!granted) {
@@ -91,13 +90,35 @@ export function useFaceCapture({
     try {
       const photo = await cameraRef.current.takePhoto({
         flash: 'off',
+        qualityPrioritization: 'quality',
+        enableAutoStabilization: true,
+        enablePrecapture: true,
       });
 
+      const upright = await normalizeCapturedPhoto(
+        photo.path,
+        photo.width,
+        photo.height,
+        photo.orientation,
+        {isFrontCamera: device.position === 'front'},
+      );
+
       const image: CapturedFaceImage = {
-        path: photo.path,
-        uri: toFileUri(photo.path),
+        path: upright.path,
+        uri: upright.uri,
         capturedAt: new Date().toISOString(),
         source: 'camera',
+        width: upright.width,
+        height: upright.height,
+        orientation: 'portrait',
+        isMirrored: photo.isMirrored,
+        metadata: {
+          brightnessValue: photo.metadata?.['{Exif}']?.BrightnessValue,
+          exposureTime: photo.metadata?.['{Exif}']?.ExposureTime,
+          isoSpeedRatings: photo.metadata?.['{Exif}']?.ISOSpeedRatings,
+          subjectArea: photo.metadata?.['{Exif}']?.SubjectArea,
+          flash: photo.metadata?.['{Exif}']?.Flash,
+        },
       };
 
       setCapturedImage(image);

@@ -56,6 +56,29 @@ export const MIGRATIONS: Migration[] = [
         ON users (status)`,
     ],
   },
+  {
+    id: 3,
+    name: 'add_location_and_device_context',
+    statements: [
+      `ALTER TABLE auth_logs ADD COLUMN latitude REAL`,
+      `ALTER TABLE auth_logs ADD COLUMN longitude REAL`,
+      `ALTER TABLE auth_logs ADD COLUMN location_accuracy REAL`,
+      `ALTER TABLE auth_logs ADD COLUMN altitude REAL`,
+      `ALTER TABLE auth_logs ADD COLUMN ip_address TEXT`,
+      `ALTER TABLE auth_logs ADD COLUMN location_captured_at TEXT`,
+      `CREATE TABLE IF NOT EXISTS device_context (
+        device_id TEXT PRIMARY KEY NOT NULL,
+        latitude REAL,
+        longitude REAL,
+        location_accuracy REAL,
+        altitude REAL,
+        ip_address TEXT,
+        location_captured_at TEXT,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK (sync_status IN ('PENDING', 'SYNCED', 'FAILED'))
+      )`,
+    ],
+  },
 ];
 
 export async function runMigrations(database: LocalDatabase): Promise<void> {
@@ -67,23 +90,41 @@ export async function runMigrations(database: LocalDatabase): Promise<void> {
     )`,
   );
 
+  await repairBrokenMigrationState(database);
+
   const appliedMigrationIds = await getAppliedMigrationIds(database);
   const pendingMigrations = MIGRATIONS.filter(
     migration => !appliedMigrationIds.has(migration.id),
   );
 
   for (const migration of pendingMigrations) {
-    await database.transaction(async transaction => {
-      for (const statement of migration.statements) {
-        await transaction.execute(statement);
-      }
+    for (const statement of migration.statements) {
+      await database.execute(statement);
+    }
 
-      await transaction.execute(
-        `INSERT INTO schema_migrations (id, name, applied_at)
-          VALUES (?, ?, ?)`,
-        [migration.id, migration.name, new Date().toISOString()],
-      );
-    });
+    await database.execute(
+      `INSERT INTO schema_migrations (id, name, applied_at)
+        VALUES (?, ?, ?)`,
+      [migration.id, migration.name, new Date().toISOString()],
+    );
+  }
+}
+
+async function repairBrokenMigrationState(
+  database: LocalDatabase,
+): Promise<void> {
+  const tables = await database.execute(
+    `SELECT name FROM sqlite_master WHERE type='table'`,
+  );
+  const tableNames = new Set(
+    tables.rows.map(row => row.name).filter((name): name is string => !!name),
+  );
+
+  const requiredTables = ['auth_logs', 'employee_face_templates', 'users'];
+  const missingRequired = requiredTables.some(name => !tableNames.has(name));
+
+  if (missingRequired && tableNames.has('schema_migrations')) {
+    await database.execute('DELETE FROM schema_migrations');
   }
 }
 

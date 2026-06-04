@@ -4,7 +4,9 @@ const AUTH_STATUSES = new Set(['SUCCESS', 'FAILED']);
 const LIVENESS_STATUSES = new Set(['PASSED', 'FAILED']);
 const CHALLENGE_TYPES = new Set(['BLINK', 'SMILE', 'HEAD_TURN']);
 
-export function parseSyncAuthLogsRequest(body: string | null): SyncAuthLogsRequest {
+export function parseSyncAuthLogsRequest(
+  body: string | null,
+): SyncAuthLogsRequest {
   if (!body) {
     throw new Error('Request body is required.');
   }
@@ -55,6 +57,13 @@ function validateAuthLog(value: unknown): AuthLog {
     throw new Error('id must be a number.');
   }
 
+  assertOptionalNumber(authLog.latitude, 'latitude');
+  assertOptionalNumber(authLog.longitude, 'longitude');
+  assertOptionalNumber(authLog.locationAccuracy, 'locationAccuracy');
+  assertOptionalNumber(authLog.altitude, 'altitude');
+  assertOptionalString(authLog.ipAddress, 'ipAddress', false);
+  assertOptionalString(authLog.locationCapturedAt, 'locationCapturedAt', false);
+
   return {
     id: authLog.id,
     employeeId: authLog.employeeId,
@@ -68,10 +77,19 @@ function validateAuthLog(value: unknown): AuthLog {
     createdAt: authLog.createdAt,
     syncStatus: 'PENDING',
     logHash: authLog.logHash,
+    latitude: authLog.latitude,
+    longitude: authLog.longitude,
+    locationAccuracy: authLog.locationAccuracy,
+    altitude: authLog.altitude,
+    ipAddress: authLog.ipAddress,
+    locationCapturedAt: authLog.locationCapturedAt,
   };
 }
 
-function assertString(value: unknown, fieldName: string): asserts value is string {
+function assertString(
+  value: unknown,
+  fieldName: string,
+): asserts value is string {
   if (typeof value !== 'string' || value.length === 0) {
     throw new Error(`${fieldName} is required.`);
   }
@@ -79,4 +97,24 @@ function assertString(value: unknown, fieldName: string): asserts value is strin
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function assertOptionalNumber(value: unknown, fieldName: string): void {
+  if (value !== undefined && typeof value !== 'number') {
+    throw new Error(`${fieldName} must be a number.`);
+  }
+}
+
+function assertOptionalString(
+  value: unknown,
+  fieldName: string,
+  required: boolean,
+): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (typeof value !== 'string' || (required && value.length === 0)) {
+    throw new Error(`${fieldName} must be a string.`);
+  }
 }

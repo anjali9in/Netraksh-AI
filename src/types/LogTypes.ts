@@ -1,3 +1,5 @@
+import type {DeviceLocationContext} from './LocationTypes';
+
 export type AuthLog = {
   id?: number;
   employeeId: string;
@@ -11,4 +13,4 @@ export type AuthLog = {
   createdAt: string;
   syncStatus: 'PENDING' | 'SYNCED' | 'FAILED';
   logHash?: string;
-};
+} & DeviceLocationContext;

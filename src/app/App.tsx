@@ -1,17 +1,60 @@
 import React from 'react';
+import {ActivityIndicator, InteractionManager, StyleSheet, View} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import {offlineDatabaseService} from '../services/OfflineDatabaseService';
+import {connectivitySyncService} from '../services/network/connectivitySyncService';
+import {appPermissionsService} from '../services/permissions/appPermissionsService';
+import {deviceContextService} from '../services/location/deviceContextService';
 import {logger} from '../utils/logger';
 import {AppNavigator} from './navigation/AppNavigator';
 
 export default function App(): React.JSX.Element {
+  const [dbReady, setDbReady] = React.useState(false);
+
   React.useEffect(() => {
-    offlineDatabaseService.initDatabase().catch(error => {
-      logger.error('Failed to initialize local database', error);
-    });
+    let mounted = true;
+
+    offlineDatabaseService
+      .initDatabase()
+      .then(async () => {
+        await appPermissionsService.requestAppPermissions();
+        connectivitySyncService.startConnectivitySync();
+
+        InteractionManager.runAfterInteractions(() => {
+          void deviceContextService.refreshDeviceLocationContext().catch(
+            error => {
+              logger.warn('Initial location capture skipped', error);
+            },
+          );
+        });
+
+        if (mounted) {
+          setDbReady(true);
+        }
+      })
+      .catch(error => {
+        logger.error('Failed to initialize local database', error);
+
+        if (mounted) {
+          setDbReady(true);
+        }
+      });
+
+    return () => {
+      mounted = false;
+      connectivitySyncService.stopConnectivitySync();
+    };
   }, []);
+
+  if (!dbReady) {
+    return (
+      <View style={styles.boot}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -21,3 +64,11 @@ export default function App(): React.JSX.Element {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  boot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

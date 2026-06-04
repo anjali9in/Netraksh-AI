@@ -1,0 +1,55 @@
+diff --git a/node_modules/@op-engineering/op-sqlite/android/build.gradle b/node_modules/@op-engineering/op-sqlite/android/build.gradle
+index d2a0386..0a82542 100644
+--- a/node_modules/@op-engineering/op-sqlite/android/build.gradle
++++ b/node_modules/@op-engineering/op-sqlite/android/build.gradle
+@@ -51,12 +51,10 @@ android {
+   
+   // Used to override the NDK path/version on internal CI or by allowing
+   // users to customize the NDK path/version from their root project (e.g. for M1 support)
+-  if (rootProject.hasProperty("ndkPath")) {
++  if (rootProject.ext.has("ndkPath")) {
+     ndkPath rootProject.ext.ndkPath
+   }
+-  if (rootProject.hasProperty("ndkVersion")) {
+-    ndkVersion rootProject.ext.ndkVersion
+-  }
++  ndkVersion safeExtGet("ndkVersion", "23.1.7779620")
+ 
+   buildFeatures {
+     prefab true
+@@ -107,21 +105,5 @@ android {
+ }
+ 
+ dependencies {
+-  //noinspection GradleDynamicVersion
+-  implementation 'com.facebook.react:react-android:+'
+-}
+-
+-// Resolves "LOCAL_SRC_FILES points to a missing file, Check that libfb.so exists or that its path is correct".
+-tasks.whenTaskAdded { task ->
+-  if (task.name.contains("configureCMakeDebug")) {
+-    rootProject.getTasksByName("packageReactNdkDebugLibs", true).forEach {
+-      task.dependsOn(it)
+-    }
+-  }
+-  // We want to add a dependency for both configureCMakeRelease and configureCMakeRelWithDebInfo
+-  if (task.name.contains("configureCMakeRel")) {
+-    rootProject.getTasksByName("packageReactNdkReleaseLibs", true).forEach {
+-      task.dependsOn(it)
+-    }
+-  }
++  implementation("com.facebook.react:react-android")
+ }
+diff --git a/node_modules/@op-engineering/op-sqlite/op-sqlite.podspec b/node_modules/@op-engineering/op-sqlite/op-sqlite.podspec
+index 8dfa91c..017c55b 100644
+--- a/node_modules/@op-engineering/op-sqlite/op-sqlite.podspec
++++ b/node_modules/@op-engineering/op-sqlite/op-sqlite.podspec
+@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
+   s.license      = package["license"]
+   s.authors      = package["author"]
+ 
+-  s.platforms    = { :ios => "12.0", :osx => "10.7" }
++  s.platforms    = { :ios => "12.4", :osx => "10.15" }
+   s.source       = { :git => "https://github.com/op-engineering/op-sqlite.git", :tag => "#{s.version}" }
+ 
+   s.pod_target_xcconfig = {
