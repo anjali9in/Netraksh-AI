@@ -5,8 +5,12 @@ import UIKit
 enum BackgroundSyncScheduler {
   static let taskIdentifier = "com.netrakshai.authlog.sync"
   static let pendingLaunchKey = "pendingBackgroundSync"
+  private static var hasRegistered = false
 
   static func register() {
+    guard !hasRegistered else { return }
+    hasRegistered = true
+
     if #available(iOS 13.0, *) {
       BGTaskScheduler.shared.register(
         forTaskWithIdentifier: taskIdentifier,
