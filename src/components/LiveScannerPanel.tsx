@@ -279,6 +279,7 @@ export function LiveScannerPanel({
   // Control scanner loop — only after camera permission is granted
   useEffect(() => {
     if (!hasPermission) {
+      setFaceDetected(false);
       return () => {
         if (timerRef.current) {
           clearInterval(timerRef.current);
@@ -287,8 +288,10 @@ export function LiveScannerPanel({
       };
     }
 
-    if (isCameraActive && device && cameraReady) {
+    if (isCameraActive && (device ? cameraReady : true)) {
       startScanning();
+    } else {
+      setFaceDetected(false);
     }
 
     return () => {
