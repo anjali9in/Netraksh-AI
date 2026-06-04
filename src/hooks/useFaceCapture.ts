@@ -24,8 +24,13 @@ export function useFaceCapture({
 }: UseFaceCaptureParams = {}) {
   const frontDevice = useCameraDevice('front');
   const backDevice = useCameraDevice('back');
-  const [devicePosition, setDevicePosition] = useState<CameraPosition>(frontDevice ? 'front' : backDevice ? 'back' : 'front');
-  const device = devicePosition === 'front' ? frontDevice : backDevice;
+  const [devicePosition, setDevicePosition] = useState<CameraPosition>(
+    frontDevice ? 'front' : backDevice ? 'back' : 'front',
+  );
+  const device =
+    devicePosition === 'front'
+      ? frontDevice ?? backDevice
+      : backDevice ?? frontDevice;
 
   const [status, setStatus] =
     useState<CameraPermissionStatus>('not-determined');
@@ -63,9 +68,20 @@ export function useFaceCapture({
     await Linking.openSettings();
   }, []);
 
+  const canSwitchCamera = Boolean(
+    devicePosition === 'front' ? backDevice : frontDevice,
+  );
+
   const switchCamera = useCallback(() => {
-    setDevicePosition(current => (current === 'front' ? 'back' : 'front'));
-  }, []);
+    setDevicePosition(current => {
+      const next = current === 'front' ? 'back' : 'front';
+      const nextDevice = next === 'front' ? frontDevice : backDevice;
+      if (!nextDevice) {
+        return current;
+      }
+      return next;
+    });
+  }, [backDevice, frontDevice]);
 
   const captureFaceImage = useCallback(async () => {
     setErrorMessage(null);
@@ -183,6 +199,7 @@ export function useFaceCapture({
     requestCameraPermission,
     retake,
     useMockCapture,
+    canSwitchCamera,
     switchCamera,
   };
 }

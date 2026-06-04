@@ -152,10 +152,6 @@ export function LiveScannerPanel({
     await Linking.openSettings();
   }, []);
 
-  const switchCamera = useCallback(() => {
-    setDevicePosition(current => (current === 'front' ? 'back' : 'front'));
-  }, []);
-
   // Prompt for camera on first visit (Android often reports "denied" before first ask)
   useEffect(() => {
     syncPermissionStatus();
@@ -267,6 +263,23 @@ export function LiveScannerPanel({
     setLiveChallengeHint(null);
     setAlignmentMessage('Position your face in the circle');
   }, []);
+
+  const canSwitchCamera = Boolean(
+    devicePosition === 'front' ? backDevice : frontDevice,
+  );
+
+  const switchCamera = useCallback(() => {
+    setDevicePosition(current => {
+      const next = current === 'front' ? 'back' : 'front';
+      const nextDevice = next === 'front' ? frontDevice : backDevice;
+      if (!nextDevice) {
+        return current;
+      }
+      return next;
+    });
+    setCameraReady(false);
+    resetScanSession();
+  }, [backDevice, frontDevice, resetScanSession]);
 
   // ML Kit challenges → MiniFASNet spoof check → ArcFace image handoff
   const handleLivenessSuccess = useCallback(async () => {
@@ -676,6 +689,7 @@ export function LiveScannerPanel({
         {hasPermission && device ? (
           <>
             <Camera
+              key={device.id}
               ref={cameraRef}
               device={device}
               isActive={isCameraActive}
@@ -683,17 +697,6 @@ export function LiveScannerPanel({
               onInitialized={() => setCameraReady(true)}
               style={StyleSheet.absoluteFill}
             />
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel={`Switch to ${devicePosition === 'front' ? 'back' : 'front'} camera`}
-              onPress={switchCamera}
-              style={styles.switchCameraButton}
-            >
-              <ButtonIcon name="cameraSwitch" color="#ffffff" size={20} />
-              <Text style={styles.switchCameraLabel}>
-                {devicePosition === 'front' ? 'Back' : 'Front'}
-              </Text>
-            </TouchableOpacity>
           </>
         ) : (
           <View style={styles.fallbackPreview}>
@@ -732,7 +735,12 @@ export function LiveScannerPanel({
         )}
 
         {/* Circular cutout SVG Overlay */}
-        <Svg height="100%" width="100%" style={StyleSheet.absoluteFill}>
+        <Svg
+          height="100%"
+          width="100%"
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        >
           <Defs>
             <Mask id="face-mask" x="0" y="0" height="100%" width="100%">
               <Rect height="100%" width="100%" fill="#ffffff" />
@@ -776,7 +784,7 @@ export function LiveScannerPanel({
         </View>
 
         {/* Live HUD instructions badge */}
-        <View style={styles.hudInstructionBox}>
+        <View pointerEvents="none" style={styles.hudInstructionBox}>
           <Text style={[styles.hudInstructionLabel, {color: faceDetected ? '#10b981' : '#ef4444'}]}>
             {faceDetected ? 'VERIFYING LIVENESS' : 'ALIGN FACE'}
           </Text>
@@ -802,6 +810,24 @@ export function LiveScannerPanel({
             <Text style={styles.hudHintText}>{liveChallengeHint}</Text>
           ) : null}
         </View>
+
+        {hasPermission && device ? (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Switch to ${devicePosition === 'front' ? 'back' : 'front'} camera`}
+            disabled={!canSwitchCamera}
+            onPress={switchCamera}
+            style={[
+              styles.switchCameraButton,
+              !canSwitchCamera && styles.switchCameraButtonDisabled,
+            ]}
+          >
+            <ButtonIcon name="cameraSwitch" color="#ffffff" size={20} />
+            <Text style={styles.switchCameraLabel}>
+              {devicePosition === 'front' ? 'Back' : 'Front'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Challenge progress (auth liveness only) */}
@@ -1203,14 +1229,19 @@ const styles = StyleSheet.create({
   },
   switchCameraButton: {
     position: 'absolute',
-    bottom: 16,
-    right: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    top: 12,
+    right: 12,
+    zIndex: 20,
+    elevation: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     borderRadius: 24,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
+  },
+  switchCameraButtonDisabled: {
+    opacity: 0.45,
   },
   switchCameraLabel: {
     color: '#ffffff',

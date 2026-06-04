@@ -47,6 +47,7 @@ export function CameraCaptureCard({
     requestCameraPermission,
     retake,
     useMockCapture,
+    canSwitchCamera,
     switchCamera,
   } = useFaceCapture({onPhotoCaptured, onPhotoCleared});
   const isCameraActive =
@@ -80,21 +81,6 @@ export function CameraCaptureCard({
         <Text style={styles.description}>{description}</Text>
 
         <View style={styles.previewFrame}>
-          {!capturedImage && hasPermission && device ? (
-            <View style={styles.cameraSwitchContainer}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Switch camera"
-                onPress={switchCamera}
-                style={styles.cameraSwitchButton}
-              >
-                <ButtonIcon name="cameraSwitch" color="#ffffff" size={22} />
-              </Pressable>
-              <Text style={styles.cameraSwitchLabel}>
-                Tap to switch to {devicePosition === 'front' ? 'back' : 'front'} camera
-              </Text>
-            </View>
-          ) : null}
           {capturedImage?.source === 'mock' ? (
             <View style={styles.emptyPreview}>
               <Text style={styles.emptyTitle}>Mock face image captured</Text>
@@ -121,6 +107,7 @@ export function CameraCaptureCard({
             />
           ) : isCameraReady && device ? (
             <Camera
+              key={device.id}
               ref={cameraRef}
               device={device}
               isActive={isCameraActive}
@@ -168,6 +155,26 @@ export function CameraCaptureCard({
               ) : null}
             </View>
           )}
+
+          {!capturedImage && hasPermission && device ? (
+            <View style={styles.cameraSwitchContainer}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Switch to ${devicePosition === 'front' ? 'back' : 'front'} camera`}
+                disabled={!canSwitchCamera}
+                onPress={switchCamera}
+                style={[
+                  styles.cameraSwitchButton,
+                  !canSwitchCamera && styles.cameraSwitchButtonDisabled,
+                ]}
+              >
+                <ButtonIcon name="cameraSwitch" color="#ffffff" size={22} />
+                <Text style={styles.cameraSwitchLabel}>
+                  {devicePosition === 'front' ? 'Back' : 'Front'}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           <View pointerEvents="none" style={styles.cameraOverlay}>
             <View style={styles.guideFrame}>
@@ -417,19 +424,26 @@ const styles = StyleSheet.create({
   },
   cameraSwitchContainer: {
     position: 'absolute',
-    bottom: 12,
+    top: 12,
     right: 12,
+    zIndex: 20,
+    elevation: 20,
   },
   cameraSwitchButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    borderRadius: 20,
-    padding: 8,
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderRadius: 24,
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  cameraSwitchButtonDisabled: {
+    opacity: 0.45,
   },
   cameraSwitchLabel: {
     color: '#ffffff',
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 4,
-    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 4,
   },
 });
