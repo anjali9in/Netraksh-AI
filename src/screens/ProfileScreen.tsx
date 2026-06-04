@@ -1,6 +1,5 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
-import {AppHeader} from '../components/AppHeader';
 import {AttendanceCalendar} from '../components/AttendanceCalendar';
 import {InfoCard} from '../components/InfoCard';
 import {ScreenContainer} from '../components/ScreenContainer';
@@ -11,14 +10,11 @@ import {spacing} from '../theme/spacing';
 export function ProfileScreen(): React.JSX.Element {
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
-      <AppHeader
-        title="My Profile"
-        subtitle="Offline user profile, attendance, and sync status."
-        statusLabel="Demo profile"
-        status="info"
-      />
+      <View style={styles.statusRow}>
+        <StatusBadge compact label="Demo profile" status="info" />
+      </View>
 
-      <InfoCard title="Personal Information" style={styles.section}>
+      <InfoCard title="Personal Information" style={styles.firstSection}>
         <InfoRow label="Employee ID" value="EMP-001" />
         <InfoRow label="Department" value="Engineering" />
         <InfoRow label="Designation" value="Software Engineer" />
@@ -69,8 +65,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing.md,
   },
+  firstSection: {
+    marginTop: spacing.md,
+  },
   section: {
     marginTop: spacing.xl,
+  },
+  statusRow: {
+    marginBottom: spacing.sm,
   },
   value: {
     color: colors.text,

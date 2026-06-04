@@ -9,14 +9,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {AppHeader} from '../components/AppHeader';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
 import {
   offlineDatabaseService,
   AuthLogEntry,
 } from '../services/OfflineDatabaseService';
-import {useIsFocused} from '@react-navigation/native';
 import {offlineSyncService} from '../services/OfflineSyncService';
 import {normalizeApiError} from '../services/api/apiError';
 
@@ -27,15 +25,12 @@ type SyncNotice = {
 };
 
 export function OfflineLogsScreen(): React.JSX.Element {
-  const isFocused = useIsFocused();
   const [logs, setLogs] = useState<AuthLogEntry[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuthLogEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<
     'ALL' | 'SUCCESS' | 'FAILED' | 'PENDING'
   >('ALL');
-  const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'CUSTOM'>('ALL');
-  const [customDate, setCustomDate] = useState(''); // YYYY-MM-DD
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncNotice, setSyncNotice] = useState<SyncNotice | null>(null);
@@ -45,7 +40,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
     try {
       const allLogs = await offlineDatabaseService.getAllLogs();
       setLogs(allLogs);
-      applyFilters(allLogs, searchQuery, statusFilter, dateFilter, customDate);
+      applyFilters(allLogs, searchQuery, statusFilter);
     } catch (error) {
       console.error(error);
     } finally {
@@ -57,8 +52,6 @@ export function OfflineLogsScreen(): React.JSX.Element {
     allLogs: AuthLogEntry[],
     query: string,
     filter: typeof statusFilter,
-    dateMode: typeof dateFilter,
-    dateStr: string,
   ) => {
     let result = [...allLogs];
 
@@ -78,41 +71,17 @@ export function OfflineLogsScreen(): React.JSX.Element {
       result = result.filter(log => log.syncStatus === 'PENDING');
     }
 
-    // Apply Date Filter
-    const today = new Date().toISOString().split('T')[0];
-    const yesterdayObj = new Date();
-    yesterdayObj.setDate(yesterdayObj.getDate() - 1);
-    const yesterday = yesterdayObj.toISOString().split('T')[0];
-
-    if (dateMode === 'TODAY') {
-      result = result.filter(log => log.createdAt.startsWith(today));
-    } else if (dateMode === 'YESTERDAY') {
-      result = result.filter(log => log.createdAt.startsWith(yesterday));
-    } else if (dateMode === 'CUSTOM' && dateStr.trim()) {
-      result = result.filter(log => log.createdAt.startsWith(dateStr.trim()));
-    }
-
     setFilteredLogs(result);
   };
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
-    applyFilters(logs, text, statusFilter, dateFilter, customDate);
+    applyFilters(logs, text, statusFilter);
   };
 
   const handleFilterChange = (filter: typeof statusFilter) => {
     setStatusFilter(filter);
-    applyFilters(logs, searchQuery, filter, dateFilter, customDate);
-  };
-
-  const handleDateFilterChange = (mode: typeof dateFilter) => {
-    setDateFilter(mode);
-    applyFilters(logs, searchQuery, statusFilter, mode, customDate);
-  };
-
-  const handleCustomDateChange = (text: string) => {
-    setCustomDate(text);
-    applyFilters(logs, searchQuery, statusFilter, 'CUSTOM', text);
+    applyFilters(logs, searchQuery, filter);
   };
 
   const handleSync = async () => {
@@ -180,11 +149,9 @@ export function OfflineLogsScreen(): React.JSX.Element {
   };
 
   useEffect(() => {
-    if (isFocused) {
-      fetchLogs();
-    }
+    fetchLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFocused]);
+  }, []);
 
   // Summary Metrics
   const totalCount = logs.length;
@@ -195,12 +162,13 @@ export function OfflineLogsScreen(): React.JSX.Element {
 
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
-      <AppHeader
-        title="Offline Logs"
-        subtitle="Review locally stored authentication and sync records."
-        statusLabel={`${pendingSyncCount} pending sync`}
-        status={pendingSyncCount > 0 ? 'warning' : 'success'}
-      />
+      <View style={styles.syncStatusRow}>
+        <StatusBadge
+          compact
+          label={`${pendingSyncCount} pending sync`}
+          status={pendingSyncCount > 0 ? 'warning' : 'success'}
+        />
+      </View>
 
       {/* Metrics Cards */}
       <View style={styles.metricsRow}>
@@ -324,40 +292,6 @@ export function OfflineLogsScreen(): React.JSX.Element {
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* Date Filter Bar */}
-        <View style={[styles.filterBar, {marginTop: 8}]}>
-          {(['ALL', 'TODAY', 'YESTERDAY', 'CUSTOM'] as const).map(mode => (
-            <TouchableOpacity
-              key={mode}
-              onPress={() => handleDateFilterChange(mode)}
-              style={[
-                styles.filterTab,
-                dateFilter === mode && styles.activeFilterTab,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  dateFilter === mode && styles.activeFilterText,
-                ]}
-              >
-                {mode}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Custom Date Input */}
-        {dateFilter === 'CUSTOM' ? (
-          <TextInput
-            onChangeText={handleCustomDateChange}
-            placeholder="Enter date (YYYY-MM-DD)..."
-            placeholderTextColor="#94a3b8"
-            style={[styles.searchInput, {marginTop: 8}]}
-            value={customDate}
-          />
-        ) : null}
       </View>
 
       {/* Logs List */}
@@ -483,9 +417,12 @@ const styles = StyleSheet.create({
   container: {
     paddingBottom: 32,
   },
+  syncStatusRow: {
+    marginBottom: 8,
+  },
   metricsRow: {
     flexDirection: 'row',
-    marginTop: 16,
+    marginTop: 8,
   },
   metricCard: {
     flex: 1,
