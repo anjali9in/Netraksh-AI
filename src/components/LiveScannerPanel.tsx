@@ -760,18 +760,6 @@ export function LiveScannerPanel({
               ]}
             />
             <View style={[styles.targetBorder, {borderColor: faceDetected ? '#10b981' : '#ef4444'}]} />
-            
-            {/* Silhouette outline helper */}
-            <View style={styles.silhouetteWrapper}>
-              <Svg height="120" width="120" viewBox="0 0 100 100">
-                <Path
-                  d="M 50,20 C 38,20 28,30 28,45 C 28,62 38,72 50,78 C 62,72 72,62 72,45 C 72,30 62,20 50,20 Z M 50,78 L 50,85 M 40,85 L 60,85"
-                  stroke="rgba(255, 255, 255, 0.35)"
-                  strokeWidth="2.5"
-                  fill="none"
-                />
-              </Svg>
-            </View>
           </View>
         </View>
 
@@ -1044,9 +1032,6 @@ const styles = StyleSheet.create({
     height: 220,
     position: 'absolute',
     width: 220,
-  },
-  silhouetteWrapper: {
-    opacity: 0.8,
   },
   hudInstructionBox: {
     alignItems: 'center',

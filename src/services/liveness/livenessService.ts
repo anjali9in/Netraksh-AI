@@ -85,17 +85,13 @@ export class LivenessService {
   ): LivenessSessionState {
     this.relaxedMode = options?.relaxed ?? false;
     this.parallelMode = options?.parallel ?? false;
-    const pool: LivenessChallengeType[] = challengesToInclude || [
+    const pool: LivenessChallengeType[] = [
+      'HEAD_TURN',
       'BLINK',
       'SMILE',
-      'HEAD_TURN',
     ];
 
-    const selectedTypes = challengesToInclude
-      ? [...challengesToInclude]
-      : [...pool]
-          .sort(() => 0.5 - Math.random())
-          .slice(0, Math.max(2, pool.length));
+    const selectedTypes = challengesToInclude || pool;
 
     this.activeChallenges = selectedTypes.map(type => {
       let instruction = '';
