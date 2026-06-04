@@ -26,9 +26,9 @@ describe('Similarity Utility', () => {
     expect(score).toBeCloseTo(0.0, 5);
   });
 
-  it('should correctly identify a face as matched above ArcFace threshold (0.68)', () => {
+  it('should correctly identify a face as matched above MobileFaceNet threshold (0.75)', () => {
     const stored = [0.9, 0.1, 0.2];
-    const current = [0.88, 0.12, 0.22]; // very similar — cosine score well above 0.68
+    const current = [0.88, 0.12, 0.22]; // very similar — cosine score well above 0.75
     const matched = isFaceMatched(stored, current);
     expect(matched).toBe(true);
   });
@@ -59,15 +59,15 @@ describe('Dynamic Threshold', () => {
     expect(condition).toBe('HARSH_LIGHT');
   });
 
-  it('should raise threshold in low light conditions above ArcFace baseline (0.68)', () => {
-    const result = getDynamicThreshold(30); // low light → baseline 0.68 + 0.07 = 0.75
-    expect(result.threshold).toBeGreaterThan(0.68); // raised above ArcFace baseline
+  it('should raise threshold in low light conditions above MobileFaceNet baseline (0.75)', () => {
+    const result = getDynamicThreshold(30); // low light → baseline 0.75 + 0.07 = 0.82
+    expect(result.threshold).toBeGreaterThan(0.75); // raised above MobileFaceNet baseline
     expect(result.condition).toBe('LOW_LIGHT');
   });
 
-  it('should use ArcFace baseline threshold 0.68 in optimal lighting', () => {
+  it('should use MobileFaceNet baseline threshold 0.75 in optimal lighting', () => {
     const result = getDynamicThreshold(120); // optimal
-    expect(result.threshold).toBe(0.68);
+    expect(result.threshold).toBe(0.75);
   });
 
   it('should further raise threshold if image quality is low', () => {
@@ -80,12 +80,12 @@ describe('Dynamic Threshold', () => {
 // ─────────────────────────────────────────────────────────
 // TEST 3: Face Embedding Generator (DEMO_MODE)
 // ─────────────────────────────────────────────────────────
-describe('FaceEmbeddingGenerator (DEMO_MODE) — ArcFace-MobileNetV2', () => {
-  it('should generate an embedding with exactly 512 dimensions (ArcFace-MobileNetV2)', async () => {
+describe('FaceEmbeddingGenerator (DEMO_MODE) — MobileFaceNet', () => {
+  it('should generate an embedding with exactly 128 dimensions (MobileFaceNet)', async () => {
     const embedding = await faceEmbeddingGenerator.generateEmbedding(
       'test_face.jpg',
     );
-    expect(embedding.length).toBe(512); // upgraded from 128 (MobileFaceNet) → 512 (ArcFace)
+    expect(embedding.length).toBe(128); // 128-dim MobileFaceNet
   });
 
   it('should return a normalized unit vector (L2 norm ≈ 1.0)', async () => {
