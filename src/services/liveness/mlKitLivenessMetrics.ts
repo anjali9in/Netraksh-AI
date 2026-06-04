@@ -178,6 +178,9 @@ export function extractLivenessMetrics(face: Face): {
       toLandmark(landmarks.noseBase.position),
       toLandmark(landmarks.rightCheek.position),
     ]);
+  } else if (Math.abs(face.rotationY) > 8) {
+    // Fallback when cheek landmarks missing (common on some devices)
+    yawRatio = face.rotationY < 0 ? 1.75 : 0.45;
   }
 
   return {
@@ -188,3 +191,5 @@ export function extractLivenessMetrics(face: Face): {
     smilingProbability: face.smilingProbability,
   };
 }
+
+export {getMlKitFaceDiagnostics} from './detectFaceInPhoto';

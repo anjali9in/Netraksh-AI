@@ -12,10 +12,15 @@ import RNFS from 'react-native-fs';
 import {Camera, useCameraDevice} from 'react-native-vision-camera';
 import Svg, {Circle, Defs, Mask, Path, Rect} from 'react-native-svg';
 
-import FaceDetection, {type Face} from '@react-native-ml-kit/face-detection';
+import type {Face} from '@react-native-ml-kit/face-detection';
 import type {Orientation} from 'react-native-vision-camera';
 
 import {miniFasAntiSpoofing} from '../ai/miniFasAntiSpoofing';
+import {
+  detectFacesInPhoto,
+  getMlKitFaceDiagnostics,
+  ML_KIT_FACE_DETECT_OPTIONS,
+} from '../services/liveness/detectFaceInPhoto';
 import {livenessService, LivenessSessionState} from '../services/liveness/livenessService';
 import {
   buildChallengeRows,
@@ -45,20 +50,6 @@ const REQUIRED_ALIGNED_FRAMES = 1;
 const FACE_ALIGNMENT_TIMEOUT_MS = 30000;
 const LIVENESS_CHALLENGE_TIMEOUT_MS = 15000;
 const LIVENESS_FRAME_INTERVAL_MS = 400;
-
-const ML_KIT_ALIGN_OPTIONS = {
-  performanceMode: 'fast' as const,
-  landmarkMode: 'none' as const,
-  minFaceSize: 0.1,
-};
-
-const ML_KIT_LIVENESS_OPTIONS = {
-  landmarkMode: 'all' as const,
-  contourMode: 'all' as const,
-  classificationMode: 'all' as const,
-  performanceMode: 'accurate' as const,
-  minFaceSize: 0.1,
-};
 
 type CameraPermissionStatus =
   | 'not-determined'
@@ -111,7 +102,6 @@ export function LiveScannerPanel({
   const isDetectingFrameRef = useRef(false);
   const sessionStartedRef = useRef(false);
   const isCapturingRef = useRef(false);
-  const lastChallengeIndexRef = useRef<number>(0);
   const challengeTickCountRef = useRef<number>(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const hasRequestedPermission = useRef(false);
@@ -322,7 +312,6 @@ export function LiveScannerPanel({
     startTimeRef.current = Date.now();
     faceDetectionTimeRef.current = null;
     consecutiveAlignedRef.current = 0;
-    lastChallengeIndexRef.current = 0;
     challengeTickCountRef.current = 0;
     setFaceDetected(false);
     setAlignmentMessage('Position your face in the circle');
@@ -367,7 +356,7 @@ export function LiveScannerPanel({
         return;
       }
 
-      const inLivenessPhase = Boolean(faceDetectionTimeRef.current);
+      let inLivenessPhase = Boolean(faceDetectionTimeRef.current);
 
       if (inLivenessPhase && !isEnrollmentMode) {
         const challengeElapsed =
@@ -394,9 +383,13 @@ export function LiveScannerPanel({
         });
         capturePath = photo.path;
 
-        const faces = await FaceDetection.detect(
-          toFileUri(photo.path),
-          inLivenessPhase ? ML_KIT_LIVENESS_OPTIONS : ML_KIT_ALIGN_OPTIONS,
+        const faces = await detectFacesInPhoto(
+          photo.path,
+          photo.width,
+          photo.height,
+          photo.orientation,
+          ML_KIT_FACE_DETECT_OPTIONS,
+          device?.position === 'front',
         );
 
         if (cancelled) {
@@ -429,6 +422,7 @@ export function LiveScannerPanel({
               );
               setFaceDetected(true);
               faceDetectionTimeRef.current = Date.now();
+              inLivenessPhase = true;
               const session = livenessService.resetSession(undefined, {
                 relaxed: isEnrollmentMode,
               });
@@ -441,24 +435,30 @@ export function LiveScannerPanel({
             consecutiveAlignedRef.current = 0;
             setFaceDetected(false);
             setAlignmentMessage(analysis.message);
+            return;
           }
+        }
+
+        if (!inLivenessPhase) {
           return;
         }
 
         if (!faces.length) {
+          console.log(
+            '[LiveScannerPanel] Liveness: ML Kit returned 0 faces on this frame',
+          );
           setLiveChallengeHint('Keep your face in the circle…');
           return;
         }
 
         const face = faces[0];
+        const diagnostics = getMlKitFaceDiagnostics(face);
         const metricsValues = extractLivenessMetrics(face);
         setMetrics(metricsValues);
 
-        if (__DEV__) {
-          console.log(
-            `[LiveScannerPanel] Liveness metrics eye=${metricsValues.avgEyeOpen?.toFixed(2) ?? 'n/a'} smile=${metricsValues.smilingProbability?.toFixed(2) ?? 'n/a'} ear=${metricsValues.ear.toFixed(2)}`,
-          );
-        }
+        console.log(
+          `[LiveScannerPanel] Liveness tick #${++challengeTickCountRef.current} contours(L/R)=${diagnostics.leftEyeContourPoints}/${diagnostics.rightEyeContourPoints} landmarks=${diagnostics.landmarkKeys.length} eye=${diagnostics.avgEyeOpen?.toFixed(2) ?? 'n/a'} smile=${diagnostics.smilingProbability?.toFixed(2) ?? 'n/a'} ear=${metricsValues.ear.toFixed(2)} mar=${metricsValues.mar.toFixed(2)} yaw=${metricsValues.yawRatio.toFixed(2)}`,
+        );
 
         const updatedState = livenessService.processFrame(
           metricsValues.ear,
@@ -550,105 +550,6 @@ export function LiveScannerPanel({
     isCameraActive,
     device,
     cameraReady,
-    isEnrollmentMode,
-    onLivenessFailed,
-  ]);
-
-  // Enrollment: capture after the face stays aligned
-  useEffect(() => {
-    if (!faceDetected || !isEnrollmentMode || !faceDetectionTimeRef.current) {
-      return;
-    }
-
-    const detectedAt = faceDetectionTimeRef.current;
-    const delay = Math.max(
-      0,
-      ENROLLMENT_CAPTURE_DELAY_MS - (Date.now() - detectedAt),
-    );
-    const captureTimer = setTimeout(() => {
-      void capturePhoto();
-    }, delay);
-
-    return () => clearTimeout(captureTimer);
-  }, [capturePhoto, faceDetected, isEnrollmentMode]);
-
-  // Authentication: liveness challenges after a real face is detected
-  useEffect(() => {
-    if (!faceDetected || isEnrollmentMode || !faceDetectionTimeRef.current) {
-      return;
-    }
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    timerRef.current = setInterval(() => {
-      if (!isCameraActive || !faceDetectionTimeRef.current) {
-        return;
-      }
-
-      const challengeElapsed = Date.now() - faceDetectionTimeRef.current;
-
-      if (challengeElapsed > 15000) {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-        setFaceDetected(false);
-        faceDetectionTimeRef.current = null;
-        console.log('[LiveScannerPanel] Liveness check timed out. Rejecting.');
-        onLivenessFailed?.('Liveness check timed out');
-        return;
-      }
-
-      const state = livenessService.getSessionState();
-      const currentChallenge = state.challenges[state.currentChallengeIndex];
-
-      if (!currentChallenge) {
-        void handleLivenessSuccess();
-        return;
-      }
-
-      // Track challenge ticks and reset on transition
-      if (state.currentChallengeIndex !== lastChallengeIndexRef.current) {
-        lastChallengeIndexRef.current = state.currentChallengeIndex;
-        challengeTickCountRef.current = 0;
-      } else {
-        challengeTickCountRef.current++;
-      }
-
-      // 1 tick = 100ms, so tick count * 100 simulates milliseconds elapsed for the current challenge
-      const currentChallengeTimeMs = challengeTickCountRef.current * 100;
-
-      // Simulate metrics dynamically according to current challenge type based on currentChallengeTimeMs
-      const sim = livenessService.getSimulatedMetrics(
-        currentChallenge.type,
-        currentChallengeTimeMs,
-      );
-      setMetrics(sim);
-
-      const updatedState = livenessService.processFrame(
-        sim.ear,
-        sim.mar,
-        sim.yawRatio,
-      );
-      setLivenessState(updatedState);
-
-      if (updatedState.isComplete && updatedState.isPassed) {
-        void handleLivenessSuccess();
-      }
-    }, 100);
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [
-    faceDetected,
-    handleLivenessSuccess,
-    isCameraActive,
     isEnrollmentMode,
     onLivenessFailed,
   ]);

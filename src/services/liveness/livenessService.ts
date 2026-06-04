@@ -312,7 +312,7 @@ export class LivenessService {
       }
 
       case 'HEAD_TURN': {
-        const framesRequired = this.relaxedMode ? 2 : 3;
+        const framesRequired = this.relaxedMode ? 1 : 2;
         if (yawRatioVal < 0.6 || yawRatioVal > 1.6) {
           this.headTurnFramesCount++;
           if (this.headTurnFramesCount >= framesRequired) {
@@ -373,20 +373,18 @@ export class LivenessService {
         break;
 
       case 'SMILE':
-        // Smile builds up: reach wide smile (>SMILE_THRESHOLD) by tick 10 (1000ms) and hold it
         if (tick >= 10) {
-          mar = SMILE_THRESHOLD + 0.05; // 0.55
+          mar = SMILE_MAR_DETECTED + 0.15;
         } else {
-          mar = 0.18 + (tick / 10) * (SMILE_THRESHOLD - 0.18 + 0.05);
+          mar = 0.18 + (tick / 10) * (SMILE_MAR_DETECTED + 0.05);
         }
         break;
 
       case 'HEAD_TURN':
-        // Turn head: reach turn (>HEAD_TURN_LEFT_THRESHOLD) by tick 10 (1000ms) and hold it
         if (tick >= 10) {
-          yawRatio = HEAD_TURN_LEFT_THRESHOLD + 0.1; // 1.7
+          yawRatio = 1.7;
         } else {
-          yawRatio = 1.0 + (tick / 10) * (HEAD_TURN_LEFT_THRESHOLD - 1.0 + 0.1);
+          yawRatio = 1.0 + (tick / 10) * 0.7;
         }
         break;
     }
