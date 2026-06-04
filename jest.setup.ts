@@ -417,6 +417,13 @@ jest.mock('react-native-fast-tflite', () => {
   };
 });
 
+jest.mock('@react-native-ml-kit/face-detection', () => ({
+  __esModule: true,
+  default: {
+    detect: jest.fn().mockResolvedValue([]),
+  },
+}));
+
 jest.mock('./src/ai/imagePixelLoader', () => ({
   loadRawPixelsFromImagePath: jest.fn(
     async (imagePath: string, width: number, height: number) => {

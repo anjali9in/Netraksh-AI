@@ -1,5 +1,8 @@
-/** Maximum combined on-device AI model size (ArcFace only today). */
+/** Maximum combined on-device TFLite model size (ArcFace + MiniFASNet). */
 export const TOTAL_AI_MODEL_BUDGET_MB = 20;
+
+/** Bundled TFLite sizes (bytes): ArcFace ~5.0 MB + MiniFASNet v1 ~5.7 MB. */
+export const BUNDLED_TFLITE_SIZE_BYTES = 5_233_552 + 5_979_004;
 
 export type ModelFormat = 'tflite' | 'onnx' | 'coreml';
 
@@ -41,4 +44,23 @@ export const FACE_RECOGNITION_MODEL: ModelConfig = {
   std: [127.5, 127.5, 127.5],
   quantized: true,
   version: '2.0.0',
+};
+
+/**
+ * MiniFASNet v1 (80×80) — silent anti-spoofing after liveness challenges.
+ * Converted from Silent-Face-Anti-Spoofing (2.7× face crop, BGR float input).
+ */
+export const ANTI_SPOOF_MODEL: ModelConfig = {
+  modelName: 'MiniFASNet-V1-80x80',
+  modelPath: require('../assets/models/minifasnet_v1_80x80.tflite'),
+  modelFormat: 'tflite',
+  inputWidth: 80,
+  inputHeight: 80,
+  inputChannels: 3,
+  embeddingDimension: 3,
+  threshold: 0.5,
+  mean: [0, 0, 0],
+  std: [1, 1, 1],
+  quantized: false,
+  version: '1.0.0',
 };

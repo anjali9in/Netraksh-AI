@@ -1,8 +1,11 @@
 import {
+  BLINK_EAR_ASPECT_CLOSED,
+  BLINK_EAR_ASPECT_OPEN,
+  BLINK_EYE_OPEN_CLOSED,
+  BLINK_EYE_OPEN_OPEN,
   BLINK_THRESHOLD,
-  SMILE_THRESHOLD,
-  HEAD_TURN_LEFT_THRESHOLD,
-  HEAD_TURN_RIGHT_THRESHOLD,
+  SMILE_MAR_DETECTED,
+  SMILE_PROBABILITY_DETECTED,
 } from '../../config/thresholds';
 
 export type LivenessChallengeType = 'BLINK' | 'SMILE' | 'HEAD_TURN';
@@ -29,12 +32,19 @@ export type LivenessSessionState = {
   errorMessage: string | null;
 };
 
+export type LivenessSessionOptions = {
+  /** Easier thresholds and fewer blinks (enrollment). */
+  relaxed?: boolean;
+};
+
 export class LivenessService {
   private activeChallenges: LivenessChallenge[] = [];
   private currentIndex: number = 0;
   private blinkFramesCount: number = 0;
+  private blinkEyePhase: 'open' | 'closed' = 'open';
   private headTurnFramesCount: number = 0;
   private smileFramesCount: number = 0;
+  private relaxedMode: boolean = false;
 
   // Track state of challenges
   private earHistory: number[] = [];
@@ -51,7 +61,9 @@ export class LivenessService {
    */
   public resetSession(
     challengesToInclude?: LivenessChallengeType[],
+    options?: LivenessSessionOptions,
   ): LivenessSessionState {
+    this.relaxedMode = options?.relaxed ?? false;
     const pool: LivenessChallengeType[] = challengesToInclude || [
       'BLINK',
       'SMILE',
@@ -70,8 +82,10 @@ export class LivenessService {
 
       switch (type) {
         case 'BLINK':
-          instruction = 'Blink your eyes twice';
-          targetCount = 2; // require 2 blinks
+          instruction = this.relaxedMode
+            ? 'Blink your eyes once'
+            : 'Blink your eyes twice';
+          targetCount = this.relaxedMode ? 1 : 2;
           break;
         case 'SMILE':
           instruction = 'Smile widely';
@@ -98,6 +112,7 @@ export class LivenessService {
 
     this.currentIndex = 0;
     this.blinkFramesCount = 0;
+    this.blinkEyePhase = 'open';
     this.headTurnFramesCount = 0;
     this.smileFramesCount = 0;
     this.earHistory = [];
@@ -116,7 +131,7 @@ export class LivenessService {
       isComplete && this.activeChallenges.every(c => c.status === 'PASSED');
 
     return {
-      challenges: this.activeChallenges,
+      challenges: this.activeChallenges.map(challenge => ({...challenge})),
       currentChallengeIndex: this.currentIndex,
       isComplete,
       isPassed,
@@ -208,6 +223,8 @@ export class LivenessService {
     earVal: number,
     marVal: number,
     yawRatioVal: number,
+    avgEyeOpenProbability?: number,
+    smilingProbability?: number,
   ): LivenessSessionState {
     const state = this.getSessionState();
     if (state.isComplete) {
@@ -228,47 +245,77 @@ export class LivenessService {
     if (this.yawHistory.length > 50) this.yawHistory.shift();
 
     switch (currentChallenge.type) {
-      case 'BLINK':
-        // Check for blink: EAR drops below threshold, then goes back up
-        // We use a frame counter to ensure it's not a single noisy frame
-        if (earVal < BLINK_THRESHOLD) {
-          this.blinkFramesCount++;
-        } else {
-          // If we had a closed eye for at least 1-2 frames and now it is open again, register a blink
-          if (this.blinkFramesCount >= 1 && this.blinkFramesCount < 30) {
+      case 'BLINK': {
+        const usesEyeProbability =
+          avgEyeOpenProbability !== undefined &&
+          !Number.isNaN(avgEyeOpenProbability);
+
+        if (usesEyeProbability) {
+          if (avgEyeOpenProbability < BLINK_EYE_OPEN_CLOSED) {
+            this.blinkEyePhase = 'closed';
+          } else if (
+            this.blinkEyePhase === 'closed' &&
+            avgEyeOpenProbability > BLINK_EYE_OPEN_OPEN
+          ) {
+            this.blinkEyePhase = 'open';
             currentChallenge.currentCount++;
             console.log(
               `[LivenessService] Blink registered! Count: ${currentChallenge.currentCount}/${currentChallenge.targetCount}`,
             );
           }
-          this.blinkFramesCount = 0;
+        } else {
+          const eyesClosed =
+            earVal < BLINK_EAR_ASPECT_CLOSED || earVal < BLINK_THRESHOLD;
+          const eyesOpen =
+            earVal > BLINK_EAR_ASPECT_OPEN || earVal >= BLINK_THRESHOLD;
+
+          if (eyesClosed) {
+            this.blinkFramesCount++;
+          } else if (eyesOpen) {
+            if (this.blinkFramesCount >= 1 && this.blinkFramesCount < 20) {
+              currentChallenge.currentCount++;
+              console.log(
+                `[LivenessService] Blink registered! Count: ${currentChallenge.currentCount}/${currentChallenge.targetCount}`,
+              );
+            }
+            this.blinkFramesCount = 0;
+          }
         }
 
         if (currentChallenge.currentCount >= currentChallenge.targetCount) {
           this.passCurrentChallenge();
         }
         break;
+      }
 
-      case 'SMILE':
-        // Check for smile: MAR goes above threshold (wide mouth stretching)
-        if (marVal > SMILE_THRESHOLD) {
+      case 'SMILE': {
+        const usesSmileProbability =
+          smilingProbability !== undefined &&
+          !Number.isNaN(smilingProbability);
+        const isSmiling = usesSmileProbability
+          ? smilingProbability >
+            (this.relaxedMode ? 0.35 : SMILE_PROBABILITY_DETECTED)
+          : marVal > (this.relaxedMode ? 0.3 : SMILE_MAR_DETECTED);
+        const framesRequired = this.relaxedMode ? 2 : 3;
+
+        if (isSmiling) {
           this.smileFramesCount++;
-          if (this.smileFramesCount >= 3) {
-            // held for 3 frames
+          if (this.smileFramesCount >= framesRequired) {
             currentChallenge.currentCount++;
+            console.log('[LivenessService] Smile registered!');
             this.passCurrentChallenge();
           }
         } else {
           this.smileFramesCount = 0;
         }
         break;
+      }
 
-      case 'HEAD_TURN':
-        // Check for head turn: Yaw ratio < right turn threshold or > left turn threshold
-        if (yawRatioVal < HEAD_TURN_RIGHT_THRESHOLD || yawRatioVal > HEAD_TURN_LEFT_THRESHOLD) {
+      case 'HEAD_TURN': {
+        const framesRequired = this.relaxedMode ? 2 : 3;
+        if (yawRatioVal < 0.6 || yawRatioVal > 1.6) {
           this.headTurnFramesCount++;
-          if (this.headTurnFramesCount >= 3) {
-            // held head turn for 3 frames
+          if (this.headTurnFramesCount >= framesRequired) {
             currentChallenge.currentCount++;
             this.passCurrentChallenge();
           }
@@ -276,6 +323,7 @@ export class LivenessService {
           this.headTurnFramesCount = 0;
         }
         break;
+      }
     }
 
     return this.getSessionState();

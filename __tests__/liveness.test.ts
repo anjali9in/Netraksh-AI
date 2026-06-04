@@ -100,6 +100,26 @@ describe('Liveness Service Unit Tests', () => {
       expect(finalState.isPassed).toBe(true);
     });
 
+    it('should register blinks from ML Kit eye-open probability', () => {
+      service.resetSession(['BLINK']);
+
+      service.processFrame(0.3, 0.15, 1.0, 0.7);
+      service.processFrame(0.3, 0.15, 1.0, 0.4);
+      const state = service.processFrame(0.3, 0.15, 1.0, 0.7);
+
+      expect(state.challenges[0].currentCount).toBe(1);
+    });
+
+    it('should register smile from ML Kit smiling probability', () => {
+      service.resetSession(['SMILE'], {relaxed: true});
+
+      service.processFrame(0.3, 0.2, 1.0, 0.8, 0.5);
+      const state = service.processFrame(0.3, 0.2, 1.0, 0.8, 0.5);
+
+      expect(state.isComplete).toBe(true);
+      expect(state.isPassed).toBe(true);
+    });
+
     it('should process frames and increment counts for BLINK challenge', () => {
       service.resetSession(['BLINK']);
 

@@ -12,26 +12,53 @@ import RNFS from 'react-native-fs';
 import {Camera, useCameraDevice} from 'react-native-vision-camera';
 import Svg, {Circle, Defs, Mask, Path, Rect} from 'react-native-svg';
 
-import {analyzeFaceAlignment} from '../ai/faceAlignment';
+import FaceDetection, {type Face} from '@react-native-ml-kit/face-detection';
+import type {Orientation} from 'react-native-vision-camera';
+
+import {miniFasAntiSpoofing} from '../ai/miniFasAntiSpoofing';
 import {livenessService, LivenessSessionState} from '../services/liveness/livenessService';
+import {
+  buildChallengeRows,
+  detectChallengePulse,
+  getLiveChallengeHint,
+} from '../services/liveness/livenessChallengeFeedback';
+import {evaluateMlKitFaceAlignment} from '../services/liveness/mlKitFaceAlignment';
+import {extractLivenessMetrics} from '../services/liveness/mlKitLivenessMetrics';
 import {normalizeCapturedPhoto} from '../utils/normalizeCapturedPhoto';
+import {toFileUri} from '../utils/fileUtils';
 import {PrimaryButton} from './PrimaryButton';
 
 export type LiveScannerMode = 'liveness' | 'enrollment';
 
 type LiveScannerPanelProps = {
   employeeId: string;
-  /** Liveness challenges for auth; enrollment only aligns face then captures. */
+  /** Enrollment vs auth copy only; both run the same liveness challenges. */
   scanMode?: LiveScannerMode;
   onLivenessComplete: (imagePath: string) => void;
   onLivenessFailed?: (reason: string) => void;
   onCancel: () => void;
 };
 
-const ENROLLMENT_CAPTURE_DELAY_MS = 1500;
-const FACE_POLL_INTERVAL_MS = 900;
-const REQUIRED_ALIGNED_FRAMES = 2;
+const FACE_POLL_INTERVAL_MS = 500;
+const REQUIRED_ALIGNED_FRAMES = 1;
+/** Auth only — enrollment has no alignment/liveness time limit. */
 const FACE_ALIGNMENT_TIMEOUT_MS = 30000;
+const LIVENESS_CHALLENGE_TIMEOUT_MS = 15000;
+const LIVENESS_FRAME_INTERVAL_MS = 400;
+
+const ML_KIT_ALIGN_OPTIONS = {
+  performanceMode: 'fast' as const,
+  landmarkMode: 'none' as const,
+  minFaceSize: 0.1,
+};
+
+const ML_KIT_LIVENESS_OPTIONS = {
+  landmarkMode: 'all' as const,
+  contourMode: 'all' as const,
+  classificationMode: 'all' as const,
+  performanceMode: 'accurate' as const,
+  minFaceSize: 0.1,
+};
 
 type CameraPermissionStatus =
   | 'not-determined'
@@ -61,7 +88,16 @@ export function LiveScannerPanel({
 
   // Liveness session states
   const [livenessState, setLivenessState] = useState<LivenessSessionState | null>(null);
-  const [metrics, setMetrics] = useState({ear: 0.32, mar: 0.18, yawRatio: 1.0});
+  const [metrics, setMetrics] = useState<{
+    ear: number;
+    mar: number;
+    yawRatio: number;
+    avgEyeOpen?: number;
+    smilingProbability?: number;
+  }>({ear: 0.32, mar: 0.18, yawRatio: 1.0});
+  const [challengePulse, setChallengePulse] = useState<string | null>(null);
+  const [liveChallengeHint, setLiveChallengeHint] = useState<string | null>(null);
+  const prevLivenessStateRef = useRef<LivenessSessionState | null>(null);
 
   const frontDevice = useCameraDevice('front');
   const backDevice = useCameraDevice('back');
@@ -79,6 +115,13 @@ export function LiveScannerPanel({
   const challengeTickCountRef = useRef<number>(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const hasRequestedPermission = useRef(false);
+  const lastLivenessCaptureRef = useRef<{
+    path: string;
+    width: number;
+    height: number;
+    orientation?: Orientation;
+    face: Face;
+  } | null>(null);
 
   const isCameraActive =
     isScreenFocused && appState === 'active' && hasPermission;
@@ -189,10 +232,74 @@ export function LiveScannerPanel({
     }
   }, [device, onLivenessComplete]);
 
-  // Handle liveness complete and silent capture
+  const clearLastLivenessCapture = useCallback(async () => {
+    const previous = lastLivenessCaptureRef.current;
+    lastLivenessCaptureRef.current = null;
+    if (previous?.path) {
+      await RNFS.unlink(previous.path).catch(() => undefined);
+    }
+  }, []);
+
+  // ML Kit challenges → MiniFASNet spoof check → ArcFace image handoff
   const handleLivenessSuccess = useCallback(async () => {
-    await capturePhoto();
-  }, [capturePhoto]);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    const capture = lastLivenessCaptureRef.current;
+    await clearLastLivenessCapture();
+
+    if (!capture?.path || !capture.face) {
+      await capturePhoto();
+      return;
+    }
+
+    try {
+      const spoof = await miniFasAntiSpoofing.verify(
+        capture.path,
+        capture.face,
+        capture.width,
+        capture.height,
+      );
+
+      if (!spoof.isLive) {
+        console.log('[LiveScannerPanel] Anti-spoof check failed.');
+        setFaceDetected(false);
+        faceDetectionTimeRef.current = null;
+        setLivenessState(
+          livenessService.resetSession(undefined, {relaxed: isEnrollmentMode}),
+        );
+        onLivenessFailed?.(
+          'Presentation attack detected. Use your live face, not a photo or screen.',
+        );
+        await RNFS.unlink(capture.path).catch(() => undefined);
+        return;
+      }
+
+      const upright = await normalizeCapturedPhoto(
+        capture.path,
+        capture.width,
+        capture.height,
+        capture.orientation,
+        {isFrontCamera: device?.position === 'front'},
+      );
+      onLivenessComplete(upright.path);
+      if (upright.path !== capture.path) {
+        await RNFS.unlink(capture.path).catch(() => undefined);
+      }
+    } catch (error) {
+      console.error('[LiveScannerPanel] Post-liveness pipeline failed:', error);
+      onLivenessFailed?.('Verification failed. Please try again.');
+      await RNFS.unlink(capture.path).catch(() => undefined);
+    }
+  }, [
+    capturePhoto,
+    clearLastLivenessCapture,
+    device?.position,
+    onLivenessComplete,
+    onLivenessFailed,
+  ]);
 
   // Begin a single scan session when the camera is ready
   useEffect(() => {
@@ -219,10 +326,16 @@ export function LiveScannerPanel({
     challengeTickCountRef.current = 0;
     setFaceDetected(false);
     setAlignmentMessage('Position your face in the circle');
-    setLivenessState(isEnrollmentMode ? null : livenessService.resetSession());
+    const initialSession = livenessService.resetSession(undefined, {
+      relaxed: isEnrollmentMode,
+    });
+    setLivenessState(initialSession);
+    prevLivenessStateRef.current = initialSession;
+    setChallengePulse(null);
+    setLiveChallengeHint(null);
   }, [hasPermission, isCameraActive, device, cameraReady, isEnrollmentMode]);
 
-  // Alignment check via src/ai (pixels only — ArcFace runs at capture/enroll)
+  // One camera loop: alignment until green, then liveness on every frame (no gap)
   useEffect(() => {
     if (
       !sessionStartedRef.current ||
@@ -238,22 +351,36 @@ export function LiveScannerPanel({
     let pollTimeout: NodeJS.Timeout | null = null;
 
     const scheduleNextPoll = () => {
-      if (cancelled || faceDetectionTimeRef.current) {
+      if (cancelled) {
         return;
       }
+      const delay = faceDetectionTimeRef.current
+        ? LIVENESS_FRAME_INTERVAL_MS
+        : FACE_POLL_INTERVAL_MS;
       pollTimeout = setTimeout(() => {
-        void runFacePoll().finally(scheduleNextPoll);
-      }, FACE_POLL_INTERVAL_MS);
+        void runScannerFrame().finally(scheduleNextPoll);
+      }, delay);
     };
 
-    const runFacePoll = async () => {
-      if (
-        cancelled ||
-        faceDetectionTimeRef.current ||
-        isDetectingFrameRef.current ||
-        !cameraRef.current
-      ) {
+    const runScannerFrame = async () => {
+      if (cancelled || isDetectingFrameRef.current || !cameraRef.current) {
         return;
+      }
+
+      const inLivenessPhase = Boolean(faceDetectionTimeRef.current);
+
+      if (inLivenessPhase && !isEnrollmentMode) {
+        const challengeElapsed =
+          Date.now() - (faceDetectionTimeRef.current ?? Date.now());
+        if (challengeElapsed > LIVENESS_CHALLENGE_TIMEOUT_MS) {
+          cancelled = true;
+          setFaceDetected(false);
+          faceDetectionTimeRef.current = null;
+          void clearLastLivenessCapture();
+          console.log('[LiveScannerPanel] Liveness check timed out. Rejecting.');
+          onLivenessFailed?.('Liveness check timed out');
+          return;
+        }
       }
 
       isDetectingFrameRef.current = true;
@@ -267,34 +394,113 @@ export function LiveScannerPanel({
         });
         capturePath = photo.path;
 
-        const analysis = await analyzeFaceAlignment(photo.path);
-        if (cancelled || faceDetectionTimeRef.current) {
+        const faces = await FaceDetection.detect(
+          toFileUri(photo.path),
+          inLivenessPhase ? ML_KIT_LIVENESS_OPTIONS : ML_KIT_ALIGN_OPTIONS,
+        );
+
+        if (cancelled) {
           return;
         }
 
-        if (analysis.hint === 'aligned') {
-          consecutiveAlignedRef.current += 1;
-          setAlignmentMessage(analysis.message);
+        if (!inLivenessPhase) {
+          const analysis =
+            faces.length > 0
+              ? evaluateMlKitFaceAlignment(
+                  faces[0],
+                  photo.width,
+                  photo.height,
+                )
+              : {
+                  detected: false,
+                  confidence: 0,
+                  hint: 'no_face' as const,
+                  message:
+                    'No face detected — position your face in the circle',
+                };
 
-          if (consecutiveAlignedRef.current >= REQUIRED_ALIGNED_FRAMES) {
-            console.log(
-              '[LiveScannerPanel] Face detected in frame. Outline turned green.',
-            );
-            setFaceDetected(true);
-            faceDetectionTimeRef.current = Date.now();
-            if (!isEnrollmentMode) {
-              setLivenessState(livenessService.resetSession());
+          if (analysis.hint === 'aligned') {
+            consecutiveAlignedRef.current += 1;
+            setAlignmentMessage(analysis.message);
+
+            if (consecutiveAlignedRef.current >= REQUIRED_ALIGNED_FRAMES) {
+              console.log(
+                '[LiveScannerPanel] Face detected in frame. Outline turned green.',
+              );
+              setFaceDetected(true);
+              faceDetectionTimeRef.current = Date.now();
+              const session = livenessService.resetSession(undefined, {
+                relaxed: isEnrollmentMode,
+              });
+              setLivenessState(session);
+              prevLivenessStateRef.current = session;
+              setChallengePulse(null);
+              setLiveChallengeHint(null);
             }
+          } else {
+            consecutiveAlignedRef.current = 0;
+            setFaceDetected(false);
+            setAlignmentMessage(analysis.message);
           }
-        } else {
-          consecutiveAlignedRef.current = 0;
-          setFaceDetected(false);
-          setAlignmentMessage(analysis.message);
+          return;
+        }
+
+        if (!faces.length) {
+          setLiveChallengeHint('Keep your face in the circle…');
+          return;
+        }
+
+        const face = faces[0];
+        const metricsValues = extractLivenessMetrics(face);
+        setMetrics(metricsValues);
+
+        if (__DEV__) {
+          console.log(
+            `[LiveScannerPanel] Liveness metrics eye=${metricsValues.avgEyeOpen?.toFixed(2) ?? 'n/a'} smile=${metricsValues.smilingProbability?.toFixed(2) ?? 'n/a'} ear=${metricsValues.ear.toFixed(2)}`,
+          );
+        }
+
+        const updatedState = livenessService.processFrame(
+          metricsValues.ear,
+          metricsValues.mar,
+          metricsValues.yawRatio,
+          metricsValues.avgEyeOpen,
+          metricsValues.smilingProbability,
+        );
+
+        const pulse = detectChallengePulse(
+          prevLivenessStateRef.current,
+          updatedState,
+        );
+        if (pulse) {
+          setChallengePulse(pulse);
+        }
+        prevLivenessStateRef.current = updatedState;
+        setLiveChallengeHint(getLiveChallengeHint(updatedState, metricsValues));
+        setLivenessState(updatedState);
+
+        const previous = lastLivenessCaptureRef.current;
+        lastLivenessCaptureRef.current = {
+          path: photo.path,
+          width: photo.width,
+          height: photo.height,
+          orientation: photo.orientation,
+          face,
+        };
+        capturePath = undefined;
+
+        if (previous?.path && previous.path !== photo.path) {
+          await RNFS.unlink(previous.path).catch(() => undefined);
+        }
+
+        if (updatedState.isComplete && updatedState.isPassed) {
+          void handleLivenessSuccess();
         }
       } catch (error) {
-        console.warn('[LiveScannerPanel] Face detection frame failed:', error);
-        consecutiveAlignedRef.current = 0;
-        setAlignmentMessage('Scanning for your face...');
+        console.warn('[LiveScannerPanel] Scanner frame failed:', error);
+        if (!faceDetectionTimeRef.current) {
+          setAlignmentMessage('Scanning for your face...');
+        }
       } finally {
         if (capturePath) {
           RNFS.unlink(capturePath).catch(() => undefined);
@@ -303,34 +509,43 @@ export function LiveScannerPanel({
       }
     };
 
-    void runFacePoll().finally(scheduleNextPoll);
+    void runScannerFrame().finally(scheduleNextPoll);
 
-    const alignmentTimeout = setInterval(() => {
-      if (faceDetectionTimeRef.current) {
-        return;
-      }
-      if (Date.now() - startTimeRef.current > FACE_ALIGNMENT_TIMEOUT_MS) {
-        cancelled = true;
-        if (pollTimeout) {
-          clearTimeout(pollTimeout);
+    let alignmentTimeout: NodeJS.Timeout | null = null;
+    if (!isEnrollmentMode) {
+      alignmentTimeout = setInterval(() => {
+        if (faceDetectionTimeRef.current) {
+          return;
         }
-        clearInterval(alignmentTimeout);
-        console.log('[LiveScannerPanel] Face alignment timed out.');
-        onLivenessFailed?.(
-          'No face detected. Center your face in the circle and try again.',
-        );
-        sessionStartedRef.current = false;
-      }
-    }, 1000);
+        if (Date.now() - startTimeRef.current > FACE_ALIGNMENT_TIMEOUT_MS) {
+          cancelled = true;
+          if (pollTimeout) {
+            clearTimeout(pollTimeout);
+          }
+          if (alignmentTimeout) {
+            clearInterval(alignmentTimeout);
+          }
+          console.log('[LiveScannerPanel] Face alignment timed out.');
+          onLivenessFailed?.(
+            'No face detected. Center your face in the circle and try again.',
+          );
+          sessionStartedRef.current = false;
+        }
+      }, 1000);
+    }
 
     return () => {
       cancelled = true;
       if (pollTimeout) {
         clearTimeout(pollTimeout);
       }
-      clearInterval(alignmentTimeout);
+      if (alignmentTimeout) {
+        clearInterval(alignmentTimeout);
+      }
     };
   }, [
+    clearLastLivenessCapture,
+    handleLivenessSuccess,
     hasPermission,
     isCameraActive,
     device,
@@ -548,33 +763,115 @@ export function LiveScannerPanel({
         {/* Live HUD instructions badge */}
         <View style={styles.hudInstructionBox}>
           <Text style={[styles.hudInstructionLabel, {color: faceDetected ? '#10b981' : '#ef4444'}]}>
-            {faceDetected
-              ? isEnrollmentMode
-                ? 'FACE DETECTED'
-                : 'VERIFYING LIVENESS'
-              : 'ALIGN FACE'}
+            {faceDetected ? 'VERIFYING LIVENESS' : 'ALIGN FACE'}
           </Text>
           <Text style={styles.hudInstructionText}>
             {faceDetected
-              ? isEnrollmentMode
-                ? 'Hold still — capturing your photo...'
-                : livenessState?.challenges[livenessState.currentChallengeIndex]
-                    ?.instruction || 'Perform the challenge'
+              ? livenessState?.challenges[livenessState.currentChallengeIndex]
+                  ?.instruction || 'Perform the liveness challenge'
               : alignmentMessage}
           </Text>
-          {faceDetected && livenessState && !isEnrollmentMode && (
+          {faceDetected && livenessState ? (
             <Text style={styles.hudStepText}>
-              Step {livenessState.currentChallengeIndex + 1} of {livenessState.challenges.length}
+              Step {livenessState.currentChallengeIndex + 1} of{' '}
+              {livenessState.challenges.length}
             </Text>
-          )}
+          ) : null}
+          {faceDetected && challengePulse ? (
+            <Text style={styles.hudPulseText}>{challengePulse}</Text>
+          ) : null}
+          {faceDetected && liveChallengeHint ? (
+            <Text style={styles.hudHintText}>{liveChallengeHint}</Text>
+          ) : null}
         </View>
       </View>
 
-      {/* Diagnostics HUD Panel (auth liveness only) */}
-      {!isEnrollmentMode ? (
+      {/* Challenge progress (auth liveness only) */}
+      {faceDetected && livenessState ? (
+        <View style={styles.challengeProgressPanel}>
+          <Text style={styles.challengeProgressTitle}>Liveness progress</Text>
+          {buildChallengeRows(livenessState).map((row, index) => (
+            <View key={`${row.title}-${index}`} style={styles.challengeProgressRow}>
+              <Text
+                style={[
+                  styles.challengeProgressIcon,
+                  row.status === 'passed'
+                    ? styles.challengeIconPassed
+                    : row.status === 'active'
+                      ? styles.challengeIconActive
+                      : styles.challengeIconPending,
+                ]}>
+                {row.status === 'passed' ? '✓' : row.status === 'active' ? '●' : '○'}
+              </Text>
+              <View style={styles.challengeProgressCopy}>
+                <Text style={styles.challengeProgressLabel}>{row.title}</Text>
+                <Text
+                  style={[
+                    styles.challengeProgressDetail,
+                    row.status === 'passed' && styles.challengeDetailPassed,
+                  ]}>
+                  {row.detail}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {faceDetected && livenessState ? (
       <View style={styles.diagnosticsPanel}>
-        <Text style={styles.diagnosticsTitle}>🤖 NETRAKSH-AI DIAGNOSTICS HUD</Text>
+        <Text style={styles.diagnosticsTitle}>Live metrics</Text>
         
+        {metrics.avgEyeOpen !== undefined ? (
+          <View style={styles.metricRow}>
+            <View style={styles.metricInfo}>
+              <Text style={styles.metricLabel}>Eye open (ML Kit)</Text>
+              <Text style={styles.metricVal}>
+                {(metrics.avgEyeOpen * 100).toFixed(0)}%
+              </Text>
+            </View>
+            <View style={styles.barContainer}>
+              <View
+                style={[
+                  styles.barFill,
+                  {
+                    width: `${Math.min(100, metrics.avgEyeOpen * 100)}%`,
+                    backgroundColor:
+                      metrics.avgEyeOpen < 0.5 ? '#10b981' : '#3b82f6',
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.metricThreshold}>
+              Close below 50%, open above 55%
+            </Text>
+          </View>
+        ) : null}
+
+        {metrics.smilingProbability !== undefined ? (
+          <View style={styles.metricRow}>
+            <View style={styles.metricInfo}>
+              <Text style={styles.metricLabel}>Smile (ML Kit)</Text>
+              <Text style={styles.metricVal}>
+                {(metrics.smilingProbability * 100).toFixed(0)}%
+              </Text>
+            </View>
+            <View style={styles.barContainer}>
+              <View
+                style={[
+                  styles.barFill,
+                  {
+                    width: `${Math.min(100, metrics.smilingProbability * 100)}%`,
+                    backgroundColor:
+                      metrics.smilingProbability > 0.4 ? '#10b981' : '#ec4899',
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.metricThreshold}>Smile above 40%</Text>
+          </View>
+        ) : null}
+
         <View style={styles.metricRow}>
           <View style={styles.metricInfo}>
             <Text style={styles.metricLabel}>Eye Aspect Ratio (EAR)</Text>
@@ -636,23 +933,6 @@ export function LiveScannerPanel({
       ) : null}
 
       <View style={styles.actionRow}>
-        {__DEV__ && hasPermission && !faceDetected ? (
-          <View style={styles.devSimulateRow}>
-            <PrimaryButton
-              title="Simulate Face Alignment"
-              variant="secondary"
-              onPress={() => {
-                console.log('[LiveScannerPanel] Manual face alignment triggered (dev only).');
-                consecutiveAlignedRef.current = REQUIRED_ALIGNED_FRAMES;
-                setFaceDetected(true);
-                faceDetectionTimeRef.current = Date.now();
-                if (!isEnrollmentMode) {
-                  setLivenessState(livenessService.resetSession());
-                }
-              }}
-            />
-          </View>
-        ) : null}
         <PrimaryButton title="Cancel Scan" onPress={onCancel} />
       </View>
     </View>
@@ -718,9 +998,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     width: '100%',
   },
-  devSimulateRow: {
-    marginBottom: 8,
-  },
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -781,6 +1058,79 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginTop: 2,
+  },
+  hudPulseText: {
+    color: '#6ee7b7',
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 6,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 3,
+  },
+  hudHintText: {
+    color: '#fde68a',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 3,
+  },
+  challengeProgressPanel: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 12,
+  },
+  challengeProgressTitle: {
+    color: '#0f172a',
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  challengeProgressRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    marginBottom: 6,
+  },
+  challengeProgressIcon: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginRight: 8,
+    marginTop: 1,
+    width: 16,
+  },
+  challengeIconPassed: {
+    color: '#10b981',
+  },
+  challengeIconActive: {
+    color: '#3b82f6',
+  },
+  challengeIconPending: {
+    color: '#94a3b8',
+  },
+  challengeProgressCopy: {
+    flex: 1,
+  },
+  challengeProgressLabel: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  challengeProgressDetail: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  challengeDetailPassed: {
+    color: '#059669',
+    fontWeight: '700',
   },
   diagnosticsPanel: {
     backgroundColor: '#0f172a',
