@@ -35,6 +35,7 @@ enum BackgroundSyncScheduler {
     }
   }
 
+  @available(iOS 13.0, *)
   static func handleAppRefresh(task: BGAppRefreshTask) {
     scheduleRefresh(afterMs: 15 * 60 * 1000)
 
