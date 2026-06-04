@@ -23,6 +23,7 @@ export const FOOTER_NAV_ITEMS: NavItem[] = [
 export const ROUTE_TITLES: Record<RouteName, string> = {
   [ROUTES.HOME]: 'Home',
   [ROUTES.ENROLLMENT]: 'Enroll User',
+  [ROUTES.ENROLLMENT_CAPTURE]: 'Face Capture',
   [ROUTES.AUTHENTICATION]: 'Authenticate',
   [ROUTES.OFFLINE_LOGS]: 'Offline Logs',
   [ROUTES.BENCHMARK]: 'Benchmark',

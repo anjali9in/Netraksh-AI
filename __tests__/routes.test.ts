@@ -4,6 +4,7 @@ describe('ROUTES', () => {
   it('defines route names', () => {
     expect(ROUTES.HOME).toBe('Home');
     expect(ROUTES.ENROLLMENT).toBe('Enrollment');
+    expect(ROUTES.ENROLLMENT_CAPTURE).toBe('EnrollmentCapture');
     expect(ROUTES.AUTHENTICATION).toBe('Authentication');
     expect(ROUTES.OFFLINE_LOGS).toBe('OfflineLogs');
     expect(ROUTES.BENCHMARK).toBe('Benchmark');

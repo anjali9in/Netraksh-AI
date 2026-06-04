@@ -45,11 +45,6 @@ export function useFaceCapture({
   const requestCameraPermission = useCallback(async () => {
     setErrorMessage(null);
 
-    if (!canRequestPermission) {
-      setErrorMessage('Camera permission must be enabled from Settings.');
-      return false;
-    }
-
     const result = await Camera.requestCameraPermission();
     const granted = result === 'granted';
     setStatus(result as CameraPermissionStatus);
@@ -59,7 +54,7 @@ export function useFaceCapture({
     }
 
     return granted;
-  }, [canRequestPermission]);
+  }, []);
 
   const openCameraSettings = useCallback(async () => {
     await Linking.openSettings();
@@ -155,17 +150,13 @@ export function useFaceCapture({
   }, [onPhotoCleared]);
 
   useEffect(() => {
-    if (
-      hasPermission ||
-      !canRequestPermission ||
-      hasRequestedPermission.current
-    ) {
+    if (hasPermission || hasRequestedPermission.current) {
       return;
     }
 
     hasRequestedPermission.current = true;
-    requestCameraPermission();
-  }, [canRequestPermission, hasPermission, requestCameraPermission]);
+    void requestCameraPermission();
+  }, [hasPermission, requestCameraPermission]);
 
   return {
     cameraRef,

@@ -3,6 +3,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
 import {AuthenticationScreen} from '../../screens/AuthenticationScreen';
 import {BenchmarkScreen} from '../../screens/BenchmarkScreen';
+import {EnrollmentCaptureScreen} from '../../screens/EnrollmentCaptureScreen';
 import {EnrollmentScreen} from '../../screens/EnrollmentScreen';
 import {HomeScreen} from '../../screens/HomeScreen';
 import {OfflineLogsScreen} from '../../screens/OfflineLogsScreen';
@@ -32,6 +33,11 @@ export function AppNavigator(): React.JSX.Element {
           name={ROUTES.ENROLLMENT}
           component={EnrollmentScreen}
           options={{title: 'Enroll User'}}
+        />
+        <Stack.Screen
+          name={ROUTES.ENROLLMENT_CAPTURE}
+          component={EnrollmentCaptureScreen}
+          options={{title: 'Face Capture'}}
         />
         <Stack.Screen
           name={ROUTES.AUTHENTICATION}
