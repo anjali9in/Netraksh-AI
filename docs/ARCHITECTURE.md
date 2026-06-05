@@ -254,6 +254,6 @@ Lightweight models allow deployment on standard Android devices.
 - Administrative analytics dashboard
 - Bulk employee enrollment
 - Role-based access control
-- Performance optimization for low-end devices
+- Performance optimization for low-end device
 
 ---
