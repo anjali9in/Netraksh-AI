@@ -10,6 +10,7 @@ import {pendingSyncNotificationService} from '../services/sync/pendingSyncNotifi
 import {appPermissionsService} from '../services/permissions/appPermissionsService';
 import {deviceContextService} from '../services/location/deviceContextService';
 import {logger} from '../utils/logger';
+import {cleanupTemporaryCaptureImages} from '../utils/fileUtils';
 import {AppNavigator} from './navigation/AppNavigator';
 
 export default function App(): React.JSX.Element {
@@ -27,6 +28,9 @@ export default function App(): React.JSX.Element {
         await pendingSyncNotificationService.initializePendingSyncNotifications();
 
         InteractionManager.runAfterInteractions(() => {
+          void cleanupTemporaryCaptureImages().catch(error => {
+            logger.warn('Temporary image cleanup skipped', error);
+          });
           void deviceContextService.refreshDeviceLocationContext().catch(
             error => {
               logger.warn('Initial location capture skipped', error);

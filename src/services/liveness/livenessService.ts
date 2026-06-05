@@ -16,11 +16,10 @@ import {
 
 export type LivenessChallengeType = 'BLINK' | 'SMILE' | 'HEAD_TURN';
 
-/** Predictable enrollment flow: turn → blink → smile. */
+/** Predictable lightweight flow: turn → blink. */
 export const ENROLLMENT_CHALLENGE_ORDER: LivenessChallengeType[] = [
   'HEAD_TURN',
   'BLINK',
-  'SMILE',
 ];
 
 export type Landmark = {
@@ -54,7 +53,7 @@ export type LivenessSessionOptions = {
 
 /** Shown when all enrollment challenges are active at once. */
 export const ENROLLMENT_COMBINED_INSTRUCTION =
-  'Turn your head, blink once, and smile (any order)';
+  'Turn your head and blink once (any order)';
 
 export class LivenessService {
   private activeChallenges: LivenessChallenge[] = [];
@@ -87,7 +86,6 @@ export class LivenessService {
     this.parallelMode = options?.parallel ?? false;
     const pool: LivenessChallengeType[] = challengesToInclude || [
       'BLINK',
-      'SMILE',
       'HEAD_TURN',
     ];
 

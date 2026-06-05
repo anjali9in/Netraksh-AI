@@ -119,7 +119,6 @@ function buildSpoofInput(
 export class MiniFasAntiSpoofing {
   private model: TfliteModel | null = null;
   private isLoaded = false;
-  private useFallback = false;
 
   public async loadModel(): Promise<boolean> {
     if (this.isLoaded) {
@@ -135,16 +134,18 @@ export class MiniFasAntiSpoofing {
       const {loadTensorflowModel} = require('react-native-fast-tflite');
       this.model = await loadTensorflowModel(ANTI_SPOOF_MODEL.modelPath);
       this.isLoaded = true;
-      this.useFallback = false;
       return true;
     } catch (error) {
-      console.warn(
-        '[MiniFasAntiSpoofing] Falling back to permissive mode:',
-        error,
+      if (DEMO_MODE) {
+        this.isLoaded = true;
+        return true;
+      }
+      this.isLoaded = false;
+      throw new Error(
+        `MiniFASNet anti-spoof model failed to load: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
-      this.isLoaded = true;
-      this.useFallback = true;
-      return true;
     }
   }
 
@@ -156,7 +157,7 @@ export class MiniFasAntiSpoofing {
   ): Promise<AntiSpoofResult> {
     await this.loadModel();
 
-    if (DEMO_MODE || this.useFallback || imagePath.startsWith('mock://')) {
+    if (DEMO_MODE || imagePath.startsWith('mock://')) {
       return {isLive: true, liveScore: 1, label: 1};
     }
 
@@ -184,7 +185,7 @@ export class MiniFasAntiSpoofing {
 
     const modelInput = buildSpoofInput(pixels, scaledFace, SPOOF_CROP_SCALE);
     if (!this.model) {
-      return {isLive: true, liveScore: 1, label: 1};
+      throw new Error('MiniFASNet anti-spoof model is not initialized');
     }
 
     const output = await this.model.run([modelInput]);

@@ -1,7 +1,7 @@
-/** Maximum combined on-device TFLite model size (ArcFace + MiniFASNet). */
+/** Maximum combined on-device TFLite model size (MobileFaceNet + MiniFASNet). */
 export const TOTAL_AI_MODEL_BUDGET_MB = 20;
 
-/** Bundled TFLite sizes (bytes): ArcFace ~5.0 MB + MiniFASNet v1 ~5.7 MB. */
+/** Bundled TFLite sizes (bytes): MobileFaceNet ~5.0 MB + MiniFASNet v1 ~5.7 MB. */
 export const BUNDLED_TFLITE_SIZE_BYTES = 5_233_552 + 5_979_004;
 
 export type ModelFormat = 'tflite' | 'onnx' | 'coreml';
@@ -22,18 +22,17 @@ export interface ModelConfig {
 }
 
 /**
- * ArcFace-MobileNetV2 — upgraded from MobileFaceNet
+ * MobileFaceNet — lightweight offline recognition model.
  *
- * Accuracy  : 99.77% on LFW benchmark (vs 99.28% MobileFaceNet)
- * Embedding : 512-dim (vs 128-dim) — richer feature space
- * Threshold : 0.68 cosine similarity (lower because 512-dim space is denser)
- * Size      : ~8 MB TFLite INT8 quantized (within 20 MB budget)
- * Input     : 112×112×3 — identical to previous model, no pipeline changes
- * Source    : https://github.com/deepinsight/insightface
+ * Accuracy  : practical mobile baseline for offline field authentication
+ * Embedding : 128-dim normalized vector
+ * Threshold : 0.75 cosine similarity baseline
+ * Size      : ~5 MB TFLite asset, within the 20 MB total model budget
+ * Input     : 112×112×3
  */
 export const FACE_RECOGNITION_MODEL: ModelConfig = {
   modelName: 'MobileFaceNet',
-  modelPath: 'models/mobilefacenet.tflite', // lightweight model, ~5.2 MB (target under 20 MB)
+  modelPath: require('../assets/models/mobilefacenet.tflite'),
   modelFormat: 'tflite',
   inputWidth: 112,
   inputHeight: 112,

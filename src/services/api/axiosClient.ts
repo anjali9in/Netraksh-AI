@@ -1,7 +1,12 @@
 import axios, {AxiosHeaders} from 'axios';
 import type {InternalAxiosRequestConfig} from 'axios';
 
-import {API_BASE_URL, API_TIMEOUT_MS} from '../../config/env';
+import {
+  API_BASE_URL,
+  API_SITE_ID,
+  API_TENANT_ID,
+  API_TIMEOUT_MS,
+} from '../../config/env';
 import {networkService} from '../network/networkService';
 import {secureStorage} from '../storage/secureStorage';
 import {logger} from '../../utils/logger';
@@ -83,6 +88,8 @@ function attachDeviceHeaders(
   >,
 ) {
   const headers = AxiosHeaders.from(config.headers);
+  headers.set('X-Tenant-Id', API_TENANT_ID);
+  headers.set('X-Site-Id', API_SITE_ID);
   headers.set('X-Device-Id', profile.deviceId);
   headers.set('X-Device-Platform', profile.platform);
 

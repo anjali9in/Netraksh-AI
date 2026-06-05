@@ -50,7 +50,7 @@ type LiveScannerPanelProps = {
   employeeId: string;
   /** Enrollment vs auth copy only; both run the same liveness challenges. */
   scanMode?: LiveScannerMode;
-  onLivenessComplete: (imagePath: string) => void;
+  onLivenessComplete: (imagePath: string) => void | Promise<void>;
   onLivenessFailed?: (reason: string) => void;
   onCancel: () => void;
 };
@@ -62,12 +62,26 @@ const FACE_ALIGNMENT_TIMEOUT_MS = 30000;
 const LIVENESS_CHALLENGE_TIMEOUT_MS = 15000;
 const LIVENESS_FRAME_INTERVAL_MS = 100;
 const CAPTURE_TIMEOUT_BACKOFF_MS = 1200;
+const EYE_SIGNAL_MISSING_FRAME_LIMIT = 18;
 
 type CameraPermissionStatus =
   | 'not-determined'
   | 'denied'
   | 'restricted'
   | 'granted';
+
+function getEnrollmentInstruction(state: LivenessSessionState | null): string {
+  if (!state) {
+    return ENROLLMENT_COMBINED_INSTRUCTION;
+  }
+
+  const activeTypes = new Set(state.challenges.map(challenge => challenge.type));
+  if (activeTypes.has('HEAD_TURN') && activeTypes.has('SMILE')) {
+    return 'Turn your head and smile (any order)';
+  }
+
+  return ENROLLMENT_COMBINED_INSTRUCTION;
+}
 
 export function LiveScannerPanel({
   employeeId,
@@ -111,7 +125,6 @@ export function LiveScannerPanel({
       : backDevice ?? frontDevice;
 
   const cameraRef = useRef<Camera>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
   const faceDetectionTimeRef = useRef<number | null>(null);
   const consecutiveAlignedRef = useRef(0);
@@ -122,6 +135,8 @@ export function LiveScannerPanel({
   const sessionCompleteRef = useRef(false);
   const challengeTickCountRef = useRef<number>(0);
   const captureBackoffUntilRef = useRef<number>(0);
+  const missingEyeSignalFramesRef = useRef<number>(0);
+  const enrollmentFallbackAppliedRef = useRef<boolean>(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const hasRequestedPermission = useRef(false);
   const lastLivenessCaptureRef = useRef<{
@@ -208,11 +223,6 @@ export function LiveScannerPanel({
     }
     isCapturingRef.current = true;
 
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
     try {
       if (device && cameraRef.current) {
         console.log('[LiveScannerPanel] Capturing photo...');
@@ -228,14 +238,15 @@ export function LiveScannerPanel({
           photo.orientation,
           {isFrontCamera: devicePosition === 'front'},
         );
-        onLivenessComplete(upright.path);
+        await Promise.resolve(onLivenessComplete(upright.path));
+        console.log("face captured url:", upright.path);
       } else {
         console.log('[LiveScannerPanel] Simulating photo capture...');
-        onLivenessComplete('mock://captured-face.jpg');
+        await Promise.resolve(onLivenessComplete('mock://captured-face.jpg'));
       }
     } catch (err) {
       console.error('[LiveScannerPanel] Capture failed, fallback to mock path:', err);
-      onLivenessComplete('mock://captured-face.jpg');
+      await Promise.resolve(onLivenessComplete('mock://captured-face.jpg'));
     } finally {
       isCapturingRef.current = false;
     }
@@ -256,6 +267,8 @@ export function LiveScannerPanel({
     faceDetectionTimeRef.current = null;
     consecutiveAlignedRef.current = 0;
     challengeTickCountRef.current = 0;
+    missingEyeSignalFramesRef.current = 0;
+    enrollmentFallbackAppliedRef.current = false;
     setFaceDetected(false);
     setLivenessState(null);
     prevLivenessStateRef.current = null;
@@ -281,18 +294,13 @@ export function LiveScannerPanel({
     resetScanSession();
   }, [backDevice, frontDevice, resetScanSession]);
 
-  // ML Kit challenges → MiniFASNet spoof check → ArcFace image handoff
+  // ML Kit challenges → MiniFASNet spoof check → MobileFaceNet image handoff
   const handleLivenessSuccess = useCallback(async () => {
     if (postLivenessRunningRef.current || sessionCompleteRef.current) {
       return;
     }
     postLivenessRunningRef.current = true;
     sessionCompleteRef.current = true;
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
 
     const capture = lastLivenessCaptureRef.current;
     lastLivenessCaptureRef.current = null;
@@ -349,7 +357,7 @@ export function LiveScannerPanel({
         capture.orientation,
           {isFrontCamera: devicePosition === 'front'},
       );
-      onLivenessComplete(upright.path);
+      await Promise.resolve(onLivenessComplete(upright.path));
       if (upright.path !== persistedPath) {
         await RNFS.unlink(persistedPath).catch(() => undefined);
       }
@@ -389,6 +397,8 @@ export function LiveScannerPanel({
     sessionCompleteRef.current = false;
     postLivenessRunningRef.current = false;
     captureBackoffUntilRef.current = 0;
+    missingEyeSignalFramesRef.current = 0;
+    enrollmentFallbackAppliedRef.current = false;
     console.log(
       `[LiveScannerPanel] Starting ${isEnrollmentMode ? 'enrollment' : 'liveness'} session...`,
     );
@@ -476,8 +486,8 @@ export function LiveScannerPanel({
       try {
         const photo = await cameraRef.current.takePhoto({
           flash: 'off',
-          qualityPrioritization: 'speed',
-          enableAutoStabilization: false,
+          qualityPrioritization: inLivenessPhase ? 'speed' : 'balanced',
+          enableAutoStabilization: !inLivenessPhase,
         });
         capturePath = photo.path;
 
@@ -554,6 +564,40 @@ export function LiveScannerPanel({
         const diagnostics = getMlKitFaceDiagnostics(face);
         const metricsValues = extractLivenessMetrics(face);
         setMetrics(metricsValues);
+
+        const missingEyeSignals =
+          metricsValues.avgEyeOpen === undefined &&
+          diagnostics.leftEyeContourPoints === 0 &&
+          diagnostics.rightEyeContourPoints === 0;
+
+        if (isEnrollmentMode && !enrollmentFallbackAppliedRef.current) {
+          if (missingEyeSignals) {
+            missingEyeSignalFramesRef.current += 1;
+          } else {
+            missingEyeSignalFramesRef.current = 0;
+          }
+
+          if (
+            missingEyeSignalFramesRef.current >= EYE_SIGNAL_MISSING_FRAME_LIMIT
+          ) {
+            enrollmentFallbackAppliedRef.current = true;
+            missingEyeSignalFramesRef.current = 0;
+            console.warn(
+              '[LiveScannerPanel] Enrollment fallback activated: blink signals unavailable; switching to smile challenge.',
+            );
+            const fallbackSession = livenessService.resetSession(
+              ['HEAD_TURN', 'SMILE'],
+              {relaxed: true, parallel: true},
+            );
+            setLivenessState(fallbackSession);
+            prevLivenessStateRef.current = fallbackSession;
+            setChallengePulse(
+              'Blink signal unavailable. Switched to smile challenge.',
+            );
+            setLiveChallengeHint('Turn your head, then smile naturally.');
+            return;
+          }
+        }
 
         console.log(
           `[LiveScannerPanel] Liveness tick #${++challengeTickCountRef.current} contours(L/R)=${diagnostics.leftEyeContourPoints}/${diagnostics.rightEyeContourPoints} landmarks=${diagnostics.landmarkKeys.length} eye=${diagnostics.avgEyeOpen?.toFixed(2) ?? 'n/a'} smile=${diagnostics.smilingProbability?.toFixed(2) ?? 'n/a'} ear=${metricsValues.ear.toFixed(2)} mar=${metricsValues.mar.toFixed(2)} yaw=${metricsValues.yawRatio.toFixed(2)}`,
@@ -791,7 +835,7 @@ export function LiveScannerPanel({
           <Text style={styles.hudInstructionText}>
             {faceDetected
               ? isEnrollmentMode
-                ? ENROLLMENT_COMBINED_INSTRUCTION
+                ? getEnrollmentInstruction(livenessState)
                 : livenessState?.challenges[livenessState.currentChallengeIndex]
                     ?.instruction || 'Perform the liveness challenge'
               : alignmentMessage}

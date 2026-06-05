@@ -1,6 +1,11 @@
 import type {APIGatewayProxyEventV2} from 'aws-lambda';
 
 import type {SyncAuthLogsResult} from '../authLogTypes';
+import {
+  assertLogsBelongToAuthorizedDevice,
+  AuthError,
+  authorizeSyncRequest,
+} from '../auth';
 import {emptyOptionsResponse, jsonResponse} from '../http';
 import {saveAuthLog} from '../authLogRepository';
 import {parseSyncAuthLogsRequest} from '../validation';
@@ -11,16 +16,18 @@ export async function handler(event: APIGatewayProxyEventV2) {
   }
 
   try {
+    const authContext = authorizeSyncRequest(event);
     const body = event.isBase64Encoded
       ? Buffer.from(event.body ?? '', 'base64').toString('utf8')
       : event.body ?? null;
     const request = parseSyncAuthLogsRequest(body);
+    assertLogsBelongToAuthorizedDevice(request.logs, authContext);
     const failedLogIds: number[] = [];
 
     await Promise.all(
       request.logs.map(async authLog => {
         try {
-          await saveAuthLog(authLog);
+          await saveAuthLog(authLog, authContext);
         } catch {
           if (typeof authLog.id === 'number') {
             failedLogIds.push(authLog.id);
@@ -39,7 +46,9 @@ export async function handler(event: APIGatewayProxyEventV2) {
       data,
     });
   } catch (error) {
-    return jsonResponse(400, {
+    const statusCode = error instanceof AuthError ? error.statusCode : 400;
+
+    return jsonResponse(statusCode, {
       success: false,
       data: {
         syncedCount: 0,

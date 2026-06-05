@@ -1,21 +1,26 @@
 import {PutCommand} from '@aws-sdk/lib-dynamodb';
 
+import type {AuthorizedSyncContext} from './auth';
 import type {AuthLog} from './authLogTypes';
 import {CONFIG} from './config';
 import {dynamoDbDocumentClient} from './dynamodbClient';
 
-export async function saveAuthLog(authLog: AuthLog): Promise<void> {
+export async function saveAuthLog(
+  authLog: AuthLog,
+  context: AuthorizedSyncContext,
+): Promise<void> {
   await dynamoDbDocumentClient.send(
     new PutCommand({
       TableName: CONFIG.authLogsTableName,
-      Item: mapAuthLogItem(authLog),
+      Item: mapAuthLogItem(authLog, context),
     }),
   );
 }
 
-function mapAuthLogItem(authLog: AuthLog) {
+function mapAuthLogItem(authLog: AuthLog, context: AuthorizedSyncContext) {
   return {
     logId: buildLogId(authLog),
+    tenantId: context.tenantId,
     localLogId: authLog.id,
     employeeId: authLog.employeeId,
     authStatus: authLog.authStatus,

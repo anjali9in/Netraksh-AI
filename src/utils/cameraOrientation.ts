@@ -1,4 +1,3 @@
-import {Platform} from 'react-native';
 import type {Orientation} from 'react-native-vision-camera';
 
 export type PhotoOrientationOptions = {

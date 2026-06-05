@@ -9,11 +9,16 @@ import {LiveScannerPanel} from '../components/LiveScannerPanel';
 import {PrimaryButton} from '../components/PrimaryButton';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
-import {getDynamicThreshold} from '../ai/dynamicThreshold';
+import {
+  analyzeEnrollmentImageQuality,
+  type EnrollmentQualityResult,
+} from '../ai/enrollmentQuality';
 import {RootStackParamList, ROUTES} from '../app/navigation/routes';
 import {secureStorageService} from '../services/SecureStorageService';
+import {deviceInfoService} from '../services/device/deviceInfo';
 import {colors} from '../theme/colors';
 import {radius, spacing} from '../theme/spacing';
+import {deleteTemporaryImage} from '../utils/fileUtils';
 
 type EnrollmentCaptureRoute = RouteProp<
   RootStackParamList,
@@ -37,33 +42,41 @@ export function EnrollmentCaptureScreen(): React.JSX.Element {
     null,
   );
   const [isProcessing, setIsProcessing] = useState(false);
-  const [qualityCheck, setQualityCheck] = useState<{
-    passed: boolean;
-    brightness: number;
-    quality: number;
-    reason: string;
-  } | null>(null);
+  const [isInspectingQuality, setIsInspectingQuality] = useState(false);
+  const [qualityCheck, setQualityCheck] =
+    useState<EnrollmentQualityResult | null>(null);
 
-  const handlePhotoCaptured = (imagePath: string) => {
+  const handlePhotoCaptured = async (imagePath: string) => {
+    if (capturedImagePath && capturedImagePath !== imagePath) {
+      await deleteTemporaryImage(capturedImagePath);
+    }
+
     setCapturedImagePath(imagePath);
-
-    const simulatedBrightness = 80 + Math.floor(Math.random() * 80);
-    const simulatedQuality = 0.7 + Math.random() * 0.28;
-    const checkResult = getDynamicThreshold(
-      simulatedBrightness,
-      simulatedQuality,
-    );
-
-    setQualityCheck({
-      passed:
-        simulatedQuality >= 0.5 &&
-        simulatedBrightness >= 40 &&
-        simulatedBrightness <= 210,
-      brightness: simulatedBrightness,
-      quality: simulatedQuality,
-      reason: checkResult.reason,
-    });
+    setQualityCheck(null);
     setStep('REVIEW');
+    setIsInspectingQuality(true);
+
+    try {
+      const result = await analyzeEnrollmentImageQuality(imagePath);
+      setQualityCheck(result);
+    } catch (error) {
+      setQualityCheck({
+        passed: false,
+        brightness: 0,
+        sharpness: 0,
+        exposure: 0,
+        overallQuality: 0,
+        blurVariance: 0,
+        underexposedRatio: 0,
+        overexposedRatio: 0,
+        reason:
+          error instanceof Error
+            ? error.message
+            : 'Unable to inspect the captured image. Retake the photo.',
+      });
+    } finally {
+      setIsInspectingQuality(false);
+    }
   };
 
   const handleScanFailed = (reason: string) => {
@@ -79,26 +92,38 @@ export function EnrollmentCaptureScreen(): React.JSX.Element {
       return;
     }
 
-    if (qualityCheck && !qualityCheck.passed) {
+    if (isInspectingQuality || !qualityCheck) {
+      Alert.alert(
+        'Quality Check In Progress',
+        'Wait for the capture quality inspection to finish.',
+      );
+      return;
+    }
+
+    if (!qualityCheck.passed) {
       Alert.alert(
         'Quality Check Failed',
-        'The captured image does not meet quality standards. Please retake the photo in better lighting.',
-        [{text: 'Retake', onPress: () => setStep('SCAN')}],
+        qualityCheck.reason,
+        [{text: 'Retake', onPress: () => void handleRetake()}],
       );
       return;
     }
 
     setIsProcessing(true);
+    let enrollmentSucceeded = false;
+
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
+      const deviceId = await deviceInfoService.getDeviceId();
 
       const success = await secureStorageService.registerFace(
         employeeId,
         capturedImagePath,
-        'device-tablet-01',
+        deviceId,
       );
 
       if (success) {
+        enrollmentSucceeded = true;
         Alert.alert(
           'Enrollment Successful',
           `${fullName} (${employeeId}) has been registered locally.`,
@@ -123,8 +148,27 @@ export function EnrollmentCaptureScreen(): React.JSX.Element {
           : 'An error occurred during enrollment.',
       );
     } finally {
+      await deleteTemporaryImage(capturedImagePath);
       setIsProcessing(false);
+
+      if (!enrollmentSucceeded) {
+        setCapturedImagePath(null);
+        setQualityCheck(null);
+        setStep('SCAN');
+      }
     }
+  };
+
+  const handleRetake = async () => {
+    await deleteTemporaryImage(capturedImagePath);
+    setCapturedImagePath(null);
+    setQualityCheck(null);
+    setStep('SCAN');
+  };
+
+  const handleEditDetails = async () => {
+    await deleteTemporaryImage(capturedImagePath);
+    navigation.goBack();
   };
 
   return (
@@ -148,38 +192,59 @@ export function EnrollmentCaptureScreen(): React.JSX.Element {
         </View>
       ) : null}
 
-      {step === 'REVIEW' && capturedImagePath && qualityCheck ? (
+      {step === 'REVIEW' && capturedImagePath ? (
         <InfoCard
           title="Quality Inspection"
-          subtitle={qualityCheck.reason}
+          subtitle={
+            isInspectingQuality
+              ? 'Analyzing brightness, blur, and exposure...'
+              : qualityCheck?.reason
+          }
           style={styles.section}
         >
-          <View style={styles.metricRow}>
-            <Text style={styles.metricLabel}>Brightness</Text>
-            <Text style={styles.metricValue}>
-              {qualityCheck.brightness} / 210
-            </Text>
-          </View>
-          <View style={styles.metricRow}>
-            <Text style={styles.metricLabel}>Sharpness</Text>
-            <Text style={styles.metricValue}>
-              {(qualityCheck.quality * 100).toFixed(0)}%
-            </Text>
-          </View>
-          <View style={styles.metricRow}>
-            <Text style={styles.metricLabel}>Frame Centering</Text>
-            <Text style={styles.metricValue}>VALID</Text>
-          </View>
-          <View style={styles.qualityStatus}>
-            <StatusBadge
-              label={
-                qualityCheck.passed
-                  ? 'Image passed quality checks'
-                  : 'Image quality is too low'
-              }
-              status={qualityCheck.passed ? 'success' : 'error'}
-            />
-          </View>
+          {isInspectingQuality || !qualityCheck ? (
+            <View style={styles.inlineLoading}>
+              <ActivityIndicator color={colors.primary} size="small" />
+              <Text style={styles.inlineLoadingText}>Inspecting capture...</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.metricRow}>
+                <Text style={styles.metricLabel}>Brightness</Text>
+                <Text style={styles.metricValue}>
+                  {qualityCheck.brightness} / 255
+                </Text>
+              </View>
+              <View style={styles.metricRow}>
+                <Text style={styles.metricLabel}>Sharpness</Text>
+                <Text style={styles.metricValue}>
+                  {(qualityCheck.sharpness * 100).toFixed(0)}%
+                </Text>
+              </View>
+              <View style={styles.metricRow}>
+                <Text style={styles.metricLabel}>Exposure</Text>
+                <Text style={styles.metricValue}>
+                  {(qualityCheck.exposure * 100).toFixed(0)}%
+                </Text>
+              </View>
+              <View style={styles.metricRow}>
+                <Text style={styles.metricLabel}>Overall Quality</Text>
+                <Text style={styles.metricValue}>
+                  {(qualityCheck.overallQuality * 100).toFixed(0)}%
+                </Text>
+              </View>
+              <View style={styles.qualityStatus}>
+                <StatusBadge
+                  label={
+                    qualityCheck.passed
+                      ? 'Image passed quality checks'
+                      : 'Image quality is too low'
+                  }
+                  status={qualityCheck.passed ? 'success' : 'error'}
+                />
+              </View>
+            </>
+          )}
         </InfoCard>
       ) : null}
 
@@ -188,7 +253,7 @@ export function EnrollmentCaptureScreen(): React.JSX.Element {
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={colors.primary} size="large" />
             <Text style={styles.loadingText}>
-              Generating 512-dim ArcFace embedding...
+              Generating 128-dim MobileFaceNet embedding...
             </Text>
           </View>
         ) : step === 'REVIEW' ? (
@@ -196,21 +261,17 @@ export function EnrollmentCaptureScreen(): React.JSX.Element {
             <PrimaryButton
               title="Complete Enrollment"
               onPress={handleEnroll}
-              disabled={!capturedImagePath || isProcessing}
+              disabled={!capturedImagePath || isProcessing || isInspectingQuality}
             />
             <PrimaryButton
               title="Retake Photo"
-              onPress={() => {
-                setCapturedImagePath(null);
-                setQualityCheck(null);
-                setStep('SCAN');
-              }}
+              onPress={() => void handleRetake()}
               disabled={isProcessing}
               variant="secondary"
             />
             <PrimaryButton
               title="Edit Employee Details"
-              onPress={() => navigation.goBack()}
+              onPress={() => void handleEditDetails()}
               disabled={isProcessing}
               variant="secondary"
             />
@@ -264,6 +325,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'right',
+  },
+  inlineLoading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+  },
+  inlineLoadingText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '700',
   },
   loadingContainer: {
     alignItems: 'center',

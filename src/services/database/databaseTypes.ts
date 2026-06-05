@@ -22,8 +22,17 @@ export type LocalDatabase = {
   close(): Promise<void>;
 };
 
+export type AddColumnMigrationStep = {
+  type: 'add_column';
+  tableName: string;
+  columnName: string;
+  definition: string;
+};
+
+export type MigrationStep = string | AddColumnMigrationStep;
+
 export type Migration = {
   id: number;
   name: string;
-  statements: string[];
+  statements: MigrationStep[];
 };

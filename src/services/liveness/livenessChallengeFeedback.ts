@@ -7,7 +7,6 @@ import {
 import {
   BLINK_EAR_ASPECT_CLOSED,
   BLINK_EYE_OPEN_CLOSED,
-  BLINK_EYE_OPEN_OPEN,
   BLINK_THRESHOLD,
   HEAD_TURN_LEFT_THRESHOLD,
   HEAD_TURN_LEFT_THRESHOLD_RELAXED,
@@ -125,7 +124,7 @@ export function getLiveChallengeHint(
     const passed = state.challenges.filter(c => c.status === 'PASSED').length;
     const total = state.challenges.length;
     const specific = hintForActiveChallenge(active, metrics, relaxed);
-    return `${passed}/${total} done — ${specific ?? 'turn, blink, or smile'}`;
+    return `${passed}/${total} done — ${specific ?? 'turn or blink'}`;
   }
 
   return hintForActiveChallenge(active, metrics, relaxed);

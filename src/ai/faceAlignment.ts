@@ -206,8 +206,8 @@ function analyzePixels(
 
 /**
  * Live alignment check before capture. Uses only {@link loadRawPixelsFromImagePath}
- * (same path as ArcFace preprocessing) — no extra TFLite / ML Kit models.
- * Recognition still uses ArcFace-MobileNetV2 only (~8 MB, total budget 20 MB).
+ * (same path as MobileFaceNet preprocessing) — no extra TFLite / ML Kit models.
+ * Recognition still uses MobileFaceNet only (~5 MB, total budget 20 MB).
  */
 export async function analyzeFaceAlignment(
   imagePath: string,

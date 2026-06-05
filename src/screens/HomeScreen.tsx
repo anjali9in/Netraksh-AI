@@ -75,7 +75,7 @@ export function HomeScreen(): React.JSX.Element {
           <View style={styles.systemCopy}>
             <Text style={styles.systemTitle}>Security Operations</Text>
             <Text style={styles.systemText}>
-              Local ArcFace matching remains available during poor connectivity.
+              Local MobileFaceNet matching remains available during poor connectivity.
             </Text>
           </View>
           <StatusBadge

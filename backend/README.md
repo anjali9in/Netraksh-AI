@@ -33,6 +33,20 @@ The table is defined in `template.yaml`:
 
 `POST /sync/auth-logs`
 
+Required headers:
+
+```http
+Authorization: Bearer <sync-token>
+X-Tenant-Id: default
+X-Site-Id: primary-site
+X-Device-Id: netraksh-ios-example
+```
+
+The backend validates the bearer token against `SYNC_AUTH_TOKENS`, the tenant
+against `ALLOWED_TENANT_IDS`, and the device against `ALLOWED_DEVICE_IDS`.
+Every log in the batch must have a `deviceId` matching the authorized
+`X-Device-Id` header.
+
 Body:
 
 ```json
@@ -77,5 +91,31 @@ sam build
 sam deploy --guided
 ```
 
+During guided deploy, provide:
+
+- `SyncAuthTokens`: one or more long random bearer tokens, comma-separated.
+- `AllowedTenantIds`: allowed tenant IDs, comma-separated, or `*`.
+- `AllowedDeviceIds`: allowed device IDs, comma-separated, or `*`.
+
+Generate a sync token from the repo root with:
+
+```sh
+npm run backend:generate-sync-token
+```
+
 After deploy, copy the `ApiEndpoint` output into the mobile app's
-`API_BASE_URL` value in `src/config/env.ts`.
+runtime config `apiBaseUrl`, set `apiTenantId` to one of the allowed tenants,
+set `apiSiteId` to the deployment site, and provision a matching bearer token
+through `Settings > Sync Provisioning` before syncing.
+
+See `docs/OPERATIONS_PROVISIONING.md` for the full token/device lifecycle and
+`docs/RELEASE_RUNTIME_CONFIG.md` for staging/production build injection.
+
+Operational deploy helpers are available from the repo root:
+
+```sh
+npm run backend:provision-sync-secrets -- --stage staging
+npm run backend:deploy-sync -- --stage staging --source ssm
+npm run backend:provision-sync-secrets -- --stage production
+npm run backend:deploy-sync -- --stage production --source ssm
+```

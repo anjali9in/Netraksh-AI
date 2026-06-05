@@ -4,6 +4,24 @@ apply plugin: "com.facebook.react"
 def enableProguardInReleaseBuilds = false
 def jscFlavor = 'org.webkit:android-jsc:+'
 
+def netrakshRuntimeValue = { name ->
+    def projectValue = project.findProperty(name)
+    if (projectValue != null && projectValue.toString().trim()) {
+        return projectValue.toString().trim()
+    }
+
+    def envValue = System.getenv(name)
+    if (envValue != null && envValue.trim()) {
+        return envValue.trim()
+    }
+
+    return ""
+}
+
+def javaStringLiteral = { value ->
+    return "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -22,6 +40,17 @@ android {
         manifestPlaceholders = [usesCleartextTraffic: "true"]
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
         buildConfigField "boolean", "IS_HERMES_ENABLED", (findProperty("hermesEnabled") ?: "true").toString()
+        buildConfigField "String", "NETRAKSH_API_BASE_URL", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_API_BASE_URL"))
+        buildConfigField "String", "NETRAKSH_API_TENANT_ID", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_API_TENANT_ID"))
+        buildConfigField "String", "NETRAKSH_API_SITE_ID", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_API_SITE_ID"))
+        buildConfigField "String", "NETRAKSH_API_TIMEOUT_MS", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_API_TIMEOUT_MS"))
+        buildConfigField "String", "NETRAKSH_AUTH_LOG_SYNC_INTERVAL_MS", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_AUTH_LOG_SYNC_INTERVAL_MS"))
+        buildConfigField "String", "NETRAKSH_DATABASE_ENCRYPTION_ENABLED", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_DATABASE_ENCRYPTION_ENABLED"))
+        buildConfigField "String", "NETRAKSH_DATABASE_LOCATION", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_DATABASE_LOCATION"))
+        buildConfigField "String", "NETRAKSH_DATABASE_NAME", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_DATABASE_NAME"))
+        buildConfigField "String", "NETRAKSH_DATABASE_PROVIDER", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_DATABASE_PROVIDER"))
+        buildConfigField "String", "NETRAKSH_DATABASE_SCHEMA_VERSION", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_DATABASE_SCHEMA_VERSION"))
+        buildConfigField "String", "NETRAKSH_DEMO_MODE", javaStringLiteral(netrakshRuntimeValue("NETRAKSH_DEMO_MODE"))
     }
 
     signingConfigs {

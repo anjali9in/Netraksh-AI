@@ -28,7 +28,7 @@ describe('livenessChallengeFeedback', () => {
   });
 
   it('builds passed rows with detection labels', () => {
-    const state = livenessService.resetSession(['HEAD_TURN']);
+    livenessService.resetSession(['HEAD_TURN']);
     livenessService.processFrame(0.35, 0.2, 0.4);
     livenessService.processFrame(0.35, 0.2, 0.4);
     const done = livenessService.processFrame(0.35, 0.2, 0.4);

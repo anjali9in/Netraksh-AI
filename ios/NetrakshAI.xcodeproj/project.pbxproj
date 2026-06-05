@@ -9,14 +9,16 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		4E1F25503EDB62E56341E2F3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		5E99B2F1D932BE7C14B284A8 /* libPods-NetrakshAI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 36694F0EB78E573DC9D81848 /* libPods-NetrakshAI.a */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		761780EF2CA45674006654EE /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EE2CA45674006654EE /* SceneDelegate.swift */; };
+		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		B001001124A45674006654EE /* BackgroundSyncModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001001024A45674006654EE /* BackgroundSyncModule.swift */; };
 		B001001324A45674006654EE /* BackgroundSyncScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001001224A45674006654EE /* BackgroundSyncScheduler.swift */; };
 		B001001524A45674006654EE /* BackgroundSyncModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B001001424A45674006654EE /* BackgroundSyncModule.m */; };
 		B001001724A45674006654EE /* PendingSyncNotificationHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001001624A45674006654EE /* PendingSyncNotificationHelper.swift */; };
-		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		BAB78C3F9D0E3D230A0866C3 /* libPods-NetrakshAI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F828E98B5069D467BF7FD2B /* libPods-NetrakshAI.a */; };
+		B001001924A45674006654EE /* NetrakshConfigModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B001001824A45674006654EE /* NetrakshConfigModule.swift */; };
+		B001001B24A45674006654EE /* NetrakshConfigModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B001001A24A45674006654EE /* NetrakshConfigModule.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,16 +26,18 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = NetrakshAI/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = NetrakshAI/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = NetrakshAI/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		4F828E98B5069D467BF7FD2B /* libPods-NetrakshAI.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-NetrakshAI.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		6B3F1B71F83F33C6EAAED2A9 /* Pods-NetrakshAI.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NetrakshAI.release.xcconfig"; path = "Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI.release.xcconfig"; sourceTree = "<group>"; };
+		2AF0F824BE3C563198568420 /* Pods-NetrakshAI.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NetrakshAI.debug.xcconfig"; path = "Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI.debug.xcconfig"; sourceTree = "<group>"; };
+		36694F0EB78E573DC9D81848 /* libPods-NetrakshAI.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-NetrakshAI.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = NetrakshAI/AppDelegate.swift; sourceTree = "<group>"; };
 		761780EE2CA45674006654EE /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = NetrakshAI/SceneDelegate.swift; sourceTree = "<group>"; };
+		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = NetrakshAI/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		B001001024A45674006654EE /* BackgroundSyncModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundSyncModule.swift; path = NetrakshAI/BackgroundSyncModule.swift; sourceTree = "<group>"; };
 		B001001224A45674006654EE /* BackgroundSyncScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackgroundSyncScheduler.swift; path = NetrakshAI/BackgroundSyncScheduler.swift; sourceTree = "<group>"; };
 		B001001424A45674006654EE /* BackgroundSyncModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackgroundSyncModule.m; path = NetrakshAI/BackgroundSyncModule.m; sourceTree = "<group>"; };
 		B001001624A45674006654EE /* PendingSyncNotificationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PendingSyncNotificationHelper.swift; path = NetrakshAI/PendingSyncNotificationHelper.swift; sourceTree = "<group>"; };
-		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = NetrakshAI/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		B5DF61578D56F133870E98E5 /* Pods-NetrakshAI.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NetrakshAI.debug.xcconfig"; path = "Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI.debug.xcconfig"; sourceTree = "<group>"; };
+		B001001824A45674006654EE /* NetrakshConfigModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NetrakshConfigModule.swift; path = NetrakshAI/NetrakshConfigModule.swift; sourceTree = "<group>"; };
+		B001001A24A45674006654EE /* NetrakshConfigModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = NetrakshConfigModule.m; path = NetrakshAI/NetrakshConfigModule.m; sourceTree = "<group>"; };
+		B8B3DA12EBB7BA306A3A6228 /* Pods-NetrakshAI.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-NetrakshAI.release.xcconfig"; path = "Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -42,7 +46,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BAB78C3F9D0E3D230A0866C3 /* libPods-NetrakshAI.a in Frameworks */,
+				5E99B2F1D932BE7C14B284A8 /* libPods-NetrakshAI.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -57,6 +61,8 @@
 				B001001024A45674006654EE /* BackgroundSyncModule.swift */,
 				B001001224A45674006654EE /* BackgroundSyncScheduler.swift */,
 				B001001424A45674006654EE /* BackgroundSyncModule.m */,
+				B001001824A45674006654EE /* NetrakshConfigModule.swift */,
+				B001001A24A45674006654EE /* NetrakshConfigModule.m */,
 				B001001624A45674006654EE /* PendingSyncNotificationHelper.swift */,
 				761780EE2CA45674006654EE /* SceneDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
@@ -70,7 +76,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				4F828E98B5069D467BF7FD2B /* libPods-NetrakshAI.a */,
+				36694F0EB78E573DC9D81848 /* libPods-NetrakshAI.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -107,8 +113,8 @@
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				B5DF61578D56F133870E98E5 /* Pods-NetrakshAI.debug.xcconfig */,
-				6B3F1B71F83F33C6EAAED2A9 /* Pods-NetrakshAI.release.xcconfig */,
+				2AF0F824BE3C563198568420 /* Pods-NetrakshAI.debug.xcconfig */,
+				B8B3DA12EBB7BA306A3A6228 /* Pods-NetrakshAI.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -120,13 +126,13 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "NetrakshAI" */;
 			buildPhases = (
-				8DF7BE44A8A53782DA2BB7F0 /* [CP] Check Pods Manifest.lock */,
+				4F48DA3CF147C070C5128100 /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				7A3290AD1D18442474650251 /* [CP] Copy Pods Resources */,
-				94085BE73ED6B5AC248C2148 /* [CP] Embed Pods Frameworks */,
+				3098995A48CA827DACE6F5D9 /* [CP] Embed Pods Frameworks */,
+				44F931FF8A8918E0CB50135E /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -199,7 +205,24 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"\\\"$WITH_ENVIRONMENT\\\" \\\"$REACT_NATIVE_XCODE\\\"\"\n";
 		};
-		7A3290AD1D18442474650251 /* [CP] Copy Pods Resources */ = {
+		3098995A48CA827DACE6F5D9 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		44F931FF8A8918E0CB50135E /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -216,7 +239,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		8DF7BE44A8A53782DA2BB7F0 /* [CP] Check Pods Manifest.lock */ = {
+		4F48DA3CF147C070C5128100 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -238,23 +261,6 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		94085BE73ED6B5AC248C2148 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-NetrakshAI/Pods-NetrakshAI-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -266,6 +272,8 @@
 				B001001124A45674006654EE /* BackgroundSyncModule.swift in Sources */,
 				B001001324A45674006654EE /* BackgroundSyncScheduler.swift in Sources */,
 				B001001524A45674006654EE /* BackgroundSyncModule.m in Sources */,
+				B001001924A45674006654EE /* NetrakshConfigModule.swift in Sources */,
+				B001001B24A45674006654EE /* NetrakshConfigModule.m in Sources */,
 				B001001724A45674006654EE /* PendingSyncNotificationHelper.swift in Sources */,
 				761780EF2CA45674006654EE /* SceneDelegate.swift in Sources */,
 			);
@@ -276,7 +284,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B5DF61578D56F133870E98E5 /* Pods-NetrakshAI.debug.xcconfig */;
+			baseConfigurationReference = 2AF0F824BE3C563198568420 /* Pods-NetrakshAI.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -308,7 +316,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 6B3F1B71F83F33C6EAAED2A9 /* Pods-NetrakshAI.release.xcconfig */;
+			baseConfigurationReference = B8B3DA12EBB7BA306A3A6228 /* Pods-NetrakshAI.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

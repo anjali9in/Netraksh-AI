@@ -1,7 +1,6 @@
 import {NativeModules} from 'react-native';
 
 import {backgroundSyncService} from '../src/services/sync/backgroundSyncService';
-import {connectivitySyncService} from '../src/services/network/connectivitySyncService';
 
 jest.mock('../src/services/network/connectivitySyncService', () => ({
   connectivitySyncService: {

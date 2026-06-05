@@ -10,6 +10,20 @@ export type MatchResult = {
   matchTimeMs?: number;
   employeeId?: string;
   error?: string;
+  templateMigration?: TemplateMigrationResult;
+};
+
+export type TemplateEncryptionVersion =
+  | 'v2'
+  | 'legacy-aes-cbc'
+  | 'legacy-unknown';
+
+export type TemplateMigrationResult = {
+  performed: boolean;
+  fromVersion?: TemplateEncryptionVersion;
+  toVersion?: 'v2';
+  migratedAt?: string;
+  requiresReEnrollment?: boolean;
 };
 
 // Pure TypeScript base64 encoding helper to avoid global environment or compiler issues (btoa/Buffer)
@@ -48,6 +62,91 @@ function base64Decode(str: string): string {
 async function encryptEmbedding(embedding: number[]): Promise<string> {
   const jsonStr = JSON.stringify(embedding);
   return encryptData(jsonStr);
+}
+
+function getTemplateEncryptionVersion(
+  encrypted: string,
+): TemplateEncryptionVersion {
+  const cleanEncrypted = encrypted.replace(/\0/g, '').trim();
+  if (cleanEncrypted.startsWith('v2:')) {
+    return 'v2';
+  }
+
+  const parts = cleanEncrypted.split(':');
+  const isHex = (value: string) => /^[0-9a-f]+$/i.test(value);
+  if (
+    parts.length === 2 &&
+    parts[0].length === 32 &&
+    isHex(parts[0]) &&
+    isHex(parts[1])
+  ) {
+    return 'legacy-aes-cbc';
+  }
+
+  return 'legacy-unknown';
+}
+
+async function migrateTemplateAfterSuccessfulMatch(params: {
+  employeeId: string;
+  storedEncryptedEmbedding: string;
+  storedEmbedding: number[];
+  deviceId?: string;
+}): Promise<TemplateMigrationResult | undefined> {
+  const fromVersion = getTemplateEncryptionVersion(
+    params.storedEncryptedEmbedding,
+  );
+
+  if (fromVersion === 'v2') {
+    return undefined;
+  }
+
+  if (fromVersion !== 'legacy-aes-cbc') {
+    console.warn(
+      `[FaceMatcher] Template for ${params.employeeId} uses unsupported legacy storage. Controlled re-enrollment is required.`,
+    );
+    return {
+      performed: false,
+      fromVersion,
+      requiresReEnrollment: true,
+    };
+  }
+
+  const migratedAt = new Date().toISOString();
+  const encrypted = await encryptEmbedding(params.storedEmbedding);
+  const db = await getLocalDatabase();
+
+  await db.execute(
+    `UPDATE employee_face_templates
+      SET encrypted_embedding = ?,
+          model_version = ?,
+          device_id = COALESCE(?, device_id),
+          updated_at = ?,
+          template_encryption_version = ?,
+          migrated_from_encryption_version = ?,
+          migrated_at = ?
+      WHERE employee_id = ?`,
+    [
+      encrypted,
+      FACE_RECOGNITION_MODEL.modelName,
+      params.deviceId ?? null,
+      migratedAt,
+      'v2',
+      fromVersion,
+      migratedAt,
+      params.employeeId,
+    ],
+  );
+
+  console.info(
+    `[FaceMatcher] Migrated legacy biometric template for ${params.employeeId} from ${fromVersion} to v2.`,
+  );
+
+  return {
+    performed: true,
+    fromVersion,
+    toVersion: 'v2',
+    migratedAt,
+  };
 }
 
 /**
@@ -106,9 +205,9 @@ export async function registerEmployeeFace(
     const now = new Date().toISOString();
 
     await db.execute(
-      `INSERT OR REPLACE INTO employee_face_templates 
-       (employee_id, encrypted_embedding, model_version, device_id, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO employee_face_templates
+       (employee_id, encrypted_embedding, model_version, device_id, created_at, updated_at, template_encryption_version, migrated_from_encryption_version, migrated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         employeeId,
         encrypted,
@@ -116,6 +215,9 @@ export async function registerEmployeeFace(
         deviceId,
         now,
         now,
+        'v2',
+        null,
+        null,
       ],
     );
 
@@ -147,7 +249,7 @@ export async function verifyEmployeeFace(
 
     const db = await getLocalDatabase();
     const result = await db.execute(
-      `SELECT encrypted_embedding, model_version FROM employee_face_templates WHERE employee_id = ?`,
+      `SELECT encrypted_embedding, model_version, device_id FROM employee_face_templates WHERE employee_id = ?`,
       [employeeId],
     );
 
@@ -162,6 +264,8 @@ export async function verifyEmployeeFace(
     const row = result.rows[0];
     const storedEncryptedEmbedding = row.encrypted_embedding as string;
     const storedModelVersion = row.model_version as string;
+    const storedDeviceId =
+      typeof row.device_id === 'string' ? row.device_id : undefined;
 
     if (storedModelVersion !== FACE_RECOGNITION_MODEL.modelName) {
       console.warn(
@@ -177,6 +281,14 @@ export async function verifyEmployeeFace(
     const score = cosineSimilarity(storedEmbedding, currentEmbedding);
     const matched = score >= customThreshold;
     const matchTimeMs = Date.now() - startTime;
+    const templateMigration = matched
+      ? await migrateTemplateAfterSuccessfulMatch({
+          employeeId,
+          storedEncryptedEmbedding,
+          storedEmbedding,
+          deviceId: storedDeviceId,
+        })
+      : undefined;
 
     console.log(
       `[FaceMatcher] Verification result: ${
@@ -189,6 +301,7 @@ export async function verifyEmployeeFace(
       score,
       matchTimeMs,
       employeeId,
+      templateMigration,
     };
   } catch (error) {
     console.error(
@@ -235,6 +348,8 @@ export async function identifyEmployeeFace(
     );
     let bestMatchId: string | undefined;
     let bestScore = -1;
+    let bestStoredEncryptedEmbedding: string | undefined;
+    let bestStoredEmbedding: number[] | undefined;
 
     for (const row of result.rows) {
       const employeeId = row.employee_id as string;
@@ -245,6 +360,8 @@ export async function identifyEmployeeFace(
       if (score > bestScore) {
         bestScore = score;
         bestMatchId = employeeId;
+        bestStoredEncryptedEmbedding = storedEncryptedEmbedding;
+        bestStoredEmbedding = storedEmbedding;
       }
     }
 
@@ -252,6 +369,14 @@ export async function identifyEmployeeFace(
     const matched = bestScore >= customThreshold;
 
     if (matched && bestMatchId) {
+      const templateMigration =
+        bestStoredEncryptedEmbedding && bestStoredEmbedding
+          ? await migrateTemplateAfterSuccessfulMatch({
+              employeeId: bestMatchId,
+              storedEncryptedEmbedding: bestStoredEncryptedEmbedding,
+              storedEmbedding: bestStoredEmbedding,
+            })
+          : undefined;
       console.log(
         `[FaceMatcher] Identification SUCCESS: Found employee ${bestMatchId} (Score: ${bestScore.toFixed(
           4,
@@ -262,6 +387,7 @@ export async function identifyEmployeeFace(
         employeeId: bestMatchId,
         score: bestScore,
         matchTimeMs,
+        templateMigration,
       };
     } else {
       console.log(

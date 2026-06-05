@@ -9,7 +9,8 @@ export function jsonResponse<T>(statusCode: number, body: ApiResponse<T>) {
     statusCode,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+      'Access-Control-Allow-Headers':
+        'Content-Type,Authorization,X-Device-Id,X-Tenant-Id,X-Site-Id,X-Device-Platform,X-Device-Manufacturer,X-Device-Model,X-Android-Sdk,X-Device-Latitude,X-Device-Longitude,X-Device-Ip',
       'Access-Control-Allow-Methods': 'OPTIONS,POST',
       'Content-Type': 'application/json',
     },
@@ -22,7 +23,8 @@ export function emptyOptionsResponse() {
     statusCode: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+      'Access-Control-Allow-Headers':
+        'Content-Type,Authorization,X-Device-Id,X-Tenant-Id,X-Site-Id,X-Device-Platform,X-Device-Manufacturer,X-Device-Model,X-Android-Sdk,X-Device-Latitude,X-Device-Longitude,X-Device-Ip',
       'Access-Control-Allow-Methods': 'OPTIONS,POST',
     },
     body: '',

@@ -26,6 +26,28 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NETRAKSH_API_BASE_URL</key>
+	<string>$(NETRAKSH_API_BASE_URL)</string>
+	<key>NETRAKSH_API_TENANT_ID</key>
+	<string>$(NETRAKSH_API_TENANT_ID)</string>
+	<key>NETRAKSH_API_SITE_ID</key>
+	<string>$(NETRAKSH_API_SITE_ID)</string>
+	<key>NETRAKSH_API_TIMEOUT_MS</key>
+	<string>$(NETRAKSH_API_TIMEOUT_MS)</string>
+	<key>NETRAKSH_AUTH_LOG_SYNC_INTERVAL_MS</key>
+	<string>$(NETRAKSH_AUTH_LOG_SYNC_INTERVAL_MS)</string>
+	<key>NETRAKSH_DATABASE_ENCRYPTION_ENABLED</key>
+	<string>$(NETRAKSH_DATABASE_ENCRYPTION_ENABLED)</string>
+	<key>NETRAKSH_DATABASE_LOCATION</key>
+	<string>$(NETRAKSH_DATABASE_LOCATION)</string>
+	<key>NETRAKSH_DATABASE_NAME</key>
+	<string>$(NETRAKSH_DATABASE_NAME)</string>
+	<key>NETRAKSH_DATABASE_PROVIDER</key>
+	<string>$(NETRAKSH_DATABASE_PROVIDER)</string>
+	<key>NETRAKSH_DATABASE_SCHEMA_VERSION</key>
+	<string>$(NETRAKSH_DATABASE_SCHEMA_VERSION)</string>
+	<key>NETRAKSH_DEMO_MODE</key>
+	<string>$(NETRAKSH_DEMO_MODE)</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->

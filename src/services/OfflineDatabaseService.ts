@@ -28,6 +28,10 @@ export type AuthLogEntry = {
   altitude: number | null;
   ipAddress: string | null;
   locationCapturedAt: string | null;
+  syncAttemptCount: number;
+  lastSyncAttemptAt: string | null;
+  lastSyncError: string | null;
+  nextSyncAttemptAt: string | null;
 };
 
 export class OfflineDatabaseService {
@@ -92,6 +96,10 @@ export class OfflineDatabaseService {
       | 'altitude'
       | 'ipAddress'
       | 'locationCapturedAt'
+      | 'syncAttemptCount'
+      | 'lastSyncAttemptAt'
+      | 'lastSyncError'
+      | 'nextSyncAttemptAt'
     >,
   ): Promise<number | undefined> {
     try {
@@ -125,8 +133,8 @@ export class OfflineDatabaseService {
 
       const result = await db.execute(
         `INSERT INTO auth_logs 
-        (employee_id, auth_status, failure_reason, similarity_score, liveness_status, challenge_type, device_id, model_version, created_at, sync_status, log_hash, latitude, longitude, location_accuracy, altitude, ip_address, location_captured_at) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (employee_id, auth_status, failure_reason, similarity_score, liveness_status, challenge_type, device_id, model_version, created_at, sync_status, log_hash, latitude, longitude, location_accuracy, altitude, ip_address, location_captured_at, sync_attempt_count, last_sync_attempt_at, last_sync_error, next_sync_attempt_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           params.employeeId,
           params.authStatus,
@@ -145,6 +153,10 @@ export class OfflineDatabaseService {
           location.altitude ?? null,
           location.ipAddress ?? null,
           location.locationCapturedAt ?? null,
+          0,
+          null,
+          null,
+          null,
         ],
       );
 
@@ -184,30 +196,14 @@ export class OfflineDatabaseService {
   public async markLogsAsSynced(logIds: number[]): Promise<boolean> {
     if (logIds.length === 0) return true;
     try {
-      const db = await getLocalDatabase();
-
-      await db.transaction(async tx => {
-        for (const id of logIds) {
-          // Fetch log first to recalculate its hash with the new sync status
-          const fetchResult = await tx.execute(
-            `SELECT * FROM auth_logs WHERE id = ?`,
-            [id],
-          );
-          if (fetchResult.rows.length > 0) {
-            const log = mapRowToLogEntry(fetchResult.rows[0]);
-            log.syncStatus = 'SYNCED';
-            const rest = {...log};
-            delete (rest as any).id;
-            delete (rest as any).logHash;
-            const newHash = this.generateLogHash(rest);
-
-            await tx.execute(
-              `UPDATE auth_logs SET sync_status = 'SYNCED', log_hash = ? WHERE id = ?`,
-              [newHash, id],
-            );
-          }
-        }
-      });
+      await Promise.all(
+        logIds.map(id =>
+          authLogRepository.updateSyncStatus(id, 'SYNCED', {
+            lastSyncError: null,
+            nextSyncAttemptAt: null,
+          }),
+        ),
+      );
 
       console.log(
         `[OfflineDatabaseService] Marked ${logIds.length} logs as SYNCED.`,
@@ -301,6 +297,10 @@ export class OfflineDatabaseService {
     return authLogRepository.getPendingSync();
   }
 
+  async resetFailedSyncLogs(): Promise<number> {
+    return authLogRepository.resetFailedSyncLogs();
+  }
+
   async markLogSyncStatus(
     id: number,
     syncStatus: AuthLog['syncStatus'],
@@ -339,7 +339,15 @@ function mapRowToLogEntry(row: DatabaseRow): AuthLogEntry {
     altitude: (row.altitude as number | null) ?? null,
     ipAddress: (row.ip_address as string | null) ?? null,
     locationCapturedAt: (row.location_captured_at as string | null) ?? null,
+    syncAttemptCount: toNumber(row.sync_attempt_count, 0),
+    lastSyncAttemptAt: (row.last_sync_attempt_at as string | null) ?? null,
+    lastSyncError: (row.last_sync_error as string | null) ?? null,
+    nextSyncAttemptAt: (row.next_sync_attempt_at as string | null) ?? null,
   };
+}
+
+function toNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' ? value : fallback;
 }
 
 async function resolveLocationForAuthLog(): Promise<DeviceLocationContext> {

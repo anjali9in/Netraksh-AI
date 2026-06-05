@@ -7,13 +7,16 @@ import {LiveScannerPanel} from '../components/LiveScannerPanel';
 import {PrimaryButton} from '../components/PrimaryButton';
 import {ScreenContainer} from '../components/ScreenContainer';
 import {StatusBadge} from '../components/StatusBadge';
+import {analyzeEnrollmentImageQuality} from '../ai/enrollmentQuality';
 import {getDynamicThreshold} from '../ai/dynamicThreshold';
 import {FACE_RECOGNITION_MODEL} from '../ai/modelConfig';
 import {offlineDatabaseService} from '../services/OfflineDatabaseService';
 import {secureStorageService} from '../services/SecureStorageService';
+import {deviceInfoService} from '../services/device/deviceInfo';
 import {livenessService} from '../services/liveness/livenessService';
 import {colors} from '../theme/colors';
 import {radius, spacing} from '../theme/spacing';
+import {deleteTemporaryImage} from '../utils/fileUtils';
 
 type AuthStep = 'ID_INPUT' | 'LIVE_SCANNING' | 'MATCHING' | 'RESULT';
 
@@ -39,21 +42,17 @@ export function AuthenticationScreen(): React.JSX.Element {
   const runFaceMatching = async (imagePath: string) => {
     setStep('MATCHING');
 
-    const simulatedBrightness = 90 + Math.floor(Math.random() * 60);
-    const simulatedQuality = 0.85 + Math.random() * 0.12;
-    const dynamicResult = getDynamicThreshold(
-      simulatedBrightness,
-      simulatedQuality,
-    );
-
     try {
+      const dynamicResult = await getCaptureThreshold(imagePath);
       const startTime = Date.now();
       const matchResult = await secureStorageService.verifyFace(
         employeeId.trim().toUpperCase(),
+
         imagePath || 'mock://captured-face.jpg',
         dynamicResult.threshold,
       );
       const elapsedMs = Date.now() - startTime;
+      const deviceId = await deviceInfoService.getDeviceId();
 
       const logId = await offlineDatabaseService.logAuthAttempt({
         employeeId: employeeId.trim().toUpperCase(),
@@ -66,7 +65,7 @@ export function AuthenticationScreen(): React.JSX.Element {
         livenessStatus: 'PASSED',
         challengeType:
           livenessService.getSessionState().challenges[0]?.type || 'BLINK',
-        deviceId: 'device-tablet-01',
+        deviceId,
         modelVersion: FACE_RECOGNITION_MODEL.modelName,
       });
 
@@ -96,6 +95,8 @@ export function AuthenticationScreen(): React.JSX.Element {
         reason: 'Internal verification pipeline error.',
       });
       setStep('RESULT');
+    } finally {
+      await deleteTemporaryImage(imagePath);
     }
   };
 
@@ -149,7 +150,7 @@ export function AuthenticationScreen(): React.JSX.Element {
             <ActivityIndicator color={colors.primary} size="large" />
             <Text style={styles.matchingText}>Verifying face embeddings</Text>
             <Text style={styles.matchingSubtext}>
-              Matching 512-dim face landmarks against encrypted offline
+              Matching 128-dim MobileFaceNet embeddings against encrypted offline
               templates.
             </Text>
           </View>
@@ -209,6 +210,16 @@ export function AuthenticationScreen(): React.JSX.Element {
       ) : null}
     </ScreenContainer>
   );
+}
+
+async function getCaptureThreshold(imagePath: string) {
+  try {
+    const quality = await analyzeEnrollmentImageQuality(imagePath);
+    return getDynamicThreshold(quality.brightness, quality.sharpness);
+  } catch (error) {
+    console.warn('[AuthenticationScreen] Capture quality analysis failed', error);
+    return getDynamicThreshold(128, 1);
+  }
 }
 
 function DetailRow({

@@ -15,8 +15,6 @@ type TfliteModel = {
 export class FaceEmbeddingGenerator {
   private isLoaded: boolean = false;
   private model: TfliteModel | null = null;
-  private useFallback: boolean = false;
-
   constructor() {
     // Initialization logic
   }
@@ -33,7 +31,6 @@ export class FaceEmbeddingGenerator {
 
       if (DEMO_MODE) {
         this.isLoaded = true;
-        this.useFallback = false;
         return true;
       }
 
@@ -50,21 +47,23 @@ export class FaceEmbeddingGenerator {
       );
 
       this.isLoaded = true;
-      this.useFallback = false;
       return true;
     } catch (error) {
-      console.log(
-        '[FaceEmbeddingGenerator] Running in offline fallback simulator mode (native TFLite module not present in current build).',
+      if (DEMO_MODE) {
+        this.isLoaded = true;
+        return true;
+      }
+      this.isLoaded = false;
+      throw new Error(
+        `MobileFaceNet TFLite model failed to load: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
-      this.isLoaded = true; // Mark as loaded to avoid blocking the app
-      this.useFallback = true;
-      return true;
     }
   }
 
   /**
-   * Generates a 512-dimensional ArcFace embedding vector for a given captured face image path.
-   * Upgraded from MobileFaceNet (128-dim, 99.28% LFW) to ArcFace-MobileNetV2 (512-dim, 99.77% LFW).
+   * Generates a 128-dimensional MobileFaceNet embedding vector for a captured face image.
    *
    * @param imagePath The local URI or file path of the cropped face image (112×112 expected).
    * @returns A promise resolving to a normalized L2 unit-length face embedding vector.
@@ -78,10 +77,10 @@ export class FaceEmbeddingGenerator {
     }
 
     try {
-      if (DEMO_MODE || this.useFallback) {
+      if (DEMO_MODE) {
         // Return a mock embedding vector of the correct dimension for simulation/development
         console.log(
-          `[FaceEmbeddingGenerator] DEMO_MODE (Fallback): Generating mock embedding for ${imagePath}`,
+          `[FaceEmbeddingGenerator] DEMO_MODE: Generating mock MobileFaceNet embedding for ${imagePath}`,
         );
         return this.generateMockEmbedding(imagePath);
       }
@@ -104,6 +103,11 @@ export class FaceEmbeddingGenerator {
       }
 
       const embedding = this.parseModelOutput(output[0]);
+      if (embedding.length !== FACE_RECOGNITION_MODEL.embeddingDimension) {
+        throw new Error(
+          `MobileFaceNet output dimension mismatch: expected ${FACE_RECOGNITION_MODEL.embeddingDimension}, received ${embedding.length}`,
+        );
+      }
 
       // 6. L2-Normalize the output vector to ensure accurate cosine similarity matching
       return this.l2Normalize(embedding);

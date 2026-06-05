@@ -6,6 +6,16 @@ Parameters:
   AuthLogsTableName:
     Type: String
     Default: netraksh-ai-auth-logs
+  SyncAuthTokens:
+    Type: String
+    NoEcho: true
+    Description: Comma-separated bearer tokens allowed to submit auth log sync batches.
+  AllowedTenantIds:
+    Type: String
+    Description: Comma-separated tenant IDs allowed to sync, or * for all tenants.
+  AllowedDeviceIds:
+    Type: String
+    Description: Comma-separated device IDs allowed to sync, or * for all devices.
 
 Globals:
   Function:
@@ -15,6 +25,9 @@ Globals:
     Environment:
       Variables:
         AUTH_LOGS_TABLE_NAME: !Ref AuthLogsTable
+        SYNC_AUTH_TOKENS: !Ref SyncAuthTokens
+        ALLOWED_TENANT_IDS: !Ref AllowedTenantIds
+        ALLOWED_DEVICE_IDS: !Ref AllowedDeviceIds
 
 Resources:
   NetrakshHttpApi:
@@ -26,6 +39,16 @@ Resources:
         AllowHeaders:
           - Content-Type
           - Authorization
+          - X-Device-Id
+          - X-Tenant-Id
+          - X-Site-Id
+          - X-Device-Platform
+          - X-Device-Manufacturer
+          - X-Device-Model
+          - X-Android-Sdk
+          - X-Device-Latitude
+          - X-Device-Longitude
+          - X-Device-Ip
         AllowMethods:
           - OPTIONS
           - POST

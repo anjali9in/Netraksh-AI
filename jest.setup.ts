@@ -12,6 +12,43 @@ const mockDbState = {
   migrations: [] as any[],
 };
 
+const authLogColumns = [
+  'id',
+  'employee_id',
+  'auth_status',
+  'failure_reason',
+  'similarity_score',
+  'liveness_status',
+  'challenge_type',
+  'device_id',
+  'model_version',
+  'created_at',
+  'sync_status',
+  'log_hash',
+  'latitude',
+  'longitude',
+  'location_accuracy',
+  'altitude',
+  'ip_address',
+  'location_captured_at',
+  'sync_attempt_count',
+  'last_sync_attempt_at',
+  'last_sync_error',
+  'next_sync_attempt_at',
+];
+
+const templateColumns = [
+  'employee_id',
+  'encrypted_embedding',
+  'model_version',
+  'device_id',
+  'created_at',
+  'updated_at',
+  'template_encryption_version',
+  'migrated_from_encryption_version',
+  'migrated_at',
+];
+
 // Reset state helper for tests
 (global as any).resetMockDatabase = () => {
   mockDbState.templates = [];
@@ -22,6 +59,22 @@ const mockDbState = {
 
 const mockExecute = async (sql: string, params: any[] = []) => {
   const normalizedSql = sql.trim().replace(/\s+/g, ' ');
+
+  if (normalizedSql.includes('PRAGMA table_info(auth_logs)')) {
+    return {
+      insertId: undefined,
+      rowsAffected: 0,
+      rows: authLogColumns.map((name, cid) => ({cid, name})),
+    };
+  }
+
+  if (normalizedSql.includes('PRAGMA table_info(employee_face_templates)')) {
+    return {
+      insertId: undefined,
+      rowsAffected: 0,
+      rows: templateColumns.map((name, cid) => ({cid, name})),
+    };
+  }
 
   // schema_migrations check
   if (normalizedSql.includes('SELECT id FROM schema_migrations')) {
@@ -60,6 +113,9 @@ const mockExecute = async (sql: string, params: any[] = []) => {
       device_id: params[3],
       created_at: params[4],
       updated_at: params[5],
+      template_encryption_version: params[6] ?? null,
+      migrated_from_encryption_version: params[7] ?? null,
+      migrated_at: params[8] ?? null,
     };
     if (index >= 0) {
       mockDbState.templates[index] = newTemplate;
@@ -75,8 +131,9 @@ const mockExecute = async (sql: string, params: any[] = []) => {
 
   if (
     normalizedSql.includes(
-      'SELECT encrypted_embedding, model_version FROM employee_face_templates WHERE employee_id = ?',
+      'SELECT encrypted_embedding, model_version',
     )
+    && normalizedSql.includes('FROM employee_face_templates WHERE employee_id = ?')
   ) {
     const employeeId = params[0];
     const filtered = mockDbState.templates.filter(
@@ -101,6 +158,29 @@ const mockExecute = async (sql: string, params: any[] = []) => {
     };
   }
 
+  if (
+    normalizedSql.includes('UPDATE employee_face_templates SET encrypted_embedding = ?')
+  ) {
+    const employeeId = params[7];
+    const template = mockDbState.templates.find(
+      t => t.employee_id === employeeId,
+    );
+    if (template) {
+      template.encrypted_embedding = params[0];
+      template.model_version = params[1];
+      template.device_id = params[2] ?? template.device_id;
+      template.updated_at = params[3];
+      template.template_encryption_version = params[4];
+      template.migrated_from_encryption_version = params[5];
+      template.migrated_at = params[6];
+    }
+    return {
+      insertId: undefined,
+      rowsAffected: template ? 1 : 0,
+      rows: [],
+    };
+  }
+
   // auth_logs
   if (normalizedSql.includes('INSERT INTO auth_logs')) {
     const nextId = mockDbState.logs.length + 1;
@@ -117,12 +197,44 @@ const mockExecute = async (sql: string, params: any[] = []) => {
       created_at: params[8],
       sync_status: params[9],
       log_hash: params[10],
+      latitude: params[11] ?? null,
+      longitude: params[12] ?? null,
+      location_accuracy: params[13] ?? null,
+      altitude: params[14] ?? null,
+      ip_address: params[15] ?? null,
+      location_captured_at: params[16] ?? null,
+      sync_attempt_count: params[17] ?? 0,
+      last_sync_attempt_at: params[18] ?? null,
+      last_sync_error: params[19] ?? null,
+      next_sync_attempt_at: params[20] ?? null,
     };
     mockDbState.logs.push(newLog);
     return {
       insertId: nextId,
       rowsAffected: 1,
       rows: [],
+    };
+  }
+
+  if (normalizedSql.includes('SELECT COUNT(*) AS pending_count')) {
+    const pendingCount = mockDbState.logs.filter(
+      l => l.sync_status === 'PENDING',
+    ).length;
+    return {
+      insertId: undefined,
+      rowsAffected: 0,
+      rows: [{pending_count: pendingCount}],
+    };
+  }
+
+  if (normalizedSql.includes('SELECT COUNT(*) AS failed_count')) {
+    const failedCount = mockDbState.logs.filter(
+      l => l.sync_status === 'FAILED',
+    ).length;
+    return {
+      insertId: undefined,
+      rowsAffected: 0,
+      rows: [{failed_count: failedCount}],
     };
   }
 
@@ -139,6 +251,32 @@ const mockExecute = async (sql: string, params: any[] = []) => {
     };
   }
 
+  if (
+    normalizedSql.includes('SELECT * FROM auth_logs') &&
+    normalizedSql.includes('WHERE sync_status = ?')
+  ) {
+    const status = params[0];
+    const nowIso = params[1];
+    let filtered = mockDbState.logs.filter(l => l.sync_status === status);
+
+    if (normalizedSql.includes('next_sync_attempt_at')) {
+      filtered = filtered.filter(
+        l => !l.next_sync_attempt_at || l.next_sync_attempt_at <= nowIso,
+      );
+    }
+
+    filtered = [...filtered].sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+
+    return {
+      insertId: undefined,
+      rowsAffected: 0,
+      rows: filtered,
+    };
+  }
+
   if (normalizedSql.includes('SELECT * FROM auth_logs WHERE id = ?')) {
     const id = params[0];
     const filtered = mockDbState.logs.filter(l => l.id === id);
@@ -146,6 +284,32 @@ const mockExecute = async (sql: string, params: any[] = []) => {
       insertId: undefined,
       rowsAffected: 0,
       rows: filtered,
+    };
+  }
+
+  if (normalizedSql.includes('UPDATE auth_logs SET sync_status = ?')) {
+    const [
+      syncStatus,
+      hash,
+      syncAttemptCount,
+      lastSyncAttemptAt,
+      lastSyncError,
+      nextSyncAttemptAt,
+      id,
+    ] = params;
+    const log = mockDbState.logs.find(l => l.id === id);
+    if (log) {
+      log.sync_status = syncStatus;
+      log.log_hash = hash;
+      log.sync_attempt_count = syncAttemptCount;
+      log.last_sync_attempt_at = lastSyncAttemptAt;
+      log.last_sync_error = lastSyncError;
+      log.next_sync_attempt_at = nextSyncAttemptAt;
+    }
+    return {
+      insertId: undefined,
+      rowsAffected: log ? 1 : 0,
+      rows: [],
     };
   }
 
@@ -352,6 +516,9 @@ jest.mock('react-native', () => {
 jest.mock('react-native-fs', () => ({
   readFile: jest.fn().mockResolvedValue(''),
   unlink: jest.fn().mockResolvedValue(undefined),
+  exists: jest.fn().mockResolvedValue(true),
+  copyFile: jest.fn().mockResolvedValue(undefined),
+  readDir: jest.fn().mockResolvedValue([]),
   DocumentDirectoryPath: '/mock-documents',
   CachesDirectoryPath: '/mock-caches',
 }), {virtual: true});
@@ -382,9 +549,19 @@ jest.mock('react-native-fast-tflite', () => {
   return {
     loadTensorflowModel: jest.fn().mockImplementation(async () => {
       return {
+        inputs: [
+          {
+            dataType: 'float32',
+            shape: [1, 112, 112, 3],
+          },
+        ],
         run: jest.fn().mockImplementation(async (inputs: any[]) => {
           const inputBuffer = inputs[0];
           const inputView = new Float32Array(inputBuffer);
+
+          if (inputView.length === 80 * 80 * 3) {
+            return [new Float32Array([0.05, 0.9, 0.05])];
+          }
 
           // Generate a sum hash based on input buffer values (first 100 values to avoid overflow/NaN)
           let sum = 0;
@@ -395,19 +572,19 @@ jest.mock('react-native-fast-tflite', () => {
             }
           }
 
-          // Return a mock output array buffer of size 512 floats
-          const buffer = new ArrayBuffer(512 * 4);
+          // Return a mock MobileFaceNet output array buffer of size 128 floats.
+          const buffer = new ArrayBuffer(128 * 4);
           const view = new Float32Array(buffer);
 
           let sumSq = 0;
-          for (let i = 0; i < 512; i++) {
+          for (let i = 0; i < 128; i++) {
             const val = Math.sin(sum + i) * Math.cos(sum * i);
             view[i] = val;
             sumSq += val * val;
           }
 
           const norm = Math.sqrt(sumSq);
-          for (let i = 0; i < 512; i++) {
+          for (let i = 0; i < 128; i++) {
             view[i] = norm === 0 ? 0 : view[i] / norm;
           }
           return [view];
@@ -422,7 +599,7 @@ jest.mock('@react-native-ml-kit/face-detection', () => ({
   default: {
     detect: jest.fn().mockResolvedValue([]),
   },
-}));
+}), {virtual: true});
 
 jest.mock('./src/ai/imagePixelLoader', () => ({
   loadRawPixelsFromImagePath: jest.fn(

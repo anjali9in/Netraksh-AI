@@ -14,6 +14,14 @@ export const ML_KIT_FACE_DETECT_OPTIONS = {
   minFaceSize: 0.1,
 };
 
+const ML_KIT_FACE_DETECT_FALLBACK_OPTIONS = {
+  performanceMode: 'accurate' as const,
+  landmarkMode: 'all' as const,
+  contourMode: 'none' as const,
+  classificationMode: 'none' as const,
+  minFaceSize: 0.05,
+};
+
 export type MlKitFaceDiagnostics = {
   faceCount: number;
   leftEyeContourPoints: number;
@@ -62,10 +70,32 @@ export async function detectFacesInPhoto(
   });
 
   try {
-    return await FaceDetection.detect(
+    const strictFaces = await FaceDetection.detect(
       toFileUri(upright.path),
       options ?? ML_KIT_FACE_DETECT_OPTIONS,
     );
+
+    if (strictFaces.length > 0) {
+      return strictFaces;
+    }
+
+    const fallbackFaces = await FaceDetection.detect(
+      toFileUri(upright.path),
+      ML_KIT_FACE_DETECT_FALLBACK_OPTIONS,
+    );
+
+    if (fallbackFaces.length > 0) {
+      return fallbackFaces;
+    }
+
+    if (upright.path !== path) {
+      return await FaceDetection.detect(
+        toFileUri(path),
+        ML_KIT_FACE_DETECT_FALLBACK_OPTIONS,
+      );
+    }
+
+    return [];
   } finally {
     if (upright.path !== path) {
       await RNFS.unlink(upright.path).catch(() => undefined);

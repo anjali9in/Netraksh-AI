@@ -29,17 +29,16 @@ This model was selected because it offers a strong balance between recognition a
 
 | Feature                | Value               |
 | ---------------------- | ------------------- |
-| Model Architecture     | ArcFace-MobileNetV2 |
+| Model Architecture     | MobileFaceNet       |
 | Model Size             | ~8 MB               |
 | Embedding Length       | 512 Dimensions      |
 | Deployment Format      | TFLite / ONNX       |
 | Processing Location    | On-Device           |
 | Average Inference Time | < 300 ms            |
 
-### Why ArcFace-MobileNetV2?
+### Why MobileFaceNet?
 
-ArcFace is a widely used face recognition framework that learns highly distinctive facial representations. Combined with MobileNetV2, it becomes lightweight enough for mobile deployment while maintaining strong recognition performance.
-
+MobileFaceNet is a lightweight face recognition model that provides a good balance between accuracy and efficiency, making it suitable for mobile and edge devices.
 Key advantages include:
 
 - Fast execution on smartphones

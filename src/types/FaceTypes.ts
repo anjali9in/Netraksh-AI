@@ -5,6 +5,9 @@ export type EmployeeFaceTemplate = {
   deviceId: string;
   createdAt: string;
   updatedAt: string;
+  templateEncryptionVersion?: string | null;
+  migratedFromEncryptionVersion?: string | null;
+  migratedAt?: string | null;
 };
 
 export type FaceDetectionResult = {

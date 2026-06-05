@@ -5,6 +5,9 @@
   "type": "commonjs",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "generate:sync-token": "node scripts/generate-sync-token.js",
+    "provision:sync-secrets": "node scripts/sync-deployment.js provision",
+    "deploy:sync": "node scripts/sync-deployment.js deploy",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

@@ -24,13 +24,18 @@ type SyncNotice = {
   status: 'success' | 'warning' | 'error' | 'info';
 };
 
+type LogStatusFilter =
+  | 'ALL'
+  | 'SUCCESS'
+  | 'FAILED'
+  | 'PENDING'
+  | 'SYNC_FAILED';
+
 export function OfflineLogsScreen(): React.JSX.Element {
   const [logs, setLogs] = useState<AuthLogEntry[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<AuthLogEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<
-    'ALL' | 'SUCCESS' | 'FAILED' | 'PENDING'
-  >('ALL');
+  const [statusFilter, setStatusFilter] = useState<LogStatusFilter>('ALL');
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncNotice, setSyncNotice] = useState<SyncNotice | null>(null);
@@ -51,7 +56,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
   const applyFilters = (
     allLogs: AuthLogEntry[],
     query: string,
-    filter: typeof statusFilter,
+    filter: LogStatusFilter,
   ) => {
     let result = [...allLogs];
 
@@ -69,6 +74,8 @@ export function OfflineLogsScreen(): React.JSX.Element {
       result = result.filter(log => log.authStatus === 'FAILED');
     } else if (filter === 'PENDING') {
       result = result.filter(log => log.syncStatus === 'PENDING');
+    } else if (filter === 'SYNC_FAILED') {
+      result = result.filter(log => log.syncStatus === 'FAILED');
     }
 
     setFilteredLogs(result);
@@ -79,7 +86,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
     applyFilters(logs, text, statusFilter);
   };
 
-  const handleFilterChange = (filter: typeof statusFilter) => {
+  const handleFilterChange = (filter: LogStatusFilter) => {
     setStatusFilter(filter);
     applyFilters(logs, searchQuery, filter);
   };
@@ -102,7 +109,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
     });
 
     try {
-      const result = await offlineSyncService.syncPendingLogs();
+      const result = await offlineSyncService.syncPendingLogs({force: true});
       await fetchLogs();
       setSyncNotice({
         title:
@@ -123,6 +130,16 @@ export function OfflineLogsScreen(): React.JSX.Element {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const handleRetryFailedSync = async () => {
+    const resetCount = await offlineDatabaseService.resetFailedSyncLogs();
+    await fetchLogs();
+    setSyncNotice({
+      title: 'Failed Logs Reset',
+      message: `${resetCount} failed sync log(s) moved back to the pending queue.`,
+      status: resetCount > 0 ? 'success' : 'info',
+    });
   };
 
   const handlePurge = async () => {
@@ -159,6 +176,9 @@ export function OfflineLogsScreen(): React.JSX.Element {
   const failCount = logs.filter(l => l.authStatus === 'FAILED').length;
   const pendingSyncCount = logs.filter(l => l.syncStatus === 'PENDING').length;
   const syncedCount = logs.filter(l => l.syncStatus === 'SYNCED').length;
+  const failedSyncCount = logs.filter(l => l.syncStatus === 'FAILED').length;
+  const scheduledRetryCount = logs.filter(log => isRetryScheduled(log)).length;
+  const retryablePendingCount = pendingSyncCount - scheduledRetryCount;
 
   return (
     <ScreenContainer contentContainerStyle={styles.container}>
@@ -168,6 +188,20 @@ export function OfflineLogsScreen(): React.JSX.Element {
           label={`${pendingSyncCount} pending sync`}
           status={pendingSyncCount > 0 ? 'warning' : 'success'}
         />
+        {failedSyncCount > 0 ? (
+          <StatusBadge
+            compact
+            label={`${failedSyncCount} failed upload`}
+            status="error"
+          />
+        ) : null}
+        {scheduledRetryCount > 0 ? (
+          <StatusBadge
+            compact
+            label={`${scheduledRetryCount} scheduled retry`}
+            status="info"
+          />
+        ) : null}
       </View>
 
       {/* Metrics Cards */}
@@ -212,6 +246,18 @@ export function OfflineLogsScreen(): React.JSX.Element {
           </Text>
           <Text style={styles.metricLabel}>Pending</Text>
         </View>
+        <View
+          style={[
+            styles.metricCard,
+            styles.metricCardWithMargin,
+            {borderLeftColor: '#f59e0b'},
+          ]}
+        >
+          <Text style={[styles.metricVal, {color: '#f59e0b'}]}>
+            {failedSyncCount}
+          </Text>
+          <Text style={styles.metricLabel}>Upload Fail</Text>
+        </View>
       </View>
 
       {/* Sync and Purge actions */}
@@ -229,7 +275,7 @@ export function OfflineLogsScreen(): React.JSX.Element {
             <ActivityIndicator color="#ffffff" size="small" />
           ) : (
             <Text style={styles.btnText}>
-              Sync Pending Logs ({pendingSyncCount})
+              Sync Pending Logs ({retryablePendingCount})
             </Text>
           )}
         </TouchableOpacity>
@@ -246,6 +292,22 @@ export function OfflineLogsScreen(): React.JSX.Element {
           <Text style={styles.btnText}>Purge Synced</Text>
         </TouchableOpacity>
       </View>
+
+      {failedSyncCount > 0 ? (
+        <TouchableOpacity
+          onPress={handleRetryFailedSync}
+          style={[
+            styles.actionBtn,
+            styles.retryFailedBtn,
+            isSyncing && styles.actionBtnDisabled,
+          ]}
+          disabled={isSyncing}
+        >
+          <Text style={styles.btnText}>
+            Reset Failed Uploads ({failedSyncCount})
+          </Text>
+        </TouchableOpacity>
+      ) : null}
 
       {syncNotice ? (
         <View style={styles.syncNoticeCard}>
@@ -272,25 +334,27 @@ export function OfflineLogsScreen(): React.JSX.Element {
         />
 
         <View style={styles.filterBar}>
-          {(['ALL', 'SUCCESS', 'FAILED', 'PENDING'] as const).map(f => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => handleFilterChange(f)}
-              style={[
-                styles.filterTab,
-                statusFilter === f && styles.activeFilterTab,
-              ]}
-            >
-              <Text
+          {(['ALL', 'SUCCESS', 'FAILED', 'PENDING', 'SYNC_FAILED'] as const).map(
+            f => (
+              <TouchableOpacity
+                key={f}
+                onPress={() => handleFilterChange(f)}
                 style={[
-                  styles.filterText,
-                  statusFilter === f && styles.activeFilterText,
+                  styles.filterTab,
+                  statusFilter === f && styles.activeFilterTab,
                 ]}
               >
-                {f}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.filterText,
+                    statusFilter === f && styles.activeFilterText,
+                  ]}
+                >
+                  {getFilterLabel(f)}
+                </Text>
+              </TouchableOpacity>
+            ),
+          )}
         </View>
       </View>
 
@@ -338,7 +402,11 @@ export function OfflineLogsScreen(): React.JSX.Element {
                       <StatusBadge
                         label={item.syncStatus}
                         status={
-                          item.syncStatus === 'SYNCED' ? 'info' : 'warning'
+                          item.syncStatus === 'SYNCED'
+                            ? 'info'
+                            : item.syncStatus === 'FAILED'
+                            ? 'error'
+                            : 'warning'
                         }
                       />
                     </View>
@@ -386,6 +454,38 @@ export function OfflineLogsScreen(): React.JSX.Element {
                       <Text style={styles.detailVal}>{item.ipAddress}</Text>
                     </View>
                   ) : null}
+                  {item.syncAttemptCount > 0 ? (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Sync Attempts: </Text>
+                      <Text style={styles.detailVal}>
+                        {item.syncAttemptCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {item.lastSyncAttemptAt ? (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Last Sync: </Text>
+                      <Text style={styles.detailVal}>
+                        {new Date(item.lastSyncAttemptAt).toLocaleString()}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {item.nextSyncAttemptAt ? (
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Next Retry: </Text>
+                      <Text style={styles.detailVal}>
+                        {new Date(item.nextSyncAttemptAt).toLocaleString()}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {item.lastSyncError ? (
+                    <View style={styles.detailItemFull}>
+                      <Text style={styles.detailLabel}>Sync Error: </Text>
+                      <Text style={[styles.detailVal, {color: '#dc2626'}]}>
+                        {item.lastSyncError}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* Dynamic Integrity Check */}
@@ -413,19 +513,35 @@ export function OfflineLogsScreen(): React.JSX.Element {
   );
 }
 
+function isRetryScheduled(log: AuthLogEntry): boolean {
+  if (log.syncStatus !== 'PENDING' || !log.nextSyncAttemptAt) {
+    return false;
+  }
+
+  return new Date(log.nextSyncAttemptAt).getTime() > Date.now();
+}
+
+function getFilterLabel(filter: LogStatusFilter): string {
+  return filter === 'SYNC_FAILED' ? 'SYNC FAIL' : filter;
+}
+
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 32,
   },
   syncStatusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 8,
   },
   metricsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 8,
   },
   metricCard: {
-    flex: 1,
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
     borderRadius: 8,
@@ -434,9 +550,10 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: '18%',
   },
   metricCardWithMargin: {
-    marginLeft: 8,
+    marginLeft: 0,
   },
   metricVal: {
     fontSize: 16,
@@ -470,6 +587,10 @@ const styles = StyleSheet.create({
   purgeBtn: {
     backgroundColor: '#dc2626',
     marginLeft: 10,
+  },
+  retryFailedBtn: {
+    backgroundColor: '#b45309',
+    marginTop: 10,
   },
   btnText: {
     color: '#ffffff',
@@ -622,6 +743,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 8,
     marginRight: 12,
+  },
+  detailItemFull: {
+    flexBasis: '100%',
+    flexDirection: 'row',
+    marginBottom: 8,
   },
   detailLabel: {
     color: '#94a3b8',

@@ -1,0 +1,128 @@
+name: Backend Sync Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: Deployment stage
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      provision_secrets:
+        description: Write sync allowlists/tokens to SSM Parameter Store
+        required: true
+        type: boolean
+        default: false
+      deploy_backend:
+        description: Deploy the SAM backend stack
+        required: true
+        type: boolean
+        default: true
+      source:
+        description: Source for SAM parameter values
+        required: true
+        type: choice
+        options:
+          - ssm
+          - env
+        default: ssm
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: backend-sync-deploy-${{ inputs.stage }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.stage }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup SAM
+        uses: aws-actions/setup-sam@v2
+
+      - name: Validate staging runtime config
+        if: ${{ inputs.stage == 'staging' }}
+        env:
+          NETRAKSH_STAGING_API_BASE_URL: ${{ vars.NETRAKSH_STAGING_API_BASE_URL }}
+          NETRAKSH_STAGING_API_TENANT_ID: ${{ vars.NETRAKSH_STAGING_API_TENANT_ID }}
+          NETRAKSH_STAGING_API_SITE_ID: ${{ vars.NETRAKSH_STAGING_API_SITE_ID }}
+          NETRAKSH_STAGING_DEMO_MODE: ${{ vars.NETRAKSH_STAGING_DEMO_MODE }}
+          NETRAKSH_STAGING_ALLOWED_TENANT_IDS: ${{ secrets.NETRAKSH_STAGING_ALLOWED_TENANT_IDS }}
+        run: npm run release:validate-config -- --stage staging
+
+      - name: Validate production runtime config
+        if: ${{ inputs.stage == 'production' }}
+        env:
+          NETRAKSH_PROD_API_BASE_URL: ${{ vars.NETRAKSH_PROD_API_BASE_URL }}
+          NETRAKSH_PROD_API_TENANT_ID: ${{ vars.NETRAKSH_PROD_API_TENANT_ID }}
+          NETRAKSH_PROD_API_SITE_ID: ${{ vars.NETRAKSH_PROD_API_SITE_ID }}
+          NETRAKSH_PROD_DEMO_MODE: ${{ vars.NETRAKSH_PROD_DEMO_MODE }}
+          NETRAKSH_PROD_ALLOWED_TENANT_IDS: ${{ secrets.NETRAKSH_PROD_ALLOWED_TENANT_IDS }}
+        run: npm run release:validate-config -- --stage production
+
+      - name: Check app TypeScript
+        run: npm run typecheck
+
+      - name: Check backend TypeScript
+        run: npm run backend:typecheck
+
+      - name: Run tests
+        run: npm test -- --runInBand
+
+      - name: Provision staging sync secrets
+        if: ${{ inputs.stage == 'staging' && inputs.provision_secrets }}
+        env:
+          NETRAKSH_STAGING_SYNC_AUTH_TOKENS: ${{ secrets.NETRAKSH_STAGING_SYNC_AUTH_TOKENS }}
+          NETRAKSH_STAGING_ALLOWED_TENANT_IDS: ${{ secrets.NETRAKSH_STAGING_ALLOWED_TENANT_IDS }}
+          NETRAKSH_STAGING_ALLOWED_DEVICE_IDS: ${{ secrets.NETRAKSH_STAGING_ALLOWED_DEVICE_IDS }}
+        run: npm run backend:provision-sync-secrets -- --stage staging --region "$AWS_REGION"
+
+      - name: Provision production sync secrets
+        if: ${{ inputs.stage == 'production' && inputs.provision_secrets }}
+        env:
+          NETRAKSH_PROD_SYNC_AUTH_TOKENS: ${{ secrets.NETRAKSH_PROD_SYNC_AUTH_TOKENS }}
+          NETRAKSH_PROD_ALLOWED_TENANT_IDS: ${{ secrets.NETRAKSH_PROD_ALLOWED_TENANT_IDS }}
+          NETRAKSH_PROD_ALLOWED_DEVICE_IDS: ${{ secrets.NETRAKSH_PROD_ALLOWED_DEVICE_IDS }}
+        run: npm run backend:provision-sync-secrets -- --stage production --region "$AWS_REGION"
+
+      - name: Deploy staging backend
+        if: ${{ inputs.stage == 'staging' && inputs.deploy_backend }}
+        env:
+          NETRAKSH_STAGING_SYNC_AUTH_TOKENS: ${{ secrets.NETRAKSH_STAGING_SYNC_AUTH_TOKENS }}
+          NETRAKSH_STAGING_ALLOWED_TENANT_IDS: ${{ secrets.NETRAKSH_STAGING_ALLOWED_TENANT_IDS }}
+          NETRAKSH_STAGING_ALLOWED_DEVICE_IDS: ${{ secrets.NETRAKSH_STAGING_ALLOWED_DEVICE_IDS }}
+        run: npm run backend:deploy-sync -- --stage staging --source "${{ inputs.source }}" --region "$AWS_REGION"
+
+      - name: Deploy production backend
+        if: ${{ inputs.stage == 'production' && inputs.deploy_backend }}
+        env:
+          NETRAKSH_PROD_SYNC_AUTH_TOKENS: ${{ secrets.NETRAKSH_PROD_SYNC_AUTH_TOKENS }}
+          NETRAKSH_PROD_ALLOWED_TENANT_IDS: ${{ secrets.NETRAKSH_PROD_ALLOWED_TENANT_IDS }}
+          NETRAKSH_PROD_ALLOWED_DEVICE_IDS: ${{ secrets.NETRAKSH_PROD_ALLOWED_DEVICE_IDS }}
+        run: npm run backend:deploy-sync -- --stage production --source "${{ inputs.source }}" --region "$AWS_REGION"

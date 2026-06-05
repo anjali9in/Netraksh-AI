@@ -78,9 +78,9 @@ describe('Dynamic Threshold', () => {
 });
 
 // ─────────────────────────────────────────────────────────
-// TEST 3: Face Embedding Generator (DEMO_MODE)
+// TEST 3: Face Embedding Generator
 // ─────────────────────────────────────────────────────────
-describe('FaceEmbeddingGenerator (DEMO_MODE) — MobileFaceNet', () => {
+describe('FaceEmbeddingGenerator — MobileFaceNet', () => {
   it('should generate an embedding with exactly 128 dimensions (MobileFaceNet)', async () => {
     const embedding = await faceEmbeddingGenerator.generateEmbedding(
       'test_face.jpg',

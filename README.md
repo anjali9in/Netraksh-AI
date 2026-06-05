@@ -9,12 +9,12 @@ Netraksh AI is an offline-first facial authentication and liveness workflow buil
 ## Features
 
 - **Camera Capture**: Uses `react-native-vision-camera` for enrollment capture, authentication capture, permission handling, retake flow, and development mock capture.
-- **Face Embeddings**: Uses ArcFace-MobileNetV2-style 512-dimensional normalized embeddings with `react-native-fast-tflite` integration and deterministic mock fallback when native inference is unavailable.
-- **Liveness Challenge Flow**: Implements blink, smile, and head-turn challenge state logic. The current UI feeds simulated EAR/MAR/yaw metrics; real landmark detection is still a production hardening item.
-- **Encrypted Face Templates**: Stores encrypted embeddings in SQLite using AES-256-CBC and a Keychain-backed local key. Current encryption still needs authenticated encryption and secure-random cleanup before production use.
+- **Face Embeddings**: Uses lightweight MobileFaceNet-style 128-dimensional normalized embeddings with `react-native-fast-tflite` integration and deterministic mock generation only in explicit demo mode.
+- **Liveness Challenge Flow**: Uses ML Kit face metrics to drive blink and head-turn challenges, followed by MiniFASNet silent anti-spoof verification in production paths.
+- **Encrypted Face Templates**: Stores encrypted embeddings in SQLite using secure random IVs and versioned encrypt-then-MAC authenticated encryption.
 - **Offline Audit Logs**: Stores authentication attempts locally with sync status, device/location context, and SHA-256 integrity hashes for tamper evidence.
 - **Offline-to-Online Sync**: Provides manual sync from the Offline Logs screen, automatic sync on network restore, and periodic scheduled sync using `AUTH_LOG_SYNC_INTERVAL_MS`.
-- **AWS Backend Scaffold**: Includes a SAM/API Gateway/Lambda/DynamoDB sync backend with request validation. Backend authentication and deployment validation are still required.
+- **AWS Backend Scaffold**: Includes a SAM/API Gateway/Lambda/DynamoDB sync backend with request validation, bearer-token authentication, and tenant/device authorization.
 
 ---
 
@@ -96,3 +96,9 @@ npm run lint
 * `backend`: AWS SAM sync API scaffold.
 * `docs`: Architecture, setup, benchmark, testing, and next-step notes.
 * `__tests__`: Jest tests covering validation, routes, device info, camera orientation, liveness, offline database behavior, and AI utilities.
+
+Key operational docs:
+
+* `docs/OPERATIONS_PROVISIONING.md`: sync token issuance, tablet registration, rotation, and decommissioning.
+* `docs/RELEASE_RUNTIME_CONFIG.md`: staging/production native build config injection.
+* `docs/ML_DEVICE_RESULTS.md`: physical-device ML validation result log.

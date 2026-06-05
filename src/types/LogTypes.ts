@@ -13,4 +13,8 @@ export type AuthLog = {
   createdAt: string;
   syncStatus: 'PENDING' | 'SYNCED' | 'FAILED';
   logHash?: string;
+  syncAttemptCount?: number;
+  lastSyncAttemptAt?: string;
+  lastSyncError?: string;
+  nextSyncAttemptAt?: string;
 } & DeviceLocationContext;

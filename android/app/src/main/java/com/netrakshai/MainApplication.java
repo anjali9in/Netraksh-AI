@@ -8,6 +8,7 @@ import com.facebook.react.ReactPackage;
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
 import com.facebook.react.defaults.DefaultReactNativeHost;
 import com.facebook.soloader.SoLoader;
+import com.netrakshai.config.NetrakshConfigPackage;
 import com.netrakshai.sync.BackgroundSyncPackage;
 import java.util.List;
 
@@ -24,6 +25,7 @@ public class MainApplication extends Application implements ReactApplication {
         protected List<ReactPackage> getPackages() {
           @SuppressWarnings("UnnecessaryLocalVariable")
           List<ReactPackage> packages = new PackageList(this).getPackages();
+          packages.add(new NetrakshConfigPackage());
           packages.add(new BackgroundSyncPackage());
           return packages;
         }
